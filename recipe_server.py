@@ -19,7 +19,9 @@ CORS(app)
 
 # Configuration
 RECIPES_FILE = Path(__file__).parent / 'recipes.json'
+REVIEWS_FILE = Path(__file__).parent / 'reviews.json'
 CURRENT_RECIPE_FILE = Path(__file__).parent / 'public' / 'current_recipe.json'
+PHOTOS_DIR = Path(__file__).parent / 'public' / 'photos'
 CURRENT_RECIPE_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 # Default recipes database
@@ -166,6 +168,43 @@ def save_recipes(recipes):
     except Exception as e:
         print(f"Error saving recipes: {e}")
 
+def load_reviews():
+    """Load reviews from JSON file or create default."""
+    if REVIEWS_FILE.exists():
+        try:
+            with open(REVIEWS_FILE, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Error loading reviews: {e}")
+            return []
+    return []
+
+def save_reviews(reviews):
+    """Save reviews to JSON file."""
+    try:
+        with open(REVIEWS_FILE, 'w') as f:
+            json.dump(reviews, f, indent=2)
+    except Exception as e:
+        print(f"Error saving reviews: {e}")
+
+def get_photos_list():
+    """Get list of photos from the public/photos directory."""
+    try:
+        if PHOTOS_DIR.exists():
+            photos = []
+            for file_path in PHOTOS_DIR.iterdir():
+                if file_path.is_file() and file_path.suffix.lower() in ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mov', '.mp4']:
+                    photos.append({
+                        'filename': file_path.name,
+                        'path': f'/photos/{file_path.name}',
+                        'type': 'video' if file_path.suffix.lower() in ['.mov', '.mp4'] else 'image'
+                    })
+            return sorted(photos, key=lambda x: x['filename'])
+        return []
+    except Exception as e:
+        print(f"Error getting photos list: {e}")
+        return []
+
 def select_daily_recipe():
     """Select today's recipe based on the date."""
     recipes = load_recipes()
@@ -238,6 +277,34 @@ def add_recipe():
     
     return jsonify(data), 201
 
+@app.route('/api/photos', methods=['GET'])
+def get_photos():
+    """API endpoint to get all photos."""
+    photos = get_photos_list()
+    return jsonify(photos)
+
+@app.route('/api/reviews', methods=['GET'])
+def get_reviews():
+    """API endpoint to get all reviews."""
+    reviews = load_reviews()
+    return jsonify(reviews)
+
+@app.route('/api/reviews', methods=['POST'])
+def add_review():
+    """API endpoint to add a new review."""
+    from flask import request
+    data = request.json
+    reviews = load_reviews()
+
+    # Generate new ID
+    new_id = max([r.get('id', 0) for r in reviews]) + 1 if reviews else 1
+    data['id'] = new_id
+
+    reviews.append(data)
+    save_reviews(reviews)
+
+    return jsonify(data), 201
+
 @app.route('/health', methods=['GET'])
 def health():
     """Health check endpoint."""
@@ -282,8 +349,11 @@ if __name__ == '__main__':
     print("  - GET /api/recipes           (all recipes)")
     print("  - GET /api/recipes/<id>      (specific recipe)")
     print("  - POST /api/recipes          (add new recipe)")
+    print("  - GET /api/photos            (all photos)")
+    print("  - GET /api/reviews           (all reviews)")
+    print("  - POST /api/reviews          (add new review)")
     print("  - GET /health                (health check)")
     print("\nPress Ctrl+C to stop the server\n")
     
-    app.run(debug=True, port=5000, use_reloader=False)
+    app.run(debug=True, port=5001, use_reloader=False)
 

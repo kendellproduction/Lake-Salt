@@ -5,6 +5,7 @@ import WhatSetsUsApart from './components/WhatSetsUsApart';
 import DryHire from './components/DryHire';
 import Gallery from './components/Gallery';
 import Services from './components/Services';
+import FAQ from './components/FAQ';
 import Reviews from './components/Reviews';
 import Contact from './components/Contact';
 import Footer from './components/Footer';
@@ -29,20 +30,23 @@ export default function App() {
         {/* Hero Section */}
         <Hero />
 
+        {/* Gallery (Moved up) */}
+        <Gallery />
+
+        {/* Reviews (Moved up) */}
+        <Reviews />
+
         {/* What Sets Us Apart */}
         <WhatSetsUsApart />
-
-        {/* Dry Hire Service */}
-        <DryHire />
 
         {/* Services */}
         <Services />
 
-        {/* Gallery */}
-        <Gallery />
+        {/* FAQ & How It Works */}
+        <FAQ />
 
-        {/* Reviews */}
-        <Reviews />
+        {/* Dry Hire Service */}
+        <DryHire />
 
         {/* Contact Form */}
         <Contact />
