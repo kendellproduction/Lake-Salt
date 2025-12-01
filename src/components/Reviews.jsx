@@ -20,17 +20,30 @@ const Reviews = () => {
   useEffect(() => {
     const fetchReviews = async () => {
       try {
+        // Try to fetch from API first
         const response = await fetch('http://localhost:5001/api/reviews');
         if (response.ok) {
           const reviewsData = await response.json();
           setReviews(reviewsData);
         } else {
-          console.warn('Failed to fetch reviews from API, using fallback message');
-          setReviews([]); // Empty array to show "No reviews yet" message
+          throw new Error('API not available');
         }
       } catch (error) {
-        console.error('Error fetching reviews:', error);
-        setReviews([]); // Empty array to show "No reviews yet" message
+        console.warn('API not available, loading from static file:', error.message);
+        // Fallback to static reviews.json file
+        try {
+          const fallbackResponse = await fetch('/reviews.json');
+          if (fallbackResponse.ok) {
+            const reviewsData = await fallbackResponse.json();
+            setReviews(reviewsData);
+          } else {
+            console.error('Failed to load static reviews file');
+            setReviews([]);
+          }
+        } catch (fallbackError) {
+          console.error('Error loading reviews:', fallbackError);
+          setReviews([]);
+        }
       } finally {
         setLoading(false);
       }

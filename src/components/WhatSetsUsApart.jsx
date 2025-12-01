@@ -95,7 +95,7 @@ const WhatSetsUsApart = () => {
                 className="group relative"
               >
                 <motion.div
-                  className="relative p-8 rounded-xl border border-sky-100 hover:border-sky-300 shadow-sm hover:shadow-lg hover:shadow-sky-100/50 transition-all duration-300 bg-white"
+                  className="relative p-8 rounded-xl border border-sky-100 hover:border-sky-300 shadow-sm hover:shadow-lg hover:shadow-sky-100/50 transition-all duration-300 bg-white h-full min-h-[280px] flex flex-col"
                   whileHover={{ y: -4 }}
                   transition={{ type: "spring", stiffness: 300, damping: 20 }}
                 >
@@ -111,12 +111,14 @@ const WhatSetsUsApart = () => {
                   </motion.div>
 
                   {/* Content */}
-                  <h3 className="text-xl font-bold mb-3 text-slate-900 group-hover:text-sky-700 transition-colors duration-300">
-                    {feature.title}
-                  </h3>
-                  <p className="text-slate-600 leading-relaxed font-light">
-                    {feature.description}
-                  </p>
+                  <div className="flex-grow">
+                    <h3 className="text-xl font-bold mb-3 text-slate-900 group-hover:text-sky-700 transition-colors duration-300">
+                      {feature.title}
+                    </h3>
+                    <p className="text-slate-600 leading-relaxed font-light">
+                      {feature.description}
+                    </p>
+                  </div>
 
                   {/* Simple accent line */}
                   <div className="mt-6 h-0.5 w-12 bg-sky-200 rounded-full group-hover:w-16 transition-all duration-300"></div>

@@ -32,8 +32,18 @@ const Hero = () => {
           alt="Lake Salt Bartending"
           className="w-full h-full object-cover object-[center_75%] grayscale-[20%] contrast-125"
         />
-        <div className="absolute inset-0 bg-black/60"></div>
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black/80"></div>
+        {/* Base overlay - reduced from 60% to 50% */}
+        <div className="absolute inset-0 bg-black/50"></div>
+        {/* Gradient overlay with cutout for employee in center-right area */}
+        <div 
+          className="absolute inset-0" 
+          style={{
+            background: `
+              radial-gradient(ellipse 500px 400px at 55% 70%, transparent 0%, transparent 30%, rgba(0,0,0,0.3) 100%),
+              linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.5) 100%)
+            `
+          }}
+        ></div>
       </div>
 
 

@@ -17,8 +17,9 @@ if (publicKey && publicKey !== 'YOUR_PUBLIC_KEY') {
 
 const Contact = () => {
   const { ref, inView } = useInView({
-    threshold: 0.1,
+    threshold: 0.05,
     triggerOnce: true,
+    rootMargin: '50px',
   });
 
   const [formData, setFormData] = useState({
@@ -28,6 +29,7 @@ const Contact = () => {
     eventType: '',
     guestCount: '',
     message: '',
+    dryHireAcknowledged: false,
   });
 
   const [status, setStatus] = useState('idle'); // idle, loading, success, error
@@ -43,10 +45,10 @@ const Contact = () => {
   ];
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: type === 'checkbox' ? checked : value,
     }));
   };
 
@@ -63,6 +65,11 @@ const Contact = () => {
         !formData.eventType
       ) {
         throw new Error('Please fill in all required fields');
+      }
+
+      // Validate dry hire acknowledgment
+      if (!formData.dryHireAcknowledged) {
+        throw new Error('Please acknowledge the dry hire policy');
       }
 
       // Send email via EmailJS
@@ -90,13 +97,10 @@ const Contact = () => {
         eventType: '',
         guestCount: '',
         message: '',
+        dryHireAcknowledged: false,
       });
 
-      // Reset after 5 seconds
-      setTimeout(() => {
-        setStatus('idle');
-        setMessage('');
-      }, 5000);
+      // Success state persists until page refresh
     } catch (err) {
       setStatus('error');
       setMessage(
@@ -281,13 +285,41 @@ const Contact = () => {
               />
             </motion.div>
 
+            {/* Dry Hire Acknowledgment Checkbox */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={inView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.5, delay: 0.35 }}
+              className="flex items-start gap-3"
+            >
+              <input
+                type="checkbox"
+                id="dryHireAcknowledged"
+                name="dryHireAcknowledged"
+                checked={formData.dryHireAcknowledged}
+                onChange={handleChange}
+                required
+                className="mt-1 w-4 h-4 text-sky-600 bg-slate-50 border-slate-300 rounded focus:ring-sky-500 focus:ring-2 cursor-pointer"
+              />
+              <label
+                htmlFor="dryHireAcknowledged"
+                className="text-xs text-slate-600 leading-relaxed cursor-pointer select-none"
+              >
+                I understand Lake Salt is a dry hire service and will not purchase alcohol for the event, but will provide a shopping list based on my menu selection. *
+              </label>
+            </motion.div>
+
             {/* Submit Button */}
             <motion.button
               type="submit"
-              disabled={status === 'loading'}
-              className="w-full px-8 py-4 bg-gradient-to-r from-slate-900 to-slate-800 text-white font-semibold rounded-lg hover:from-sky-600 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl hover:shadow-sky-200"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              disabled={status === 'loading' || status === 'success'}
+              className={`w-full px-8 py-4 text-white font-semibold rounded-lg disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-lg ${
+                status === 'success'
+                  ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-500 hover:to-emerald-600 shadow-green-200'
+                  : 'bg-gradient-to-r from-slate-900 to-slate-800 hover:from-sky-600 hover:to-teal-600 disabled:opacity-50 hover:shadow-xl hover:shadow-sky-200'
+              }`}
+              whileHover={status !== 'success' ? { scale: 1.02 } : {}}
+              whileTap={status !== 'success' ? { scale: 0.98 } : {}}
               initial={{ opacity: 0, y: 20 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.5, delay: 0.4 }}
@@ -301,6 +333,17 @@ const Contact = () => {
                     <Send size={20} />
                   </motion.div>
                   Sending...
+                </>
+              ) : status === 'success' ? (
+                <>
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                  >
+                    <CheckCircle size={20} />
+                  </motion.div>
+                  Message Sent Successfully!
                 </>
               ) : (
                 <>
