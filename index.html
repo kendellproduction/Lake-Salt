@@ -89,6 +89,10 @@
     <!-- Preconnect to External Services -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <!-- Preload Hero Images for faster LCP -->
+    <link rel="preload" as="image" href="/hero-background.webp" type="image/webp" media="(min-width: 768px)" fetchpriority="high" />
+    <link rel="preload" as="image" href="/hero-background-mobile.jpeg" type="image/jpeg" media="(max-width: 767px)" fetchpriority="high" />
   </head>
   <body>
     <div id="root"></div>

@@ -2,9 +2,32 @@ import { motion } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination, Autoplay } from 'swiper/modules';
+import { useState, useCallback } from 'react';
 import 'swiper/css';
 import 'swiper/css/pagination';
 import 'swiper/css/navigation';
+
+// Lazy-loaded image component with blur placeholder
+const LazyImage = ({ src, alt, className }) => {
+  const [loaded, setLoaded] = useState(false);
+  
+  return (
+    <div className="relative w-full h-full">
+      {/* Placeholder skeleton */}
+      <div 
+        className={`absolute inset-0 bg-gradient-to-br from-slate-200 to-slate-300 animate-pulse transition-opacity duration-300 ${loaded ? 'opacity-0' : 'opacity-100'}`}
+      />
+      <img
+        src={src}
+        alt={alt}
+        className={`${className} transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+        loading="lazy"
+        decoding="async"
+        onLoad={() => setLoaded(true)}
+      />
+    </div>
+  );
+};
 
 const Gallery = () => {
   const { ref, inView } = useInView({
@@ -79,7 +102,7 @@ const Gallery = () => {
             {galleryItems.map((item, idx) => (
               <SwiperSlide key={idx}>
                 <div className="relative w-full h-full bg-slate-100">
-                  <img
+                  <LazyImage
                     src={item.src}
                     alt={item.title}
                     className="w-full h-full object-contain bg-black/5"

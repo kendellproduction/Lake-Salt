@@ -1,7 +1,33 @@
 import { motion } from 'framer-motion';
 import { Wine, Award, Sparkles, Star } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 const Hero = () => {
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  // Preload the appropriate image based on screen size
+  useEffect(() => {
+    const isMobile = window.innerWidth < 768;
+    const img = new Image();
+    
+    // Use smaller image for mobile
+    if (isMobile) {
+      img.src = '/hero-background-mobile.jpeg';
+    } else {
+      // Try WebP first, fallback to optimized JPEG
+      const webpImg = new Image();
+      webpImg.src = '/hero-background.webp';
+      webpImg.onload = () => setImageLoaded(true);
+      webpImg.onerror = () => {
+        img.src = '/hero-background-optimized.jpeg';
+        img.onload = () => setImageLoaded(true);
+      };
+      return;
+    }
+    
+    img.onload = () => setImageLoaded(true);
+  }, []);
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -25,22 +51,53 @@ const Hero = () => {
 
   return (
     <section className="relative min-h-screen overflow-hidden flex items-center">
-      {/* Background Image with Overlay */}
+      {/* Background Image with Overlay - Optimized with responsive images */}
       <div className="absolute inset-0">
-        <img
-          src="/hero-background.jpeg"
-          alt="Lake Salt Bartending"
-          className="w-full h-full object-cover object-[center_75%] grayscale-[20%] contrast-125"
+        {/* Low-quality placeholder shown until image loads */}
+        <div 
+          className={`absolute inset-0 bg-gradient-to-b from-slate-800 to-slate-900 transition-opacity duration-500 ${imageLoaded ? 'opacity-0' : 'opacity-100'}`}
         />
-        {/* Base overlay - reduced from 60% to 50% */}
-        <div className="absolute inset-0 bg-black/50"></div>
-        {/* Gradient overlay with cutout for employee in center-right area */}
+        
+        {/* Responsive picture element with WebP and fallback */}
+        <picture>
+          {/* WebP for modern browsers - desktop */}
+          <source 
+            media="(min-width: 768px)" 
+            srcSet="/hero-background.webp" 
+            type="image/webp" 
+          />
+          {/* Optimized JPEG fallback - desktop */}
+          <source 
+            media="(min-width: 768px)" 
+            srcSet="/hero-background-optimized.jpeg" 
+            type="image/jpeg" 
+          />
+          {/* Mobile-optimized image */}
+          <source 
+            media="(max-width: 767px)" 
+            srcSet="/hero-background-mobile.jpeg" 
+            type="image/jpeg" 
+          />
+          {/* Default fallback */}
+          <img
+            src="/hero-background-optimized.jpeg"
+            alt="Lake Salt Bartending"
+            className={`w-full h-full object-cover object-[center_45%] md:object-[center_75%] grayscale-[20%] contrast-125 transition-opacity duration-500 scale-[1.12] md:scale-100 origin-[center_35%] md:origin-center ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+            onLoad={() => setImageLoaded(true)}
+            fetchPriority="high"
+            decoding="async"
+          />
+        </picture>
+        
+        {/* Base overlay - lighter on mobile (30%), slightly darker on desktop (40%) for better text readability */}
+        <div className="absolute inset-0 bg-black/30 md:bg-black/40"></div>
+        {/* Gradient overlay - lighter overall, with cutout for employee in center-right area */}
         <div 
           className="absolute inset-0" 
           style={{
             background: `
-              radial-gradient(ellipse 500px 400px at 55% 70%, transparent 0%, transparent 30%, rgba(0,0,0,0.3) 100%),
-              linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.5) 100%)
+              radial-gradient(ellipse 500px 400px at 55% 70%, transparent 0%, transparent 30%, rgba(0,0,0,0.15) 100%),
+              linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.3) 100%)
             `
           }}
         ></div>
@@ -84,7 +141,7 @@ const Hero = () => {
             {/* Description */}
             <motion.p
               variants={itemVariants}
-              className="text-lg md:text-xl text-slate-200 mb-12 leading-relaxed max-w-2xl mx-auto text-center font-light"
+              className="text-base sm:text-lg md:text-xl text-slate-200 mb-8 sm:mb-12 leading-relaxed max-w-2xl mx-auto text-center font-light px-2"
             >
               Professional mobile bartending services bringing craft cocktails and exceptional service to your Utah events.
               From weddings to corporate gatherings, we create unforgettable experiences.
@@ -93,11 +150,11 @@ const Hero = () => {
             {/* CTA Buttons - Clean */}
             <motion.div
               variants={itemVariants}
-              className="flex flex-col sm:flex-row gap-6 justify-center items-center"
+              className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center px-4"
             >
               <motion.a
                 href="#contact"
-                className="bg-gradient-to-r from-sky-600 to-teal-600 text-white px-10 py-4 font-medium rounded-full text-lg hover:from-sky-500 hover:to-teal-500 transition-all duration-300 shadow-lg shadow-sky-900/30 hover:shadow-sky-900/50 min-w-[200px] text-center border border-white/10"
+                className="bg-gradient-to-r from-sky-600 to-teal-600 text-white px-8 sm:px-10 py-3 sm:py-4 font-medium rounded-full text-base sm:text-lg hover:from-sky-500 hover:to-teal-500 transition-all duration-300 shadow-lg shadow-sky-900/30 hover:shadow-sky-900/50 w-full sm:w-auto sm:min-w-[200px] text-center border border-white/10"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
               >
@@ -106,7 +163,7 @@ const Hero = () => {
 
               <motion.a
                 href="#services"
-                className="bg-white/5 text-white px-10 py-4 font-medium rounded-full text-lg hover:bg-white/10 transition-all duration-300 border border-sky-200/30 backdrop-blur-sm min-w-[200px] text-center"
+                className="bg-white/5 text-white px-8 sm:px-10 py-3 sm:py-4 font-medium rounded-full text-base sm:text-lg hover:bg-white/10 transition-all duration-300 border border-sky-200/30 backdrop-blur-sm w-full sm:w-auto sm:min-w-[200px] text-center"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
               >
@@ -117,7 +174,7 @@ const Hero = () => {
             {/* Service Areas */}
             <motion.div
               variants={itemVariants}
-              className="mt-16 text-center"
+              className="mt-8 sm:mt-16 text-center"
             >
               <div className="inline-block">
                 <p className="text-sky-200/80 text-xs mb-2 uppercase tracking-[0.2em]">Serving Northern Utah</p>

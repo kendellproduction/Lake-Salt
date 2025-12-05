@@ -1,14 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
-import WhatSetsUsApart from './components/WhatSetsUsApart';
-import DryHire from './components/DryHire';
-import Gallery from './components/Gallery';
-import Services from './components/Services';
-import FAQ from './components/FAQ';
-import Reviews from './components/Reviews';
-import Contact from './components/Contact';
-import Footer from './components/Footer';
+
+// Lazy load below-the-fold components for faster initial page load
+const Gallery = lazy(() => import('./components/Gallery'));
+const Reviews = lazy(() => import('./components/Reviews'));
+const WhatSetsUsApart = lazy(() => import('./components/WhatSetsUsApart'));
+const Services = lazy(() => import('./components/Services'));
+const FAQ = lazy(() => import('./components/FAQ'));
+const DryHire = lazy(() => import('./components/DryHire'));
+const Contact = lazy(() => import('./components/Contact'));
+const Footer = lazy(() => import('./components/Footer'));
+
+// Simple loading placeholder for lazy components
+const SectionLoader = () => (
+  <div className="min-h-[200px] flex items-center justify-center">
+    <div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
+  </div>
+);
 
 export default function App() {
   const [navbarBg, setNavbarBg] = useState(false);
@@ -27,33 +36,38 @@ export default function App() {
       <Navbar navbarBg={navbarBg} />
 
       <main>
-        {/* Hero Section */}
+        {/* Hero Section - Critical, loaded immediately */}
         <Hero />
 
-        {/* Gallery (Moved up) */}
-        <Gallery />
+        {/* Below-the-fold content - lazy loaded for performance */}
+        <Suspense fallback={<SectionLoader />}>
+          {/* Gallery (Moved up) */}
+          <Gallery />
 
-        {/* Reviews (Moved up) */}
-        <Reviews />
+          {/* Reviews (Moved up) */}
+          <Reviews />
 
-        {/* What Sets Us Apart */}
-        <WhatSetsUsApart />
+          {/* What Sets Us Apart */}
+          <WhatSetsUsApart />
 
-        {/* Services */}
-        <Services />
+          {/* Services */}
+          <Services />
 
-        {/* FAQ & How It Works */}
-        <FAQ />
+          {/* FAQ & How It Works */}
+          <FAQ />
 
-        {/* Dry Hire Service */}
-        <DryHire />
+          {/* Dry Hire Service */}
+          <DryHire />
 
-        {/* Contact Form */}
-        <Contact />
+          {/* Contact Form */}
+          <Contact />
+        </Suspense>
       </main>
 
       {/* Footer */}
-      <Footer />
+      <Suspense fallback={null}>
+        <Footer />
+      </Suspense>
     </div>
   );
 }
