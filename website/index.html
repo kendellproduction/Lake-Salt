@@ -53,9 +53,16 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- Performance: preconnect for external assets -->
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
+  <link rel="preconnect" href="https://images.unsplash.com" crossorigin />
+  <link rel="dns-prefetch" href="https://api.emailjs.com" />
   <!-- GSAP -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
+  <!-- EmailJS -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <script>emailjs.init('S5_thaUg6waOnC7bZ');</script>
 
   <style>
     /* ─────────────────────────────────────────
@@ -1881,12 +1888,12 @@
         src="images/IMG_8954.PNG"
         alt="Lake Salt bartender at an elegant wedding venue"
         class="wf-img-main"
-      />
+        fetchpriority="high"
+        loading="eager" />
       <img
         src="images/IMG_8640.PNG"
         alt="Freshly crafted margarita with lime garnish"
-        class="wf-img-accent"
-      />
+        class="wf-img-accent" loading="lazy" />
       <div class="wf-label-float">
         <div class="big">100<span style="font-size:1.2rem">+</span></div>
         <div class="small">Weddings Served</div>
@@ -1992,8 +1999,7 @@
         <img
           src="images/IMG_8497.jpeg"
           alt="Lake Salt team bartending at Adobe Lehi campus"
-          class="dh-img"
-        />
+          class="dh-img" loading="lazy" />
         <div class="dh-stat-float">
           <div class="big">$0</div>
           <div class="small">Alcohol Markup</div>
@@ -2024,7 +2030,7 @@
       <!-- WEDDING — Featured -->
       <div class="service-card">
         <div class="sc-image">
-          <img src="images/IMG_6896.jpeg" alt="Lake Salt bartender serving signature wedding cocktail" />
+          <img src="images/IMG_6896.jpeg" alt="Lake Salt bartender serving signature wedding cocktail" loading="lazy" />
           <div class="sc-tag tag-wedding">Our Specialty</div>
         </div>
         <div class="sc-body">
@@ -2037,7 +2043,7 @@
       <!-- CORPORATE -->
       <div class="service-card">
         <div class="sc-image">
-          <img src="images/IMG_2491.jpeg" alt="Lake Salt bartenders serving guests at a corporate event" />
+          <img src="images/IMG_2491.jpeg" alt="Lake Salt bartenders serving guests at a corporate event" loading="lazy" />
           <div class="sc-tag tag-corporate">Corporate</div>
         </div>
         <div class="sc-body">
@@ -2056,7 +2062,7 @@
       <!-- PRIVATE -->
       <div class="service-card">
         <div class="sc-image">
-          <img src="images/IMG_5959.jpeg" alt="Lake Salt bartenders at a private outdoor evening event" />
+          <img src="images/IMG_5959.jpeg" alt="Lake Salt bartenders at a private outdoor evening event" loading="lazy" />
           <div class="sc-tag tag-private">Private</div>
         </div>
         <div class="sc-body">
@@ -2069,7 +2075,7 @@
       <!-- THEMED -->
       <div class="service-card">
         <div class="sc-image">
-          <img src="images/oktoberfest-team.jpg" alt="Lake Salt team in Oktoberfest themed bartending costumes" />
+          <img src="images/oktoberfest-team.jpg" alt="Lake Salt team in Oktoberfest themed bartending costumes" loading="lazy" />
           <div class="sc-tag tag-themed">Themed</div>
         </div>
         <div class="sc-body">
@@ -2416,47 +2422,52 @@
           </div>
         </div>
       </div>
-      <form class="contact-form" onsubmit="handleSubmit(event)">
+      <form class="contact-form" id="contact-form" onsubmit="handleSubmit(event)">
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Your Name</label>
-            <input type="text" class="form-input" placeholder="Full name" required />
+            <input type="text" name="from_name" class="form-input" placeholder="Full name" required />
           </div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" name="from_email" id="form-email" class="form-input" placeholder="you@example.com" required />
+          </div>
+        </div>
+        <div class="form-row">
           <div class="form-group">
             <label class="form-label">Phone</label>
-            <input type="tel" class="form-input" placeholder="(801) 555-0000" />
+            <input type="tel" name="phone" class="form-input" placeholder="(801) 555-0000" />
           </div>
-        </div>
-        <div class="form-row">
           <div class="form-group">
             <label class="form-label">Event Type</label>
-            <select class="form-select form-input">
+            <select name="event_type" class="form-select form-input">
               <option value="">Select event type...</option>
-              <option>💍 Wedding</option>
-              <option>🏢 Corporate Event</option>
-              <option>🎉 Private Celebration</option>
-              <option>🎭 Themed Experience</option>
+              <option>Wedding</option>
+              <option>Corporate Event</option>
+              <option>Private Celebration</option>
+              <option>Themed Experience</option>
             </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Event Date</label>
-            <input type="date" class="form-input" />
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Guest Count</label>
-            <input type="text" class="form-input" placeholder="Approx. number of guests" />
+            <label class="form-label">Event Date</label>
+            <input type="date" name="event_date" class="form-input" />
           </div>
           <div class="form-group">
-            <label class="form-label">Venue / Location</label>
-            <input type="text" class="form-input" placeholder="Venue name or city" />
+            <label class="form-label">Guest Count</label>
+            <input type="text" name="guest_count" class="form-input" placeholder="Approx. number of guests" />
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Tell Us About Your Event</label>
-          <textarea class="form-textarea" placeholder="Vision, theme, special requests, questions..."></textarea>
+          <label class="form-label">Venue / Location</label>
+          <input type="text" name="venue" class="form-input" placeholder="Venue name or city" />
         </div>
+        <div class="form-group">
+          <label class="form-label">Tell Us About Your Event</label>
+          <textarea name="message" class="form-textarea" placeholder="Vision, theme, special requests, questions..."></textarea>
+        </div>
+        <input type="hidden" name="email" id="form-email-hidden" />
         <button type="submit" class="form-submit">Send My Inquiry →</button>
       </form>
     </div>
@@ -2521,7 +2532,7 @@
 
 <!-- LIGHTBOX -->
 <div id="lightbox" onclick="closeLb()">
-  <img id="lb-img" src="" alt="" />
+  <img id="lb-img" src="" alt="" loading="lazy" />
   <button id="lb-close" onclick="closeLb()">✕</button>
 </div>
 
@@ -2664,7 +2675,7 @@ const modes = {
     sub: "Professional bar service for corporate events, product launches, and team celebrations. Trusted by Adobe Lehi and leading Utah companies.",
     cta:   "Get a Corporate Quote",
     ctaHref: "#dryhire",
-    heroBg: "https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=1920&q=80&fit=crop",
+    heroBg: "images/IMG_6936.jpeg",
     bodyClass: "mode-corporate"
   },
   all: {
@@ -2702,6 +2713,17 @@ function applyMode(mode, animate) {
   // Hero background image
   const heroBg = document.getElementById('hero-bg');
   heroBg.style.backgroundImage = `url('${m.heroBg}')`;
+
+  // Swap main feature image based on mode
+  const wfMain = document.querySelector('.wf-img-main');
+  if (wfMain) {
+    wfMain.src = (mode === 'corporate')
+      ? 'images/IMG_6919.jpeg'
+      : 'images/IMG_8954.PNG';
+    wfMain.alt = (mode === 'corporate')
+      ? 'Lake Salt bartender at a corporate event'
+      : 'Lake Salt bartender at an elegant wedding venue';
+  }
 
   // Nav mode switcher buttons
   ['wedding','corporate','all'].forEach(k => {
@@ -3053,16 +3075,64 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLb(); }
 /* ─── FORM ─── */
 function handleSubmit(e) {
   e.preventDefault();
-  const btn = e.target.querySelector('.form-submit');
+  const form = e.target;
+  const btn  = form.querySelector('.form-submit');
   const orig = btn.textContent;
-  btn.textContent = '✓ Sent! We\'ll be in touch soon.';
-  btn.style.background = '#22c55e';
-  setTimeout(() => {
-    btn.textContent = orig;
-    btn.style.background = '';
-    e.target.reset();
-  }, 4000);
+
+  // Sync from_email → hidden email field (for Reply-To in template)
+  const emailVal = form.querySelector('#form-email').value;
+  form.querySelector('#form-email-hidden').value = emailVal;
+
+  btn.textContent = 'Sending…';
+  btn.disabled = true;
+
+  emailjs.sendForm('service_rbzoxto', 'template_fch6b4c', form)
+    .then(() => {
+      btn.textContent = '✓ Sent! We\'ll be in touch soon.';
+      btn.style.background = '#22c55e';
+      form.reset();
+      setTimeout(() => {
+        btn.textContent = orig;
+        btn.style.background = '';
+        btn.disabled = false;
+      }, 5000);
+    })
+    .catch(err => {
+      console.error('EmailJS error:', err);
+      btn.textContent = '✕ Something went wrong — please call or text us.';
+      btn.style.background = '#dc2626';
+      setTimeout(() => {
+        btn.textContent = orig;
+        btn.style.background = '';
+        btn.disabled = false;
+      }, 5000);
+    });
 }
+
+/* ─── DRINK IMAGE ROTATION ─── */
+(function() {
+  const drinkImages = [
+    'images/IMG_8640.PNG',
+    'images/IMG_8643.PNG',
+    'images/IMG_6950.jpeg',
+    'images/IMG_6903.jpeg'
+  ];
+  let drinkIndex = 0;
+
+  function rotateDrink() {
+    const accent = document.querySelector('.wf-img-accent');
+    if (!accent) return;
+    accent.style.transition = 'opacity 0.5s ease';
+    accent.style.opacity = '0';
+    setTimeout(() => {
+      drinkIndex = (drinkIndex + 1) % drinkImages.length;
+      accent.src = drinkImages[drinkIndex];
+      accent.style.opacity = '1';
+    }, 500);
+  }
+
+  setInterval(rotateDrink, 3000);
+})();
 </script>
 
 </body>
