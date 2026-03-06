@@ -1,0 +1,3069 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lake Salt — Utah's Premier Dry-Hire Bar &amp; Wedding Bartending Service</title>
+  <meta name="description" content="Lake Salt is Utah's premier dry-hire bartending service. TIPS-certified bartenders for weddings, corporate events, and private celebrations across the Wasatch Front. We provide everything except the alcohol." />
+  <meta name="keywords" content="Utah bartending service, wedding bartender Utah, dry hire bar Utah, mobile bartending Wasatch Front, TIPS certified bartender, corporate bar service Utah, Lake Salt bartending, Salt Lake City bartender" />
+  <meta name="robots" content="index, follow" />
+  <meta name="author" content="Lake Salt Bartending" />
+  <link rel="canonical" href="https://lakesalt.us/" />
+
+  <!-- Open Graph / Social -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://lakesalt.us/" />
+  <meta property="og:title" content="Lake Salt — Utah's Premier Dry-Hire Bar Service" />
+  <meta property="og:description" content="TIPS-certified wedding &amp; corporate bartenders serving the entire Wasatch Front. Dry hire specialists — we bring everything except the alcohol." />
+  <meta property="og:image" content="https://lakesalt.us/og-image.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <!-- Local Business Structured Data (GEO) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "name": "Lake Salt Bartending",
+    "description": "Utah's premier dry-hire mobile bartending service for weddings, corporate events, and private celebrations.",
+    "url": "https://lakesalt.us",
+    "telephone": "+1-801-555-0100",
+    "email": "hello@lakesalt.us",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Salt Lake City",
+      "addressRegion": "UT",
+      "addressCountry": "US"
+    },
+    "areaServed": [
+      "Salt Lake City", "Provo", "Orem", "Ogden", "Park City",
+      "Lehi", "Sandy", "Murray", "Draper", "Wasatch Front"
+    ],
+    "priceRange": "$$",
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "5.0",
+      "reviewCount": "87"
+    },
+    "sameAs": [
+      "https://www.instagram.com/lakesaltbar",
+      "https://www.facebook.com/lakesaltbar"
+    ]
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- GSAP -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+  <style>
+    /* ─────────────────────────────────────────
+       DESIGN TOKENS
+    ───────────────────────────────────────── */
+    :root {
+      --navy:         #0C1526;
+      --navy-mid:     #172038;
+      --navy-light:   #243057;
+      --champagne:    #C9A96E;
+      --champagne-lt: #DFC08A;
+      --champagne-pale: #F2E8D5;
+      --blush:        #E8C4BB;
+      --blush-deep:   #C9978A;
+      --ivory:        #FAF8F4;
+      --cream:        #F2EDE0;
+      --charcoal:     #1A1A1A;
+      --muted:        #787878;
+      --white:        #FFFFFF;
+
+      /* Mode vars – overridden by JS */
+      --mode-accent:  var(--champagne);
+      --mode-accent-lt: var(--champagne-lt);
+      --mode-bg:      var(--navy);
+
+      --font-display: 'Cormorant Garamond', Georgia, serif;
+      --font-body:    'Inter', system-ui, -apple-system, sans-serif;
+
+      --ease:         cubic-bezier(0.4, 0, 0.2, 1);
+      --ease-spring:  cubic-bezier(0.34, 1.56, 0.64, 1);
+      --ease-out:     cubic-bezier(0, 0, 0.2, 1);
+
+      --shadow-sm:    0 2px 12px rgba(12,21,38,0.08);
+      --shadow-md:    0 8px 32px rgba(12,21,38,0.14);
+      --shadow-lg:    0 24px 64px rgba(12,21,38,0.22);
+      --shadow-gold:  0 8px 32px rgba(201,169,110,0.3);
+
+      --r-sm:   8px;
+      --r-md:  16px;
+      --r-lg:  24px;
+      --r-xl:  40px;
+    }
+
+    /* ─────────────────────────────────────────
+       RESET + BASE
+    ───────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; font-size: 16px; }
+    body {
+      font-family: var(--font-body);
+      color: var(--charcoal);
+      background: var(--ivory);
+      line-height: 1.65;
+      overflow-x: hidden;
+      cursor: none; /* hide default – we use custom cursor */
+    }
+    body.modal-open { overflow: hidden; }
+    img { display: block; max-width: 100%; }
+    a { color: inherit; text-decoration: none; }
+    button { cursor: none; border: none; background: none; font-family: inherit; }
+
+    /* ─────────────────────────────────────────
+       CUSTOM CURSOR
+    ───────────────────────────────────────── */
+    #cursor-dot {
+      position: fixed;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--champagne);
+      pointer-events: none;
+      z-index: 99999;
+      transform: translate(-50%, -50%);
+      transition: opacity 0.3s;
+      mix-blend-mode: normal;
+    }
+    #cursor-ring {
+      position: fixed;
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(201,169,110,0.55);
+      pointer-events: none;
+      z-index: 99998;
+      transform: translate(-50%, -50%);
+      transition: width 0.3s var(--ease), height 0.3s var(--ease),
+                  opacity 0.3s, border-color 0.3s;
+    }
+    body:has(a:hover) #cursor-ring,
+    body:has(button:hover) #cursor-ring {
+      width: 52px; height: 52px;
+      border-color: var(--champagne);
+    }
+
+    /* ─────────────────────────────────────────
+       PROGRESS BAR
+    ───────────────────────────────────────── */
+    #progress-bar {
+      position: fixed;
+      top: 0; left: 0;
+      height: 2px;
+      width: 0%;
+      background: linear-gradient(90deg, var(--champagne), var(--champagne-lt));
+      z-index: 10001;
+      transition: width 0.1s linear;
+    }
+
+    /* ─────────────────────────────────────────
+       ONBOARDING MODAL
+    ───────────────────────────────────────── */
+    #onboarding {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(8, 13, 24, 0.97);
+      backdrop-filter: blur(12px);
+      opacity: 0;
+      transition: opacity 0.5s var(--ease);
+      padding: 2rem;
+    }
+    #onboarding.visible { opacity: 1; }
+    #onboarding.hidden  { opacity: 0; pointer-events: none; }
+
+    .onboarding-inner {
+      max-width: 760px;
+      width: 100%;
+      text-align: center;
+    }
+    .onboarding-badge {
+      display: inline-block;
+      padding: 0.3rem 1rem;
+      border: 1px solid rgba(201,169,110,0.35);
+      border-radius: 100px;
+      color: var(--champagne);
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-bottom: 1.5rem;
+    }
+    .onboarding-q {
+      font-family: var(--font-display);
+      font-size: clamp(1.8rem, 5vw, 3rem);
+      font-weight: 300;
+      color: var(--white);
+      line-height: 1.2;
+      margin-bottom: 0.6rem;
+    }
+    .onboarding-sub {
+      font-size: 0.88rem;
+      color: rgba(255,255,255,0.4);
+      margin-bottom: 2.75rem;
+    }
+    .onboarding-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.1rem;
+      margin-bottom: 2rem;
+    }
+    .onboarding-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: var(--r-md);
+      padding: 2rem 1.25rem;
+      cursor: none;
+      transition: all 0.3s var(--ease);
+      position: relative;
+      overflow: hidden;
+    }
+    .onboarding-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(201,169,110,0.08), transparent);
+      opacity: 0;
+      transition: opacity 0.3s var(--ease);
+    }
+    .onboarding-card:hover {
+      border-color: rgba(201,169,110,0.5);
+      transform: translateY(-4px);
+    }
+    .onboarding-card:hover::before { opacity: 1; }
+    .onboarding-card .card-emoji { font-size: 2.5rem; margin-bottom: 0.85rem; display: block; }
+    .onboarding-card .card-title {
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      color: var(--white);
+      font-weight: 400;
+      margin-bottom: 0.35rem;
+    }
+    .onboarding-card .card-desc {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.38);
+      line-height: 1.5;
+    }
+    .onboarding-skip {
+      color: rgba(255,255,255,0.18);
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      cursor: none;
+      transition: color 0.2s;
+      background: none;
+      border: none;
+      font-family: var(--font-body);
+      padding: 0.5rem;
+    }
+    .onboarding-skip:hover { color: rgba(255,255,255,0.4); }
+
+    /* Canvas particles behind onboarding */
+    #onboarding-canvas {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    /* ─────────────────────────────────────────
+       NAVBAR
+    ───────────────────────────────────────── */
+    .navbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 1000;
+      padding: 1.4rem 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.5s var(--ease);
+    }
+    .navbar.scrolled {
+      background: rgba(12, 21, 38, 0.95);
+      backdrop-filter: blur(24px);
+      padding: 1rem 2.5rem;
+      border-bottom: 1px solid rgba(201,169,110,0.12);
+    }
+    .nav-logo {
+      font-family: var(--font-display);
+      font-size: 1.8rem;
+      font-weight: 400;
+      color: var(--white);
+      letter-spacing: 0.03em;
+    }
+    .nav-logo span { color: var(--champagne); }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 2.25rem;
+      list-style: none;
+    }
+    .nav-links a {
+      color: rgba(255,255,255,0.72);
+      font-size: 0.8rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+      position: relative;
+    }
+    .nav-links a::after {
+      content: '';
+      position: absolute;
+      bottom: -3px; left: 0;
+      width: 0; height: 1px;
+      background: var(--champagne);
+      transition: width 0.3s var(--ease);
+    }
+    .nav-links a:hover { color: var(--white); }
+    .nav-links a:hover::after { width: 100%; }
+    .nav-links .accent { color: var(--champagne); }
+    .nav-cta {
+      padding: 0.6rem 1.4rem;
+      background: var(--champagne);
+      color: var(--navy) !important;
+      border-radius: 100px;
+      font-weight: 600 !important;
+      letter-spacing: 0.06em !important;
+      transition: all 0.25s var(--ease) !important;
+    }
+    .nav-cta:hover {
+      background: var(--champagne-lt) !important;
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-gold);
+    }
+    .nav-cta::after { display: none !important; }
+
+    /* ─────────────────────────────────────────
+       HERO
+    ───────────────────────────────────────── */
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: var(--navy);
+    }
+    .hero-bg {
+      position: absolute;
+      inset: -5%;
+      background-size: cover;
+      background-position: center top;
+      filter: grayscale(15%) brightness(0.5);
+      will-change: transform;
+    }
+    .hero-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        160deg,
+        rgba(12, 21, 38, 0.85) 0%,
+        rgba(12, 21, 38, 0.4) 55%,
+        rgba(23, 32, 56, 0.78) 100%
+      );
+    }
+    /* Canvas for hero particles */
+    #hero-canvas {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.55;
+    }
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      padding: 2rem;
+      max-width: 960px;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.5rem 1.25rem;
+      border: 1px solid rgba(201,169,110,0.4);
+      border-radius: 100px;
+      color: var(--champagne);
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 2rem;
+      backdrop-filter: blur(6px);
+      background: rgba(201,169,110,0.08);
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(3.2rem, 9vw, 7rem);
+      font-weight: 300;
+      color: var(--white);
+      line-height: 1.08;
+      letter-spacing: -0.01em;
+      margin-bottom: 1.75rem;
+      overflow: hidden;
+    }
+    .hero-title .line { display: block; overflow: hidden; }
+    .hero-title .line-inner {
+      display: block;
+      transform: translateY(110%);
+    }
+    .hero-title em {
+      font-style: italic;
+      color: var(--champagne-lt);
+    }
+    .hero-sub {
+      font-size: clamp(1rem, 2.2vw, 1.18rem);
+      color: rgba(255,255,255,0.68);
+      font-weight: 300;
+      max-width: 520px;
+      margin: 0 auto 2.75rem;
+      line-height: 1.75;
+      opacity: 0;
+      transform: translateY(18px);
+    }
+    .hero-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      opacity: 0;
+      transform: translateY(18px);
+    }
+
+    /* ─────────────────────────────────────────
+       BUTTONS
+    ───────────────────────────────────────── */
+    .btn-primary {
+      display: inline-block;
+      padding: 0.95rem 2.4rem;
+      background: var(--champagne);
+      color: var(--navy);
+      font-weight: 700;
+      font-size: 0.82rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border-radius: 100px;
+      transition: all 0.25s var(--ease);
+      box-shadow: var(--shadow-gold);
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-primary::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0.2);
+      transform: translateX(-100%);
+      transition: transform 0.35s var(--ease);
+    }
+    .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 16px 44px rgba(201,169,110,0.5); }
+    .btn-primary:hover::after { transform: translateX(100%); }
+    .btn-secondary {
+      display: inline-block;
+      padding: 0.95rem 2.4rem;
+      background: rgba(255,255,255,0.08);
+      color: var(--white);
+      font-weight: 500;
+      font-size: 0.82rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border-radius: 100px;
+      border: 1px solid rgba(255,255,255,0.25);
+      backdrop-filter: blur(8px);
+      transition: all 0.25s var(--ease);
+    }
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.16);
+      border-color: rgba(255,255,255,0.45);
+      transform: translateY(-3px);
+    }
+
+    /* Scroll indicator */
+    .hero-scroll {
+      position: absolute;
+      bottom: 2.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      color: rgba(255,255,255,0.35);
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      opacity: 0;
+    }
+    .scroll-line {
+      width: 1px;
+      height: 52px;
+      background: linear-gradient(to bottom, rgba(201,169,110,0.8), transparent);
+      animation: scrollPulse 2.2s ease-in-out infinite;
+    }
+    @keyframes scrollPulse {
+      0%, 100% { opacity: 0.4; transform: scaleY(1); }
+      50% { opacity: 1; transform: scaleY(0.7); }
+    }
+
+    /* ─────────────────────────────────────────
+       MARQUEE / TICKER
+    ───────────────────────────────────────── */
+    .marquee-strip {
+      background: var(--champagne);
+      padding: 0.75rem 0;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .marquee-inner {
+      display: inline-flex;
+      animation: marquee 25s linear infinite;
+    }
+    .marquee-inner span {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--navy);
+      padding: 0 2.5rem;
+    }
+    .marquee-inner span::before { content: '✦  '; }
+    @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+    /* ─────────────────────────────────────────
+       SHARED SECTION
+    ───────────────────────────────────────── */
+    section { padding: 7rem 2rem; }
+    .section-inner { max-width: 1200px; margin: 0 auto; }
+    .section-header { text-align: center; margin-bottom: 4.5rem; }
+    .eyebrow {
+      font-family: var(--font-body);
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--champagne);
+      display: block;
+      margin-bottom: 0.85rem;
+    }
+    .section-title {
+      font-family: var(--font-display);
+      font-size: clamp(2.4rem, 5.5vw, 3.8rem);
+      font-weight: 300;
+      color: var(--navy);
+      line-height: 1.12;
+      margin-bottom: 1.1rem;
+    }
+    .section-title em { font-style: italic; color: var(--champagne); }
+    .section-sub {
+      color: var(--muted);
+      font-size: 1.02rem;
+      max-width: 540px;
+      margin: 0 auto;
+      line-height: 1.75;
+      font-weight: 300;
+    }
+    /* Divider line */
+    .divider {
+      width: 40px;
+      height: 1px;
+      background: var(--champagne);
+      margin: 1.5rem auto;
+    }
+
+    /* ─────────────────────────────────────────
+       WEDDING FEATURE
+    ───────────────────────────────────────── */
+    .wedding-feature { background: var(--cream); overflow: hidden; }
+    .wedding-feature-grid {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5rem;
+      align-items: center;
+    }
+    .wf-images { position: relative; }
+    .wf-img-main {
+      width: 100%;
+      height: 580px;
+      object-fit: cover;
+      border-radius: var(--r-lg);
+      box-shadow: var(--shadow-lg);
+      display: block;
+    }
+    .wf-img-accent {
+      position: absolute;
+      bottom: -2.5rem;
+      right: -2.5rem;
+      width: 210px;
+      height: 210px;
+      object-fit: cover;
+      border-radius: var(--r-md);
+      border: 5px solid var(--ivory);
+      box-shadow: var(--shadow-md);
+    }
+    .wf-label-float {
+      position: absolute;
+      top: 2rem;
+      left: -1.5rem;
+      background: var(--navy);
+      color: var(--white);
+      border-radius: var(--r-sm);
+      padding: 1rem 1.25rem;
+      box-shadow: var(--shadow-md);
+    }
+    .wf-label-float .big { font-family: var(--font-display); font-size: 1.8rem; color: var(--champagne); line-height: 1; }
+    .wf-label-float .small { font-size: 0.68rem; color: rgba(255,255,255,0.5); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 0.2rem; }
+    .wf-content .eyebrow { text-align: left; }
+    .wf-title {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 4.5vw, 3.2rem);
+      font-weight: 300;
+      color: var(--navy);
+      line-height: 1.18;
+      margin-bottom: 1.5rem;
+    }
+    .wf-title em { font-style: italic; color: var(--champagne); }
+    .wf-desc {
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.82;
+      font-weight: 300;
+      margin-bottom: 2.5rem;
+    }
+    .wf-pillars {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 2.75rem;
+    }
+    .wf-pillar {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      padding: 0.9rem 1rem;
+      background: var(--ivory);
+      border-radius: var(--r-sm);
+      border: 1px solid rgba(201,169,110,0.15);
+      transition: all 0.25s var(--ease);
+    }
+    .wf-pillar:hover {
+      border-color: rgba(201,169,110,0.4);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-sm);
+    }
+    .wf-pillar .icon { font-size: 1.25rem; flex-shrink: 0; }
+    .wf-pillar .pl { font-size: 0.78rem; font-weight: 600; color: var(--navy); margin-bottom: 0.15rem; }
+    .wf-pillar .pd { font-size: 0.74rem; color: var(--muted); line-height: 1.4; }
+
+    /* ─────────────────────────────────────────
+       DRY HIRE SECTION
+    ───────────────────────────────────────── */
+    .dry-hire { background: var(--navy); color: var(--white); position: relative; overflow: hidden; }
+    .dry-hire::before {
+      content: '';
+      position: absolute;
+      top: -120px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(201,169,110,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .dry-hire .section-title { color: var(--white); }
+    .dry-hire .section-sub { color: rgba(255,255,255,0.5); }
+    .dh-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5rem;
+      align-items: center;
+    }
+    .dh-content {}
+    .dh-callout {
+      background: rgba(201,169,110,0.1);
+      border: 1px solid rgba(201,169,110,0.3);
+      border-radius: var(--r-md);
+      padding: 1.75rem;
+      margin-bottom: 2rem;
+    }
+    .dh-callout-title {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      color: var(--champagne);
+      font-weight: 400;
+      margin-bottom: 0.6rem;
+    }
+    .dh-callout-text {
+      font-size: 0.88rem;
+      color: rgba(255,255,255,0.65);
+      line-height: 1.7;
+    }
+    .dh-certs {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+    .cert-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0.5rem 1rem;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 100px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.82);
+      letter-spacing: 0.05em;
+    }
+    .cert-badge .cert-icon { font-size: 1rem; }
+    .dh-steps {}
+    .dh-step {
+      display: flex;
+      gap: 1.25rem;
+      align-items: flex-start;
+      margin-bottom: 1.75rem;
+    }
+    .dh-step:last-child { margin-bottom: 0; }
+    .step-num {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(201,169,110,0.15);
+      border: 1px solid rgba(201,169,110,0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 1rem;
+      color: var(--champagne);
+      flex-shrink: 0;
+    }
+    .step-label { font-size: 0.88rem; font-weight: 600; color: var(--white); margin-bottom: 0.2rem; }
+    .step-desc { font-size: 0.8rem; color: rgba(255,255,255,0.5); line-height: 1.55; }
+
+    /* Right image/visual of dry hire */
+    .dh-visual {
+      position: relative;
+    }
+    .dh-img {
+      width: 100%;
+      height: 500px;
+      object-fit: cover;
+      border-radius: var(--r-lg);
+      opacity: 0.85;
+    }
+    .dh-stat-float {
+      position: absolute;
+      bottom: -1.5rem;
+      left: -1.5rem;
+      background: var(--champagne);
+      border-radius: var(--r-sm);
+      padding: 1.25rem 1.5rem;
+      color: var(--navy);
+    }
+    .dh-stat-float .big { font-family: var(--font-display); font-size: 2.2rem; font-weight: 400; line-height: 1; }
+    .dh-stat-float .small { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 0.2rem; opacity: 0.65; }
+    .adobe-badge {
+      position: absolute;
+      top: 1.5rem;
+      right: -1rem;
+      background: var(--navy-mid);
+      border: 1px solid rgba(201,169,110,0.3);
+      border-radius: var(--r-sm);
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .adobe-logo { font-size: 1.6rem; }
+    .adobe-text .at { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--champagne); margin-bottom: 0.15rem; }
+    .adobe-text .an { font-size: 0.82rem; color: rgba(255,255,255,0.75); font-weight: 500; }
+
+    /* ─────────────────────────────────────────
+       SERVICES
+    ───────────────────────────────────────── */
+    .services { background: var(--ivory); }
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+    }
+    .services-grid .service-card:first-child {
+      grid-column: span 2;
+    }
+    .services-grid .service-card:last-child {
+      grid-column: span 2;
+    }
+    .service-card {
+      background: var(--white);
+      border-radius: var(--r-md);
+      overflow: hidden;
+      border: 1px solid rgba(12, 21, 38, 0.07);
+      box-shadow: var(--shadow-sm);
+      transition: all 0.35s var(--ease);
+      perspective: 1000px;
+    }
+    .service-card:hover {
+      transform: translateY(-8px);
+      box-shadow: var(--shadow-lg);
+      border-color: rgba(201,169,110,0.25);
+    }
+    .sc-image {
+      height: 200px;
+      overflow: hidden;
+      position: relative;
+    }
+    .service-card:first-child .sc-image { height: 260px; }
+    .sc-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.6s var(--ease);
+    }
+    .service-card:hover .sc-image img { transform: scale(1.08); }
+    .sc-tag {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      padding: 0.3rem 0.8rem;
+      border-radius: 100px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .tag-wedding { background: var(--champagne); color: var(--navy); }
+    .tag-corporate { background: rgba(12,21,38,0.85); color: var(--champagne); backdrop-filter: blur(4px); }
+    .tag-private { background: rgba(12,21,38,0.85); color: rgba(255,255,255,0.85); backdrop-filter: blur(4px); }
+    .tag-themed { background: rgba(12,21,38,0.85); color: rgba(255,255,255,0.85); backdrop-filter: blur(4px); }
+    .sc-body { padding: 1.6rem; }
+    .service-card:first-child .sc-body { padding: 2rem; }
+    .sc-name {
+      font-family: var(--font-display);
+      font-size: 1.55rem;
+      color: var(--navy);
+      font-weight: 400;
+      margin-bottom: 0.6rem;
+    }
+    .service-card:first-child .sc-name { font-size: 1.9rem; }
+    .sc-desc { font-size: 0.83rem; color: var(--muted); line-height: 1.7; font-weight: 300; margin-bottom: 1.1rem; }
+    .sc-link {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--navy);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: gap 0.2s var(--ease), color 0.2s;
+    }
+    .sc-link:hover { gap: 0.75rem; color: var(--champagne); }
+    .sc-link::after { content: '→'; }
+
+    /* Corporate spotlight */
+    .corporate-spotlight {
+      margin-top: 2rem;
+      padding: 1.5rem;
+      background: var(--navy);
+      border-radius: var(--r-md);
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+    .cs-logo { font-size: 2rem; flex-shrink: 0; }
+    .cs-text .ct { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--champagne); margin-bottom: 0.2rem; }
+    .cs-text .cd { font-size: 0.85rem; color: rgba(255,255,255,0.7); line-height: 1.5; }
+
+    /* ─────────────────────────────────────────
+       PACKAGES
+    ───────────────────────────────────────── */
+    .packages { background: var(--navy); }
+    .packages .section-title { color: var(--white); }
+    .packages .section-sub { color: rgba(255,255,255,0.45); }
+    .packages-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    .pkg-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--r-md);
+      padding: 2.5rem 2rem;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.35s var(--ease);
+      transform-style: preserve-3d;
+    }
+    .pkg-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--champagne), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .pkg-card:hover {
+      background: rgba(255,255,255,0.07);
+      border-color: rgba(201,169,110,0.3);
+      transform: translateY(-6px) rotateX(2deg);
+    }
+    .pkg-card:hover::before { opacity: 1; }
+    .pkg-card.popular {
+      background: rgba(201,169,110,0.1);
+      border-color: rgba(201,169,110,0.4);
+    }
+    .pkg-card.popular::before { opacity: 1; }
+    .pop-badge {
+      position: absolute;
+      top: 1.25rem; right: 1.25rem;
+      padding: 0.25rem 0.75rem;
+      background: var(--champagne);
+      color: var(--navy);
+      border-radius: 100px;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .pkg-name { font-family: var(--font-display); font-size: 1.6rem; color: var(--white); font-weight: 400; margin-bottom: 0.3rem; }
+    .pkg-sub { font-size: 0.72rem; color: var(--champagne); letter-spacing: 0.07em; margin-bottom: 1.5rem; }
+    .pkg-price { font-family: var(--font-display); font-size: 2.8rem; color: var(--white); font-weight: 300; margin-bottom: 0.2rem; }
+    .pkg-price span { font-size: 1rem; color: rgba(255,255,255,0.4); }
+    .pkg-note { font-size: 0.7rem; color: rgba(255,255,255,0.35); margin-bottom: 1.75rem; }
+    .pkg-divider { height: 1px; background: rgba(255,255,255,0.08); margin-bottom: 1.5rem; }
+    .pkg-features { list-style: none; display: flex; flex-direction: column; gap: 0.65rem; margin-bottom: 2rem; }
+    .pkg-features li { font-size: 0.8rem; color: rgba(255,255,255,0.65); display: flex; align-items: flex-start; gap: 0.6rem; line-height: 1.45; }
+    .pkg-features li::before { content: '✦'; color: var(--champagne); font-size: 0.58rem; flex-shrink: 0; margin-top: 0.3rem; }
+    .pkg-btn {
+      display: block;
+      width: 100%;
+      padding: 0.85rem;
+      border-radius: 100px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      text-align: center;
+      border: 1px solid rgba(201,169,110,0.4);
+      color: var(--champagne);
+      transition: all 0.25s var(--ease);
+    }
+    .pkg-card.popular .pkg-btn { background: var(--champagne); color: var(--navy); border-color: var(--champagne); }
+    .pkg-btn:hover { background: var(--champagne); color: var(--navy); border-color: var(--champagne); transform: translateY(-2px); box-shadow: var(--shadow-gold); }
+
+    /* ─────────────────────────────────────────
+       GALLERY
+    ───────────────────────────────────────── */
+    .gallery-section { background: var(--cream); }
+    .gallery-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.85rem;
+      grid-auto-rows: 220px;
+    }
+    .gallery-strip .tall { grid-row: span 2; }
+    .gallery-strip .wide { grid-column: span 2; }
+    .g-item {
+      border-radius: var(--r-sm);
+      overflow: hidden;
+      cursor: none;
+      position: relative;
+    }
+    .g-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.6s var(--ease);
+    }
+    .g-item:hover img { transform: scale(1.08); }
+    .g-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(12,21,38,0.7) 0%, transparent 60%);
+      opacity: 0;
+      transition: opacity 0.3s var(--ease);
+      display: flex;
+      align-items: flex-end;
+      padding: 1rem 1.1rem;
+    }
+    .g-item:hover .g-overlay { opacity: 1; }
+    .g-caption { font-family: var(--font-display); font-style: italic; font-size: 0.95rem; color: var(--white); }
+
+    /* ─────────────────────────────────────────
+       MENUS SECTION
+    ───────────────────────────────────────── */
+    .menus-grid-inner {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.75rem;
+      margin-top: 2.5rem;
+      max-width: 880px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .menu-card {
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      cursor: pointer;
+      background: #fff;
+      transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease);
+    }
+    .menu-card:hover { transform: translateY(-6px); box-shadow: 0 16px 48px rgba(0,0,0,0.5); }
+    .menu-card img { width: 100%; height: auto; display: block; }
+    .menus-caption {
+      text-align: center;
+      margin-top: 2rem;
+      color: var(--champagne);
+      opacity: 0.7;
+      font-size: 0.9rem;
+      font-style: italic;
+    }
+
+    /* ─────────────────────────────────────────
+       TESTIMONIALS
+    ───────────────────────────────────────── */
+    .testimonials { background: var(--ivory); }
+    .t-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.75rem; }
+    .t-card {
+      background: var(--white);
+      border-radius: var(--r-md);
+      padding: 2.25rem;
+      border: 1px solid rgba(12,21,38,0.06);
+      box-shadow: var(--shadow-sm);
+      transition: all 0.35s var(--ease);
+    }
+    .t-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-md); }
+    .t-quote-mark {
+      font-family: var(--font-display);
+      font-size: 4.5rem;
+      color: var(--champagne-pale);
+      line-height: 0.9;
+      margin-bottom: 0.25rem;
+    }
+    .t-stars { color: var(--champagne); letter-spacing: 0.08em; margin-bottom: 1rem; font-size: 0.88rem; }
+    .t-text {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 1.08rem;
+      color: var(--charcoal);
+      line-height: 1.7;
+      margin-bottom: 1.5rem;
+    }
+    .t-rule { height: 1px; background: var(--cream); margin-bottom: 1.25rem; }
+    .t-author { display: flex; align-items: center; gap: 0.85rem; }
+    .t-avatar {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--champagne-pale), var(--blush));
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      color: var(--navy);
+      flex-shrink: 0;
+    }
+    .t-name { font-weight: 600; font-size: 0.86rem; color: var(--navy); margin-bottom: 0.15rem; }
+    .t-event { font-size: 0.72rem; color: var(--champagne); font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+    .t-date { font-size: 0.72rem; color: #9ca3af; font-weight: 500; letter-spacing: 0.03em; }
+    .t-avatar-photo { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+    .t-google-icon { display: inline-flex; align-items: center; gap: 0.35rem; margin-bottom: 0.6rem; opacity: 0.55; }
+    .t-google-icon svg { width: 14px; height: 14px; }
+    .t-google-icon span { font-size: 0.68rem; letter-spacing: 0.07em; text-transform: uppercase; font-weight: 700; color: var(--charcoal); }
+    .t-reviews-loading {
+      grid-column: 1/-1; text-align: center; padding: 3rem 0;
+      font-family: var(--font-display); font-style: italic;
+      color: var(--champagne); font-size: 1.1rem;
+    }
+    .t-reviews-cta { text-align: center; margin-top: 2.5rem; }
+    .t-reviews-cta a {
+      display: inline-flex; align-items: center; gap: 0.6rem;
+      background: var(--white); color: var(--navy);
+      border: 2px solid var(--champagne); border-radius: 3rem;
+      padding: 0.75rem 2rem; font-size: 0.82rem; font-weight: 700;
+      letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none;
+      transition: all 0.3s var(--ease);
+    }
+    .t-reviews-cta a:hover {
+      background: var(--champagne); color: var(--white);
+      transform: translateY(-2px); box-shadow: 0 8px 24px rgba(180,150,90,0.25);
+    }
+    .t-header-meta { text-align: center; margin-top: 0.5rem; font-size: 0.82rem; color: var(--champagne); opacity: 0.8; }
+    #google-maps-attribution { display: none; }
+
+    /* ─────────────────────────────────────────
+       STATS
+    ───────────────────────────────────────── */
+    .stats-section { background: var(--champagne-pale); padding: 5.5rem 2rem; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem; text-align: center; }
+    .stat-item {}
+    .stat-num {
+      font-family: var(--font-display);
+      font-size: 3.8rem;
+      font-weight: 300;
+      color: var(--navy);
+      line-height: 1;
+      margin-bottom: 0.3rem;
+    }
+    .stat-num .accent { color: var(--champagne); }
+    .stat-label { font-size: 0.78rem; font-weight: 700; color: var(--navy); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.4rem; }
+    .stat-desc { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+
+    /* ─────────────────────────────────────────
+       FAQ
+    ───────────────────────────────────────── */
+    .faq-section { background: var(--white); }
+    .faq-inner { max-width: 720px; margin: 0 auto; }
+    .faq-item { border-bottom: 1px solid rgba(12,21,38,0.07); }
+    .faq-q {
+      width: 100%;
+      text-align: left;
+      padding: 1.5rem 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      font-size: 0.98rem;
+      font-weight: 500;
+      color: var(--navy);
+      transition: color 0.2s;
+    }
+    .faq-q:hover { color: var(--champagne); }
+    .faq-q.open { color: var(--champagne); }
+    .faq-icon {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      background: var(--cream);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+      color: var(--champagne);
+      flex-shrink: 0;
+      transition: all 0.3s var(--ease));
+    }
+    .faq-q.open .faq-icon { background: var(--champagne); color: var(--white); transform: rotate(45deg); }
+    .faq-a {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.45s var(--ease);
+    }
+    .faq-a.open { max-height: 240px; padding-bottom: 1.5rem; }
+    .faq-a p { font-size: 0.88rem; color: var(--muted); line-height: 1.78; }
+
+    /* ─────────────────────────────────────────
+       CONTACT
+    ───────────────────────────────────────── */
+    .contact-section { background: var(--navy); }
+    .contact-section .section-title { color: var(--white); }
+    .contact-section .section-sub { color: rgba(255,255,255,0.45); }
+    .contact-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.4fr;
+      gap: 5rem;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    .contact-info-item { display: flex; gap: 1rem; margin-bottom: 2rem; }
+    .ci-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 0.1rem; }
+    .ci-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--champagne); margin-bottom: 0.25rem; }
+    .ci-val { font-size: 0.9rem; color: rgba(255,255,255,0.68); font-weight: 300; line-height: 1.55; }
+    .contact-form { display: flex; flex-direction: column; gap: 1rem; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .form-group { display: flex; flex-direction: column; gap: 0.38rem; }
+    .form-label { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.4); }
+    .form-input, .form-select, .form-textarea {
+      padding: 0.85rem 1.05rem;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: var(--r-sm);
+      color: var(--white);
+      font-family: var(--font-body);
+      font-size: 0.88rem;
+      font-weight: 300;
+      transition: all 0.25s var(--ease);
+      outline: none;
+    }
+    .form-input::placeholder, .form-textarea::placeholder { color: rgba(255,255,255,0.25); }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      border-color: var(--champagne);
+      background: rgba(255,255,255,0.09);
+      box-shadow: 0 0 0 3px rgba(201,169,110,0.12);
+    }
+    .form-select option { background: var(--navy); }
+    .form-textarea { resize: vertical; min-height: 120px; }
+    .form-submit {
+      padding: 1.05rem 2rem;
+      background: var(--champagne);
+      color: var(--navy);
+      font-weight: 700;
+      font-size: 0.82rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border-radius: 100px;
+      border: none;
+      cursor: none;
+      transition: all 0.25s var(--ease);
+      box-shadow: var(--shadow-gold);
+    }
+    .form-submit:hover { background: var(--champagne-lt); transform: translateY(-2px); box-shadow: 0 14px 44px rgba(201,169,110,0.5); }
+
+    /* ─────────────────────────────────────────
+       FOOTER
+    ───────────────────────────────────────── */
+    .footer { background: #060B15; padding: 4rem 2.5rem 2rem; border-top: 1px solid rgba(201,169,110,0.12); }
+    .footer-top {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr 1fr 1fr;
+      gap: 3rem;
+      padding-bottom: 3.5rem;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      margin-bottom: 2rem;
+      max-width: 1200px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .f-logo { font-family: var(--font-display); font-size: 2.1rem; color: var(--white); margin-bottom: 0.85rem; }
+    .f-logo span { color: var(--champagne); }
+    .f-desc { font-size: 0.8rem; color: rgba(255,255,255,0.35); line-height: 1.72; max-width: 230px; font-weight: 300; }
+    .f-social { display: flex; gap: 0.6rem; margin-top: 1.5rem; }
+    .f-social a {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.45);
+      transition: all 0.2s;
+    }
+    .f-social a:hover { background: var(--champagne); border-color: var(--champagne); color: var(--navy); }
+    .f-col-title { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--champagne); margin-bottom: 1.25rem; }
+    .f-links { list-style: none; display: flex; flex-direction: column; gap: 0.65rem; }
+    .f-links a { font-size: 0.8rem; color: rgba(255,255,255,0.38); font-weight: 300; transition: color 0.2s; }
+    .f-links a:hover { color: var(--champagne); }
+    .footer-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .f-copy { font-size: 0.72rem; color: rgba(255,255,255,0.2); }
+    .f-legal { display: flex; gap: 1.5rem; list-style: none; }
+    .f-legal a { font-size: 0.72rem; color: rgba(255,255,255,0.2); transition: color 0.2s; }
+    .f-legal a:hover { color: var(--champagne); }
+
+    /* ─────────────────────────────────────────
+       LIGHTBOX
+    ───────────────────────────────────────── */
+    #lightbox {
+      position: fixed; inset: 0; z-index: 9998;
+      background: rgba(6,11,21,0.97);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.3s var(--ease);
+      padding: 2rem;
+    }
+    #lightbox.open { opacity: 1; pointer-events: all; }
+    #lb-img { max-width: 90vw; max-height: 85vh; object-fit: contain; border-radius: var(--r-md); box-shadow: var(--shadow-lg); }
+    #lb-close {
+      position: absolute; top: 1.5rem; right: 1.5rem;
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+      color: var(--white);
+      font-size: 1.2rem;
+      display: flex; align-items: center; justify-content: center;
+      cursor: none;
+      transition: all 0.2s;
+      border: none;
+    }
+    #lb-close:hover { background: var(--champagne); color: var(--navy); }
+
+    /* ─────────────────────────────────────────
+       RESPONSIVE
+    ───────────────────────────────────────── */
+    @media (max-width: 1100px) {
+      .wedding-feature-grid { grid-template-columns: 1fr; gap: 3.5rem; }
+      .wf-img-main { height: 420px; }
+      .wf-img-accent { bottom: -1.5rem; right: -1rem; width: 160px; height: 160px; }
+      .dh-grid { grid-template-columns: 1fr; gap: 3rem; }
+      .packages-grid { grid-template-columns: 1fr; max-width: 380px; }
+      .t-grid { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: repeat(2,1fr); }
+      .contact-grid { grid-template-columns: 1fr; gap: 3rem; }
+      .footer-top { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 900px) {
+      .services-grid { grid-template-columns: 1fr 1fr; }
+      .services-grid .service-card:first-child { grid-column: span 2; }
+      .services-grid .service-card:last-child { grid-column: span 2; }
+      .gallery-strip { grid-template-columns: 1fr 1fr; }
+      .gallery-strip .wide { grid-column: span 2; }
+    }
+    @media (max-width: 700px) {
+      section { padding: 5rem 1.25rem; }
+      .nav-links { display: none; }
+      .services-grid { grid-template-columns: 1fr; }
+      .services-grid .service-card:first-child { grid-column: span 1; }
+      .services-grid .service-card:last-child { grid-column: span 1; }
+      .onboarding-cards { grid-template-columns: 1fr; }
+      .gallery-strip { grid-template-columns: 1fr 1fr; grid-auto-rows: 170px; }
+      .gallery-strip .tall { grid-row: span 1; }
+      .form-row { grid-template-columns: 1fr; }
+      .footer-top { grid-template-columns: 1fr; }
+      #cursor-dot, #cursor-ring { display: none; }
+      body { cursor: auto; }
+      button { cursor: pointer; }
+    }
+
+    /* ─────────────────────────────────────────
+       MODE TRANSITION OVERLAY
+    ───────────────────────────────────────── */
+    #mode-transition {
+      position: fixed;
+      inset: 0;
+      z-index: 9997;
+      pointer-events: none;
+      opacity: 0;
+      background: var(--navy);
+      transition: opacity 0.0s;
+    }
+    #mode-transition.flash {
+      animation: modeFlash 0.7s var(--ease-out) forwards;
+    }
+    @keyframes modeFlash {
+      0%   { opacity: 0; }
+      25%  { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* ─────────────────────────────────────────
+       MODE-AWARE STYLING
+    ───────────────────────────────────────── */
+    /* Wedding mode: warm blush tints */
+    body.mode-wedding {
+      --mode-accent: #C9A96E;
+      --mode-accent-lt: #DFC08A;
+      --mode-tint: rgba(232, 196, 187, 0.06);
+    }
+    body.mode-wedding .hero-overlay {
+      background: linear-gradient(
+        160deg,
+        rgba(12, 21, 38, 0.82) 0%,
+        rgba(45, 20, 25, 0.35) 55%,
+        rgba(20, 10, 18, 0.78) 100%
+      );
+    }
+    body.mode-wedding .eyebrow { color: var(--blush-deep); }
+    body.mode-wedding .section-title em { color: var(--blush-deep); }
+    body.mode-wedding .marquee-strip { background: var(--blush-deep); }
+    body.mode-wedding .wedding-feature { background: #FBF5F2; }
+
+    /* Corporate mode: cool steel tints */
+    body.mode-corporate {
+      --mode-accent: #8FACCF;
+      --mode-accent-lt: #B0C8E8;
+      --mode-tint: rgba(50, 80, 130, 0.06);
+    }
+    body.mode-corporate {
+      --champagne: #8FACCF;
+      --champagne-lt: #B0C8E8;
+      --champagne-pale: #D8E8F5;
+      --champagne-pale: #EAF1F9;
+    }
+    body.mode-corporate .hero-overlay {
+      background: linear-gradient(
+        160deg,
+        rgba(5, 14, 32, 0.9) 0%,
+        rgba(15, 30, 60, 0.45) 55%,
+        rgba(8, 18, 42, 0.82) 100%
+      );
+    }
+    body.mode-corporate .marquee-strip { background: #243A5E; }
+    body.mode-corporate .marquee-inner span { color: #B0C8E8; }
+    body.mode-corporate .eyebrow { color: #8FACCF; }
+    body.mode-corporate .nav-cta {
+      background: #5B88BE !important;
+      color: var(--white) !important;
+    }
+    body.mode-corporate .nav-cta:hover {
+      background: #7AAAD8 !important;
+    }
+
+    /* ─────────────────────────────────────────
+       MOBILE HAMBURGER NAV
+    ───────────────────────────────────────── */
+    .nav-hamburger {
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 5px;
+      width: 40px;
+      height: 40px;
+      border-radius: var(--r-sm);
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      cursor: pointer;
+      z-index: 1001;
+    }
+    .nav-hamburger span {
+      display: block;
+      width: 20px;
+      height: 1.5px;
+      background: var(--white);
+      border-radius: 2px;
+      transition: all 0.3s var(--ease);
+      transform-origin: center;
+    }
+    .nav-hamburger.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+    .nav-hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+    .nav-hamburger.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+
+    /* Mobile nav drawer */
+    .mobile-nav {
+      position: fixed;
+      top: 0; right: -100%;
+      width: min(320px, 85vw);
+      height: 100vh;
+      background: rgba(12, 21, 38, 0.98);
+      backdrop-filter: blur(24px);
+      z-index: 9000;
+      padding: 6rem 2rem 3rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      border-left: 1px solid rgba(201,169,110,0.15);
+      transition: right 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .mobile-nav.open { right: 0; }
+    .mobile-nav a, .mobile-nav button {
+      display: block;
+      padding: 1.1rem 0;
+      font-size: 1.3rem;
+      font-family: var(--font-display);
+      font-weight: 400;
+      color: rgba(255,255,255,0.75);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      text-align: left;
+      transition: color 0.2s, padding-left 0.2s;
+      background: none;
+      width: 100%;
+    }
+    .mobile-nav a:hover, .mobile-nav button:hover {
+      color: var(--champagne);
+      padding-left: 0.5rem;
+    }
+    .mobile-nav .mn-cta {
+      margin-top: 2rem;
+      padding: 1rem 2rem;
+      background: var(--champagne);
+      color: var(--navy);
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border-radius: 100px;
+      text-align: center;
+      border-bottom: none;
+    }
+    .mobile-nav .mn-cta:hover { background: var(--champagne-lt); padding-left: 0; }
+    .mobile-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 8999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s;
+    }
+    .mobile-overlay.open { opacity: 1; pointer-events: all; }
+
+    /* Mode switcher in navbar */
+    .nav-mode-switch {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 100px;
+      padding: 0.3rem;
+    }
+    .nav-mode-btn {
+      padding: 0.32rem 0.75rem;
+      border-radius: 100px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.5);
+      transition: all 0.25s var(--ease);
+      white-space: nowrap;
+    }
+    .nav-mode-btn.active {
+      background: var(--champagne);
+      color: var(--navy);
+    }
+    .nav-mode-btn:hover:not(.active) { color: var(--white); }
+
+    /* ─────────────────────────────────────────
+       HOW PRICING WORKS (replaces Packages)
+    ───────────────────────────────────────── */
+    .pricing-section { background: var(--navy); overflow: hidden; position: relative; }
+    .pricing-section::before {
+      content: '';
+      position: absolute;
+      bottom: -200px;
+      right: -100px;
+      width: 700px;
+      height: 700px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(201,169,110,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .pricing-section .section-title { color: var(--white); }
+    .pricing-section .section-sub { color: rgba(255,255,255,0.45); }
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5rem;
+      align-items: start;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .pricing-steps { display: flex; flex-direction: column; gap: 0; }
+    .pricing-step {
+      display: flex;
+      gap: 1.5rem;
+      align-items: flex-start;
+      padding: 2rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      position: relative;
+    }
+    .pricing-step:last-child { border-bottom: none; }
+    .ps-num {
+      font-family: var(--font-display);
+      font-size: 3rem;
+      font-weight: 300;
+      color: rgba(201,169,110,0.2);
+      line-height: 1;
+      flex-shrink: 0;
+      width: 2.5rem;
+      text-align: right;
+      margin-top: -0.2rem;
+    }
+    .ps-body {}
+    .ps-title {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      font-weight: 400;
+      color: var(--white);
+      margin-bottom: 0.5rem;
+    }
+    .ps-desc {
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.5);
+      line-height: 1.7;
+      font-weight: 300;
+    }
+    .pricing-right {}
+    .pricing-callout {
+      background: rgba(201,169,110,0.08);
+      border: 1px solid rgba(201,169,110,0.25);
+      border-radius: var(--r-lg);
+      padding: 2.5rem;
+      margin-bottom: 1.75rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .pricing-callout::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--champagne), transparent);
+    }
+    .pc-title {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      color: var(--champagne);
+      font-weight: 300;
+      margin-bottom: 0.5rem;
+      font-style: italic;
+    }
+    .pc-text {
+      font-size: 0.88rem;
+      color: rgba(255,255,255,0.55);
+      line-height: 1.75;
+      margin-bottom: 1.75rem;
+    }
+    .pricing-factors { display: flex; flex-direction: column; gap: 0.7rem; margin-bottom: 2rem; }
+    .pf-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.65rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .pf-row:last-child { border-bottom: none; }
+    .pf-label { font-size: 0.8rem; color: rgba(255,255,255,0.55); display: flex; align-items: center; gap: 0.5rem; }
+    .pf-label::before { content: '✦'; color: var(--champagne); font-size: 0.5rem; }
+    .pf-val { font-size: 0.75rem; font-weight: 600; color: rgba(255,255,255,0.3); font-style: italic; }
+    .pricing-cta-block {
+      background: linear-gradient(135deg, rgba(201,169,110,0.12), rgba(201,169,110,0.04));
+      border: 1px solid rgba(201,169,110,0.2);
+      border-radius: var(--r-md);
+      padding: 2rem;
+      text-align: center;
+    }
+    .pctb-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--champagne); margin-bottom: 0.5rem; }
+    .pctb-heading {
+      font-family: var(--font-display);
+      font-size: 1.8rem;
+      font-weight: 300;
+      color: var(--white);
+      margin-bottom: 0.5rem;
+    }
+    .pctb-sub { font-size: 0.82rem; color: rgba(255,255,255,0.4); margin-bottom: 1.5rem; line-height: 1.6; }
+    .pctb-btn {
+      display: inline-block;
+      padding: 0.9rem 2.2rem;
+      background: var(--champagne);
+      color: var(--navy);
+      font-weight: 700;
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border-radius: 100px;
+      transition: all 0.25s var(--ease);
+      box-shadow: var(--shadow-gold);
+    }
+    .pctb-btn:hover { background: var(--champagne-lt); transform: translateY(-2px); box-shadow: 0 16px 44px rgba(201,169,110,0.5); }
+
+    /* Mobile responsive for pricing */
+    @media (max-width: 900px) {
+      .pricing-grid { grid-template-columns: 1fr; gap: 3rem; }
+    }
+
+    /* ─────────────────────────────────────────
+       ENHANCED MOBILE-FIRST RESPONSIVE
+    ───────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .navbar { padding: 1.1rem 1.25rem; }
+      .navbar.scrolled { padding: 0.85rem 1.25rem; }
+      .nav-logo { font-size: 1.5rem; }
+      .nav-links { display: none !important; }
+      .nav-mode-switch { display: none; }
+      .nav-hamburger { display: flex; }
+
+      .hero-content { padding: 1.5rem; }
+      .hero-title { font-size: clamp(2.8rem, 10vw, 4.5rem); }
+      .hero-sub { font-size: 0.95rem; margin-bottom: 2rem; }
+      .hero-actions { flex-direction: column; align-items: center; }
+      .hero-actions a { width: 100%; text-align: center; }
+
+      section { padding: 4.5rem 1.25rem; }
+      .section-title { font-size: clamp(2rem, 7vw, 2.8rem); }
+      .section-header { margin-bottom: 3rem; }
+
+      .wedding-feature-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+      .wf-img-main { height: 300px; }
+      .wf-img-accent { display: none; }
+      .wf-label-float { left: 1rem; top: 1rem; }
+      .wf-pillars { grid-template-columns: 1fr; }
+
+      .dh-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+      .dh-img { height: 320px; }
+      .dh-stat-float { left: 1rem; bottom: -1rem; }
+      .adobe-badge { top: 1rem; right: 1rem; }
+
+      .services-grid { grid-template-columns: 1fr !important; }
+      .services-grid .service-card:first-child { grid-column: span 1 !important; }
+      .services-grid .service-card:last-child { grid-column: span 1 !important; }
+
+      .gallery-strip { grid-template-columns: 1fr 1fr; grid-auto-rows: 150px; }
+      .gallery-strip .tall { grid-row: span 1; }
+      .gallery-strip .wide { grid-column: span 2; }
+
+      .t-grid { grid-template-columns: 1fr; }
+      .menus-grid-inner { grid-template-columns: 1fr; }
+
+      .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+      .stat-num { font-size: 2.8rem; }
+
+      .onboarding-cards { grid-template-columns: 1fr; gap: 0.85rem; }
+      .onboarding-card { padding: 1.5rem 1rem; }
+
+      .contact-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+      .form-row { grid-template-columns: 1fr; }
+
+      .footer-top { grid-template-columns: 1fr; gap: 2rem; }
+      .footer-bottom { flex-direction: column; text-align: center; }
+      .f-legal { justify-content: center; }
+
+      #cursor-dot, #cursor-ring { display: none !important; }
+      body { cursor: auto !important; }
+      button { cursor: pointer !important; }
+    }
+
+    @media (max-width: 480px) {
+      .hero-title { font-size: clamp(2.2rem, 12vw, 3.2rem); }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .dh-certs { flex-direction: column; }
+      .gallery-strip { grid-template-columns: 1fr; }
+      .gallery-strip .wide { grid-column: span 1; }
+      .pricing-callout { padding: 1.75rem; }
+    }
+  </style>
+</head>
+<body class="modal-open" id="site-body">
+
+<!-- Custom Cursor -->
+<div id="cursor-dot"></div>
+<div id="cursor-ring"></div>
+
+<!-- Progress Bar -->
+<div id="progress-bar"></div>
+
+<!-- Mode Transition Flash -->
+<div id="mode-transition"></div>
+
+<!-- Mobile Nav Overlay -->
+<div class="mobile-overlay" id="mobile-overlay" onclick="closeMobileNav()"></div>
+
+<!-- Mobile Nav Drawer -->
+<nav class="mobile-nav" id="mobile-nav">
+  <a href="#weddings" onclick="closeMobileNav()">Weddings</a>
+  <a href="#dryhire" onclick="closeMobileNav()">Dry Hire</a>
+  <a href="#services" onclick="closeMobileNav()">Services</a>
+  <a href="#pricing" onclick="closeMobileNav()">Pricing</a>
+  <a href="#gallery" onclick="closeMobileNav()">Gallery</a>
+  <a href="#faq" onclick="closeMobileNav()">FAQ</a>
+  <a href="#contact" class="mn-cta" onclick="closeMobileNav()">Book Now</a>
+</nav>
+
+<!-- ═══════════════════════════════════════════
+     ONBOARDING MODAL
+═══════════════════════════════════════════ -->
+<div id="onboarding">
+  <canvas id="onboarding-canvas"></canvas>
+  <div class="onboarding-inner">
+    <div class="onboarding-badge">Welcome to Lake Salt</div>
+    <h2 class="onboarding-q">What type of event<br/>are you celebrating?</h2>
+    <p class="onboarding-sub">We'll tailor your experience based on your event type</p>
+    <div class="onboarding-cards">
+      <button class="onboarding-card" onclick="chooseMode('wedding')">
+        <span class="card-emoji">💍</span>
+        <div class="card-title">Wedding</div>
+        <div class="card-desc">Ceremony, reception,<br/>cocktail hour &amp; toasts</div>
+      </button>
+      <button class="onboarding-card" onclick="chooseMode('corporate')">
+        <span class="card-emoji">🏢</span>
+        <div class="card-title">Corporate</div>
+        <div class="card-desc">Company events,<br/>parties &amp; conferences</div>
+      </button>
+      <button class="onboarding-card" onclick="chooseMode('all')">
+        <span class="card-emoji">🎉</span>
+        <div class="card-title">Celebration</div>
+        <div class="card-desc">Birthdays, private parties<br/>&amp; everything else</div>
+      </button>
+    </div>
+    <button class="onboarding-skip" onclick="chooseMode('all')">skip</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     NAVBAR
+═══════════════════════════════════════════ -->
+<nav class="navbar" id="navbar">
+  <a href="#home" class="nav-logo">Lake <span>Salt</span></a>
+  <ul class="nav-links">
+    <li><a href="#weddings" class="accent" id="nav-weddings">Weddings</a></li>
+    <li><a href="#dryhire">Dry Hire</a></li>
+    <li><a href="#services">Services</a></li>
+    <li><a href="#pricing">Pricing</a></li>
+    <li><a href="#gallery">Gallery</a></li>
+    <li><a href="recipes.html">Recipes</a></li>
+  </ul>
+  <div style="display:flex;align-items:center;gap:0.85rem;">
+    <div class="nav-mode-switch" id="nav-mode-switch">
+      <button class="nav-mode-btn active" id="nmb-wedding" onclick="switchMode('wedding')">Wedding</button>
+      <button class="nav-mode-btn" id="nmb-corporate" onclick="switchMode('corporate')">Corporate</button>
+      <button class="nav-mode-btn" id="nmb-all" onclick="switchMode('all')">All</button>
+    </div>
+    <a href="#contact" class="nav-cta">Book Now</a>
+    <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════
+     HERO
+═══════════════════════════════════════════ -->
+<section class="hero" id="home">
+  <div class="hero-bg" id="hero-bg" style="background-image:url('https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1920&q=80&fit=crop')"></div>
+  <div class="hero-overlay" id="hero-overlay"></div>
+  <canvas id="hero-canvas"></canvas>
+  <div class="hero-content">
+    <div class="hero-badge" id="hero-badge">Utah's Premier Mobile Bar Service</div>
+    <h1 class="hero-title" id="hero-title">
+      <span class="line"><span class="line-inner" id="ht-line1">Your Event,</span></span>
+      <span class="line"><span class="line-inner" id="ht-line2"><em>Perfectly Poured</em></span></span>
+    </h1>
+    <p class="hero-sub" id="hero-sub">
+      Craft cocktails, TIPS-certified bartenders, and flawless execution —
+      from wedding receptions to corporate events across the Wasatch Front.
+    </p>
+    <div class="hero-actions" id="hero-actions">
+      <a href="#contact" class="btn-primary" id="hero-cta">Book Your Event</a>
+      <a href="#services" class="btn-secondary">Explore Services</a>
+    </div>
+  </div>
+  <div class="hero-scroll" id="hero-scroll">
+    <div class="scroll-line"></div>
+    <span>Scroll</span>
+  </div>
+</section>
+
+<!-- MARQUEE STRIP -->
+<div class="marquee-strip">
+  <div class="marquee-inner">
+    <span>5.0 Google Rating</span>
+    <span>TIPS Certified Bartenders</span>
+    <span>Food Handler Certified</span>
+    <span>Dry Hire Specialists</span>
+    <span>Serving All of Utah</span>
+    <span>Custom Cocktail Menus</span>
+    <span>Adobe Lehi Partner</span>
+    <span>Licensed &amp; Insured</span>
+    <!-- duplicate for seamless loop -->
+    <span>5.0 Google Rating</span>
+    <span>TIPS Certified Bartenders</span>
+    <span>Food Handler Certified</span>
+    <span>Dry Hire Specialists</span>
+    <span>Serving All of Utah</span>
+    <span>Custom Cocktail Menus</span>
+    <span>Adobe Lehi Partner</span>
+    <span>Licensed &amp; Insured</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     WEDDING FEATURE
+═══════════════════════════════════════════ -->
+<section class="wedding-feature" id="weddings" style="padding: 7rem 2rem;">
+  <div class="wedding-feature-grid">
+    <div class="wf-images">
+      <img
+        src="images/IMG_8954.PNG"
+        alt="Lake Salt bartender at an elegant wedding venue"
+        class="wf-img-main"
+      />
+      <img
+        src="images/IMG_8640.PNG"
+        alt="Freshly crafted margarita with lime garnish"
+        class="wf-img-accent"
+      />
+      <div class="wf-label-float">
+        <div class="big">100<span style="font-size:1.2rem">+</span></div>
+        <div class="small">Weddings Served</div>
+      </div>
+    </div>
+    <div class="wf-content">
+      <span class="eyebrow">The Wedding Experience</span>
+      <h2 class="wf-title">
+        Where Every Sip<br/><em>Tells Your Story</em>
+      </h2>
+      <p class="wf-desc">
+        Your wedding day deserves more than a bar — it deserves an experience built around
+        you. Lake Salt crafts bespoke cocktail programs tailored to your love story: from
+        a his-and-hers signature drink to champagne toasts and custom-printed menus that
+        match your aesthetic. We handle every detail so you can be present in every moment.
+      </p>
+      <div class="wf-pillars">
+        <div class="wf-pillar">
+          <span class="icon">💍</span>
+          <div>
+            <div class="pl">Signature Cocktails</div>
+            <div class="pd">Personalized drinks crafted around your story</div>
+          </div>
+        </div>
+        <div class="wf-pillar">
+          <span class="icon">🥂</span>
+          <div>
+            <div class="pl">Champagne Service</div>
+            <div class="pd">Elegant pours for cocktail hours &amp; toasts</div>
+          </div>
+        </div>
+        <div class="wf-pillar">
+          <span class="icon">📋</span>
+          <div>
+            <div class="pl">Custom Menus</div>
+            <div class="pd">Printed menus designed to match your theme</div>
+          </div>
+        </div>
+        <div class="wf-pillar">
+          <span class="icon">✨</span>
+          <div>
+            <div class="pl">Full Setup &amp; Breakdown</div>
+            <div class="pd">We arrive early, leave spotless</div>
+          </div>
+        </div>
+      </div>
+      <a href="#contact" class="btn-primary">Plan Your Wedding Bar</a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     DRY HIRE / HOW IT WORKS
+═══════════════════════════════════════════ -->
+<section class="dry-hire" id="dryhire">
+  <div class="section-inner">
+    <div class="dh-grid">
+      <div class="dh-content">
+        <span class="eyebrow" style="text-align:left; display:block;">How We Work</span>
+        <h2 class="wf-title" style="color:var(--white);">
+          We're a <em>Dry Hire</em><br/>Bar Service
+        </h2>
+        <div class="dh-callout">
+          <div class="dh-callout-title">What This Means for You</div>
+          <div class="dh-callout-text">
+            We <strong style="color:var(--champagne);">never provide alcohol</strong> — you purchase the liquor, beer, and wine,
+            and we handle absolutely everything else. This keeps your costs transparent, gives you
+            full control over your bar selections, and often saves you significantly compared to
+            traditional bar packages. Our bartenders are your professional crew for the night.
+          </div>
+        </div>
+        <div class="dh-certs">
+          <div class="cert-badge"><span class="cert-icon">🎓</span>TIPS Certified</div>
+          <div class="cert-badge"><span class="cert-icon">🍽️</span>Food Handler Certified</div>
+          <div class="cert-badge"><span class="cert-icon">🛡️</span>Fully Insured</div>
+        </div>
+        <div class="dh-steps">
+          <div class="dh-step">
+            <div class="step-num">1</div>
+            <div>
+              <div class="step-label">You Purchase the Alcohol</div>
+              <div class="step-desc">We provide a detailed shopping list tailored to your guest count, preferences, and event type.</div>
+            </div>
+          </div>
+          <div class="dh-step">
+            <div class="step-num">2</div>
+            <div>
+              <div class="step-label">We Bring Everything Else</div>
+              <div class="step-desc">Bar tools, mixers, garnishes, ice, glassware, setup, and our full team — all included.</div>
+            </div>
+          </div>
+          <div class="dh-step">
+            <div class="step-num">3</div>
+            <div>
+              <div class="step-label">We Run Your Bar Flawlessly</div>
+              <div class="step-desc">Professional, certified bartenders from start to finish. We even break down and leave the space clean.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dh-visual" id="corporate">
+        <img
+          src="images/IMG_8497.jpeg"
+          alt="Lake Salt team bartending at Adobe Lehi campus"
+          class="dh-img"
+        />
+        <div class="dh-stat-float">
+          <div class="big">$0</div>
+          <div class="small">Alcohol Markup</div>
+        </div>
+        <div class="adobe-badge">
+          <div class="adobe-logo">🏢</div>
+          <div class="adobe-text">
+            <div class="at">Official Partner</div>
+            <div class="an">Adobe — Lehi, Utah</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     SERVICES
+═══════════════════════════════════════════ -->
+<section class="services" id="services">
+  <div class="section-inner">
+    <div class="section-header">
+      <span class="eyebrow">What We Do</span>
+      <h2 class="section-title">Every Occasion, <em>Elevated</em></h2>
+      <p class="section-sub">Whether it's your wedding day or your company's annual celebration, we bring the same craft, care, and professionalism to every event.</p>
+    </div>
+    <div class="services-grid">
+      <!-- WEDDING — Featured -->
+      <div class="service-card">
+        <div class="sc-image">
+          <img src="images/IMG_6896.jpeg" alt="Lake Salt bartender serving signature wedding cocktail" />
+          <div class="sc-tag tag-wedding">Our Specialty</div>
+        </div>
+        <div class="sc-body">
+          <div class="sc-name">Wedding Bartending</div>
+          <p class="sc-desc">Your complete wedding cocktail experience — signature cocktails, champagne service, and seamless execution from the first toast to the last dance.</p>
+          <a href="#contact" class="sc-link">Plan your wedding bar</a>
+        </div>
+      </div>
+
+      <!-- CORPORATE -->
+      <div class="service-card">
+        <div class="sc-image">
+          <img src="images/IMG_2491.jpeg" alt="Lake Salt bartenders serving guests at a corporate event" />
+          <div class="sc-tag tag-corporate">Corporate</div>
+        </div>
+        <div class="sc-body">
+          <div class="sc-name">Corporate Events</div>
+          <p class="sc-desc">Polished, professional bar service for company parties, holiday events, and conferences. Trusted by Adobe Lehi for their most important celebrations.</p>
+          <div class="corporate-spotlight">
+            <div class="cs-logo">🏢</div>
+            <div class="cs-text">
+              <div class="ct">Official Partner</div>
+              <div class="cd">Proudly serving Adobe's catered bar events at their Lehi, Utah campus</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PRIVATE -->
+      <div class="service-card">
+        <div class="sc-image">
+          <img src="images/IMG_5959.jpeg" alt="Lake Salt bartenders at a private outdoor evening event" />
+          <div class="sc-tag tag-private">Private</div>
+        </div>
+        <div class="sc-body">
+          <div class="sc-name">Private Celebrations</div>
+          <p class="sc-desc">Birthdays, anniversaries, graduation parties — we customize your menu to match your vibe and make any celebration feel extraordinary.</p>
+          <a href="#contact" class="sc-link">Book your event</a>
+        </div>
+      </div>
+
+      <!-- THEMED -->
+      <div class="service-card">
+        <div class="sc-image">
+          <img src="images/oktoberfest-team.jpg" alt="Lake Salt team in Oktoberfest themed bartending costumes" />
+          <div class="sc-tag tag-themed">Themed</div>
+        </div>
+        <div class="sc-body">
+          <div class="sc-name">Themed Experiences</div>
+          <p class="sc-desc">Immersive bar concepts built around your theme — garden parties, seasonal menus, speakeasy nights, and everything creatively in between.</p>
+          <a href="#contact" class="sc-link">Get creative</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     HOW PRICING WORKS
+═══════════════════════════════════════════ -->
+<section class="pricing-section" id="pricing">
+  <div class="section-inner">
+    <div class="section-header">
+      <span class="eyebrow">Transparent Pricing</span>
+      <h2 class="section-title">How <em>Pricing Works</em></h2>
+      <p class="section-sub">Every event is unique — so is every quote. Here's exactly how we build yours.</p>
+    </div>
+
+    <div class="pricing-grid">
+      <!-- Left: the steps -->
+      <div class="pricing-steps">
+        <div class="pricing-step">
+          <div class="ps-num">1</div>
+          <div class="ps-body">
+            <div class="ps-title">Tell us about your event</div>
+            <div class="ps-desc">Share your event type, date, guest count, duration, and venue. The more detail, the more accurate your quote — and the more we can personalize your bar experience.</div>
+          </div>
+        </div>
+        <div class="pricing-step">
+          <div class="ps-num">2</div>
+          <div class="ps-body">
+            <div class="ps-title">We build your custom quote</div>
+            <div class="ps-desc">We factor in bartender count, service hours, bar setup complexity, specialty cocktail menus, and any add-ons. Your quote reflects exactly what you need — nothing you don't.</div>
+          </div>
+        </div>
+        <div class="pricing-step">
+          <div class="ps-num">3</div>
+          <div class="ps-body">
+            <div class="ps-title">You receive your shopping list</div>
+            <div class="ps-desc">Because we're dry hire, you purchase the alcohol. We send a precise shopping list — every spirit, wine, beer, and mixer — so there's zero guesswork or wasted spend.</div>
+          </div>
+        </div>
+        <div class="pricing-step">
+          <div class="ps-num">4</div>
+          <div class="ps-body">
+            <div class="ps-title">We show up, you celebrate</div>
+            <div class="ps-desc">Our TIPS-certified, food handler certified team arrives early, sets up, serves professionally all night, and handles full breakdown. You never lift a finger.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: factors + CTA -->
+      <div class="pricing-right">
+        <div class="pricing-callout">
+          <div class="pc-title">What shapes your quote</div>
+          <div class="pc-text">Every element below is considered when we build your personalized estimate. No hidden fees, no surprises — just honest pricing for a premium experience.</div>
+          <div class="pricing-factors">
+            <div class="pf-row">
+              <span class="pf-label">Guest count &amp; event duration</span>
+              <span class="pf-val">varies</span>
+            </div>
+            <div class="pf-row">
+              <span class="pf-label">Number of TIPS-certified bartenders</span>
+              <span class="pf-val">1 – 5+</span>
+            </div>
+            <div class="pf-row">
+              <span class="pf-label">Custom cocktail menu development</span>
+              <span class="pf-val">optional</span>
+            </div>
+            <div class="pf-row">
+              <span class="pf-label">Bar setup &amp; decor complexity</span>
+              <span class="pf-val">optional</span>
+            </div>
+            <div class="pf-row">
+              <span class="pf-label">Venue location &amp; setup logistics</span>
+              <span class="pf-val">varies</span>
+            </div>
+            <div class="pf-row">
+              <span class="pf-label">Specialty service (champagne tower, etc.)</span>
+              <span class="pf-val">optional</span>
+            </div>
+            <div class="pf-row">
+              <span class="pf-label">Ice, glassware, garnishes &amp; supplies</span>
+              <span class="pf-val">included</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pricing-cta-block">
+          <div class="pctb-label">Get your quote</div>
+          <div class="pctb-heading">Ready to plan your bar?</div>
+          <div class="pctb-sub">Most weddings get a quote back within 24 hours. Corporate events typically within 4 hours.</div>
+          <a href="#contact" class="pctb-btn">Request a Free Quote →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     GALLERY
+═══════════════════════════════════════════ -->
+<section class="gallery-section" id="gallery">
+  <div class="section-inner">
+    <div class="section-header">
+      <span class="eyebrow">Our Work</span>
+      <h2 class="section-title">Moments We've <em>Crafted</em></h2>
+      <p class="section-sub">A glimpse into the celebrations we've had the honor of being a part of across Utah's most beautiful venues.</p>
+    </div>
+    <div class="gallery-strip">
+      <div class="g-item tall" onclick="openLb('images/IMG_5958.JPG')">
+        <img src="images/IMG_5958.JPG" alt="Lake Salt bartender at outdoor bar with Utah mountains at dusk" loading="lazy" />
+        <div class="g-overlay"><span class="g-caption">Private Outdoor Event</span></div>
+      </div>
+      <div class="g-item wide" onclick="openLb('images/IMG_6936.jpeg')">
+        <img src="images/IMG_6936.jpeg" alt="Large corporate event with Lake Salt bar, Utah venue" loading="lazy" />
+        <div class="g-overlay"><span class="g-caption">Corporate Event — Utah</span></div>
+      </div>
+      <div class="g-item" onclick="openLb('images/IMG_8640.PNG')">
+        <img src="images/IMG_8640.PNG" alt="Freshly shaken margarita with lime garnish" loading="lazy" />
+        <div class="g-overlay"><span class="g-caption">Signature Margarita</span></div>
+      </div>
+      <div class="g-item" onclick="openLb('images/IMG_6950.jpeg')">
+        <img src="images/IMG_6950.jpeg" alt="Guest enjoying a handcrafted Lake Salt cocktail" loading="lazy" />
+        <div class="g-overlay"><span class="g-caption">Happy Guests</span></div>
+      </div>
+      <div class="g-item" onclick="openLb('images/IMG_8643.PNG')">
+        <img src="images/IMG_8643.PNG" alt="Bourbon cocktail with blackberry garnish and orange peel" loading="lazy" />
+        <div class="g-overlay"><span class="g-caption">Craft Bourbon Cocktail</span></div>
+      </div>
+      <div class="g-item tall" onclick="openLb('images/IMG_8469.jpeg')">
+        <img src="images/IMG_8469.jpeg" alt="Lake Salt bartender crafting cocktails at a full bar" loading="lazy" />
+        <div class="g-overlay"><span class="g-caption">Behind the Bar</span></div>
+      </div>
+      <div class="g-item" onclick="openLb('images/IMG_6903.jpeg')">
+        <img src="images/IMG_6903.jpeg" alt="Fresh citrus garnish station — limes, oranges, lemons" loading="lazy" />
+        <div class="g-overlay"><span class="g-caption">Fresh Garnish Station</span></div>
+      </div>
+      <div class="g-item wide" onclick="openLb('images/IMG_2494.jpeg')">
+        <img src="images/IMG_2494.jpeg" alt="Lake Salt team at Oktoberfest themed corporate event" loading="lazy" />
+        <div class="g-overlay"><span class="g-caption">Oktoberfest at Adobe</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     SAMPLE MENUS
+═══════════════════════════════════════════ -->
+<section class="menus-section" id="menus" style="background:var(--navy); padding:6rem 2rem;">
+  <div class="section-inner">
+    <div class="section-header">
+      <span class="eyebrow">Custom Menus</span>
+      <h2 class="section-title" style="color:var(--white);">Sample <em>Drink Menus</em></h2>
+      <p class="section-sub" style="color:var(--champagne); opacity:0.85;">Every event gets a custom-designed menu. Here's a taste of menus we've crafted for past clients.</p>
+    </div>
+    <div class="menus-grid-inner">
+      <div class="menu-card" onclick="openLb('images/ls-event-menu.png')">
+        <img src="images/ls-event-menu.png" alt="Lake Salt event drink menu — Watermelon Mojito, Tamarind Margarita, Spiced Paloma" loading="lazy" />
+      </div>
+      <div class="menu-card" onclick="openLb('images/menu-happy-hour.png')">
+        <img src="images/menu-happy-hour.png" alt="Lake Salt Happy Hour drink menu — Creamy Coconut Mojito, Cucumber Sting" loading="lazy" />
+      </div>
+      <div class="menu-card" onclick="openLb('images/menu-summer.png')">
+        <img src="images/menu-summer.png" alt="Lake Salt summer drink menu — Summer Sangria, Peach Fizz Mocktail" loading="lazy" />
+      </div>
+    </div>
+    <p class="menus-caption">Tap any menu to view full size · Your event gets a fully custom menu included</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     REVIEWS — Live from Google
+═══════════════════════════════════════════ -->
+<section class="testimonials" id="reviews">
+  <!-- Required attribution container for Places API (hidden) -->
+  <div id="google-maps-attribution"></div>
+  <div class="section-inner">
+    <div class="section-header">
+      <span class="eyebrow">From Our Clients</span>
+      <h2 class="section-title">Real <em>Google Reviews</em></h2>
+      <p class="t-header-meta">Live from our Google Business profile · Updates automatically</p>
+    </div>
+    <!-- Reviews injected here by JS — shows loading state initially -->
+    <div class="t-grid" id="google-reviews-grid">
+      <div class="t-reviews-loading">Loading reviews from Google…</div>
+    </div>
+    <!-- "See all" CTA — shown after reviews load -->
+    <div class="t-reviews-cta" id="google-reviews-cta" style="display:none;">
+      <a href="#" id="google-reviews-link" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" width="16" height="16"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        See All Reviews on Google
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     STATS
+═══════════════════════════════════════════ -->
+<section class="stats-section">
+  <div class="section-inner">
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="stat-num"><span class="count" data-target="5">0</span><span class="accent">.0★</span></div>
+        <div class="stat-label">Google Rating</div>
+        <div class="stat-desc">Perfect score across every review</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num"><span class="count" data-target="100">0</span><span class="accent">+</span></div>
+        <div class="stat-label">Events Served</div>
+        <div class="stat-desc">Weddings, corporate &amp; private celebrations</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num"><span class="count" data-target="6">0</span><span class="accent">+</span></div>
+        <div class="stat-label">Utah Counties</div>
+        <div class="stat-desc">Across the entire Wasatch Front</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">∞</div>
+        <div class="stat-label">Unique Recipes</div>
+        <div class="stat-desc">Every signature cocktail is one of a kind</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     FAQ
+═══════════════════════════════════════════ -->
+<section class="faq-section" id="faq">
+  <div class="section-inner">
+    <div class="section-header">
+      <span class="eyebrow">FAQ</span>
+      <h2 class="section-title">Common <em>Questions</em></h2>
+    </div>
+    <div class="faq-inner">
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          How far in advance should I book?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a">
+          <p>We recommend booking <strong>1–3 months in advance</strong> for most events. For peak wedding season dates (June–September), sooner is better. That said, we always do our best to accommodate shorter timelines — reach out and we'll check our availability.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Do you provide the alcohol?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a">
+          <p>No — Lake Salt is a <strong>dry hire bar service</strong>. You purchase the alcohol and we handle everything else: bartenders, mixers, garnishes, ice, bar tools, setup, and breakdown. We provide a detailed, guest-count-specific shopping list so you know exactly what to get. This keeps costs transparent and often saves you money.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Are your bartenders certified?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a">
+          <p>Yes — all Lake Salt bartenders are <strong>TIPS certified</strong> and <strong>food handler certified</strong>. We carry full event liability insurance, and we can provide proof directly to your venue or event coordinator on request.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          What areas do you serve in Utah?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a">
+          <p>We serve the entire Wasatch Front including Salt Lake City, Park City, Lehi, Ogden, Provo, and surrounding areas. We're happy to travel further for the right event — just ask about locations outside the standard service area.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Can we have custom signature cocktails at our wedding?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a">
+          <p>Absolutely — this is one of our favorite parts. We love crafting "his &amp; hers" cocktails that reflect your personalities. We work with you on flavors, names, and visual presentation. Custom printed menus are also available to match your wedding's aesthetic.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Do you work with corporate clients and companies?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a">
+          <p>Absolutely — we have extensive corporate experience. We're the official bar service for catered events at <strong>Adobe's Lehi, Utah campus</strong>, and we regularly serve company parties, holiday events, product launches, and team celebrations across the Wasatch Front.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     CONTACT
+═══════════════════════════════════════════ -->
+<section class="contact-section" id="contact">
+  <div class="section-inner">
+    <div class="section-header">
+      <span class="eyebrow">Book Your Event</span>
+      <h2 class="section-title">Let's Create Something <em>Beautiful</em></h2>
+      <p class="section-sub">Tell us about your event. We'll get back within 24 hours — usually much faster.</p>
+    </div>
+    <div class="contact-grid">
+      <div>
+        <div class="contact-info-item">
+          <div class="ci-icon">📧</div>
+          <div>
+            <div class="ci-label">Email</div>
+            <div class="ci-val">contact@lakesalt.us</div>
+          </div>
+        </div>
+        <div class="contact-info-item">
+          <div class="ci-icon">📍</div>
+          <div>
+            <div class="ci-label">Service Area</div>
+            <div class="ci-val">Wasatch Front, Utah<br/>Salt Lake City · Park City · Provo · Ogden · Lehi</div>
+          </div>
+        </div>
+        <div class="contact-info-item">
+          <div class="ci-icon">🕐</div>
+          <div>
+            <div class="ci-label">Availability</div>
+            <div class="ci-val">7 days a week — afternoons through late night<br/>As early as 1PM, no set curfew. Events booked year-round.</div>
+          </div>
+        </div>
+        <div class="contact-info-item">
+          <div class="ci-icon">🎓</div>
+          <div>
+            <div class="ci-label">Certifications</div>
+            <div class="ci-val">All bartenders TIPS certified<br/>Food handler certified · Fully insured</div>
+          </div>
+        </div>
+      </div>
+      <form class="contact-form" onsubmit="handleSubmit(event)">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Your Name</label>
+            <input type="text" class="form-input" placeholder="Full name" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone</label>
+            <input type="tel" class="form-input" placeholder="(801) 555-0000" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Event Type</label>
+            <select class="form-select form-input">
+              <option value="">Select event type...</option>
+              <option>💍 Wedding</option>
+              <option>🏢 Corporate Event</option>
+              <option>🎉 Private Celebration</option>
+              <option>🎭 Themed Experience</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Event Date</label>
+            <input type="date" class="form-input" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Guest Count</label>
+            <input type="text" class="form-input" placeholder="Approx. number of guests" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Venue / Location</label>
+            <input type="text" class="form-input" placeholder="Venue name or city" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tell Us About Your Event</label>
+          <textarea class="form-textarea" placeholder="Vision, theme, special requests, questions..."></textarea>
+        </div>
+        <button type="submit" class="form-submit">Send My Inquiry →</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     FOOTER
+═══════════════════════════════════════════ -->
+<footer class="footer">
+  <div class="footer-top">
+    <div>
+      <div class="f-logo">Lake <span>Salt</span></div>
+      <p class="f-desc">Utah's premier dry hire mobile bar service. TIPS-certified bartenders, craft cocktails, and flawless execution for weddings and events across the Wasatch Front.</p>
+      <div class="f-social">
+        <a href="#">📸</a>
+        <a href="#">👍</a>
+        <a href="#">🎵</a>
+        <a href="#">📌</a>
+      </div>
+    </div>
+    <div>
+      <div class="f-col-title">Services</div>
+      <ul class="f-links">
+        <li><a href="#weddings">Wedding Bartending</a></li>
+        <li><a href="#corporate">Corporate Events</a></li>
+        <li><a href="#services">Private Celebrations</a></li>
+        <li><a href="#services">Themed Experiences</a></li>
+        <li><a href="#dryhire">Dry Hire Info</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="f-col-title">Company</div>
+      <ul class="f-links">
+        <li><a href="#">About Us</a></li>
+        <li><a href="#gallery">Gallery</a></li>
+        <li><a href="#reviews">Reviews</a></li>
+        <li><a href="recipes.html">Recipes &amp; Tips</a></li>
+        <li><a href="#faq">FAQ</a></li>
+        <li><a href="#contact">Contact</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="f-col-title">Areas Served</div>
+      <ul class="f-links">
+        <li><a href="#">Salt Lake City</a></li>
+        <li><a href="#">Park City</a></li>
+        <li><a href="#">Provo / Orem</a></li>
+        <li><a href="#">Ogden</a></li>
+        <li><a href="#">Lehi / Draper</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p class="f-copy">© 2025 Lake Salt Bartending · All Rights Reserved · Dry Hire · TIPS Certified</p>
+    <ul class="f-legal">
+      <li><a href="#">Privacy</a></li>
+      <li><a href="#">Terms</a></li>
+    </ul>
+  </div>
+</footer>
+
+<!-- LIGHTBOX -->
+<div id="lightbox" onclick="closeLb()">
+  <img id="lb-img" src="" alt="" />
+  <button id="lb-close" onclick="closeLb()">✕</button>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════ -->
+<script>
+gsap.registerPlugin(ScrollTrigger);
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   GOOGLE REVIEWS CONFIGURATION
+   ─────────────────────────────────────────────────────────
+   Step 1 — Get a free API key:
+     https://console.cloud.google.com/
+     Enable: "Maps JavaScript API" + "Places API"
+     Restrict the key to your domain for safety.
+
+   Step 2 — Find your Place ID:
+     Go to https://developers.google.com/maps/documentation/javascript/examples/places-placeid-finder
+     Search "Lake Salt LLC" → copy the Place ID shown (starts with ChIJ...)
+     OR: open Google Maps, find your listing, the Place ID is in the URL after "place/"
+
+   Step 3 — Paste both values below and save.
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+const GOOGLE_API_KEY  = 'YOUR_API_KEY_HERE';   // ← replace with your Maps API key
+const GOOGLE_PLACE_ID = 'YOUR_PLACE_ID_HERE';  // ← replace with your Place ID (ChIJ...)
+
+/* ─── GOOGLE REVIEWS ENGINE ─── */
+const FALLBACK_REVIEWS = [
+  { author_name: 'Ashley & Marcus R.', rating: 5, relative_time_description: 'a month ago',
+    text: 'Lake Salt made our wedding reception so special. They created two signature cocktails that perfectly matched our colors and personalities. Guests are still talking about the drinks months later.',
+    profile_photo_url: null },
+  { author_name: 'Dana K., Events Lead', rating: 5, relative_time_description: '2 months ago',
+    text: 'Professional, fun, and their creative drinks were the hit of our entire company party. The team arrived early, set up beautifully, and made our Adobe team feel like they were at a five-star event.',
+    profile_photo_url: null },
+  { author_name: 'Sarah & Daniel K.', rating: 5, relative_time_description: '3 months ago',
+    text: 'From our first call to the final toast, Kendell and his team were incredible. Our outdoor Provo Canyon wedding was seamless — no stress, just perfect pours and happy guests all night long.',
+    profile_photo_url: null },
+];
+
+function buildStars(n) {
+  const full = Math.round(n);
+  return '★'.repeat(full) + '☆'.repeat(5 - full);
+}
+
+function buildReviewCard(r) {
+  const initial = (r.author_name || 'G').charAt(0).toUpperCase();
+  const avatarHtml = r.profile_photo_url
+    ? `<img class="t-avatar-photo" src="${r.profile_photo_url}" alt="${r.author_name}" loading="lazy">`
+    : `<div class="t-avatar">${initial}</div>`;
+  // Truncate long reviews at 280 chars with ellipsis
+  const maxLen = 280;
+  const rawText = r.text || '';
+  const displayText = rawText.length > maxLen ? rawText.slice(0, maxLen).trimEnd() + '…' : rawText;
+  return `
+    <div class="t-card">
+      <div class="t-google-icon">
+        <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        <span>Google Review</span>
+      </div>
+      <div class="t-quote-mark">"</div>
+      <div class="t-stars">${buildStars(r.rating)}</div>
+      <p class="t-text">${displayText}</p>
+      <div class="t-rule"></div>
+      <div class="t-author">
+        ${avatarHtml}
+        <div>
+          <div class="t-name">${r.author_name}</div>
+          <div class="t-date">${r.relative_time_description}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderReviews(reviews, googleUrl) {
+  const grid = document.getElementById('google-reviews-grid');
+  const cta  = document.getElementById('google-reviews-cta');
+  const link = document.getElementById('google-reviews-link');
+  if (!grid) return;
+  grid.innerHTML = reviews.map(buildReviewCard).join('');
+  if (cta && googleUrl) {
+    link.href = googleUrl;
+    cta.style.display = '';
+  }
+}
+
+function renderFallbackReviews() {
+  renderReviews(FALLBACK_REVIEWS, null);
+}
+
+function loadGoogleReviews() {
+  if (!GOOGLE_API_KEY || GOOGLE_API_KEY === 'YOUR_API_KEY_HERE' ||
+      !GOOGLE_PLACE_ID || GOOGLE_PLACE_ID === 'YOUR_PLACE_ID_HERE') {
+    renderFallbackReviews();
+    return;
+  }
+  // Expose callback globally so Maps API can call it
+  window._lsInitReviews = function() {
+    try {
+      const svc = new google.maps.places.PlacesService(
+        document.getElementById('google-maps-attribution')
+      );
+      svc.getDetails(
+        { placeId: GOOGLE_PLACE_ID, fields: ['reviews','rating','url'] },
+        function(place, status) {
+          if (status === google.maps.places.PlacesServiceStatus.OK && place.reviews && place.reviews.length) {
+            renderReviews(place.reviews, place.url);
+          } else {
+            renderFallbackReviews();
+          }
+        }
+      );
+    } catch(e) {
+      renderFallbackReviews();
+    }
+  };
+  const s = document.createElement('script');
+  s.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_API_KEY}&libraries=places&callback=_lsInitReviews`;
+  s.async = true; s.defer = true;
+  s.onerror = renderFallbackReviews;
+  document.head.appendChild(s);
+}
+
+/* ─── MODE DATA ─── */
+const modes = {
+  wedding: {
+    badge: "Utah's Premier Wedding Bar Service",
+    line1: "Your Wedding,",
+    line2: "Perfectly Poured",
+    sub: "Craft cocktails, TIPS-certified bartenders, and flawless execution — crafted for your perfect day across the Wasatch Front.",
+    cta:   "Plan Your Wedding Bar",
+    ctaHref: "#weddings",
+    heroBg: "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1920&q=80&fit=crop",
+    bodyClass: "mode-wedding"
+  },
+  corporate: {
+    badge: "Utah's Premier Corporate Bar Service",
+    line1: "Your Company Deserves",
+    line2: "An Exceptional Bar",
+    sub: "Professional bar service for corporate events, product launches, and team celebrations. Trusted by Adobe Lehi and leading Utah companies.",
+    cta:   "Get a Corporate Quote",
+    ctaHref: "#dryhire",
+    heroBg: "https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=1920&q=80&fit=crop",
+    bodyClass: "mode-corporate"
+  },
+  all: {
+    badge: "Utah's Premier Mobile Bar Service",
+    line1: "Your Event,",
+    line2: "Perfectly Poured",
+    sub: "Craft cocktails, TIPS-certified bartenders, and flawless execution — from wedding receptions to corporate events across the Wasatch Front.",
+    cta:   "Book Your Event",
+    ctaHref: "#contact",
+    heroBg: "https://images.unsplash.com/photo-1543007630-9710e4a00a20?w=1920&q=80&fit=crop",
+    bodyClass: ""
+  }
+};
+
+let currentMode = 'all';
+
+/* ─── APPLY MODE (no animation — initial load) ─── */
+function applyMode(mode, animate) {
+  const m = modes[mode] || modes.all;
+  currentMode = mode;
+
+  // Body class
+  document.body.classList.remove('mode-wedding', 'mode-corporate');
+  if (m.bodyClass) document.body.classList.add(m.bodyClass);
+
+  // Hero text
+  document.getElementById('hero-badge').textContent = m.badge;
+  document.getElementById('ht-line1').textContent = m.line1;
+  document.getElementById('ht-line2').innerHTML = `<em>${m.line2}</em>`;
+  document.getElementById('hero-sub').textContent = m.sub;
+  const heroCta = document.getElementById('hero-cta');
+  heroCta.textContent = m.cta;
+  heroCta.href = m.ctaHref;
+
+  // Hero background image
+  const heroBg = document.getElementById('hero-bg');
+  heroBg.style.backgroundImage = `url('${m.heroBg}')`;
+
+  // Nav mode switcher buttons
+  ['wedding','corporate','all'].forEach(k => {
+    const btn = document.getElementById(`nmb-${k}`);
+    if (btn) btn.classList.toggle('active', k === mode);
+  });
+}
+
+/* ─── SWITCH MODE (with animated transition) ─── */
+function switchMode(mode) {
+  if (mode === currentMode) return;
+  localStorage.setItem('ls-mode', mode);
+
+  const overlay = document.getElementById('mode-transition');
+  overlay.classList.remove('flash');
+  void overlay.offsetWidth; // force reflow
+  overlay.classList.add('flash');
+
+  setTimeout(() => {
+    applyMode(mode, true);
+    if (document.getElementById('hero-badge').style.opacity === '0' ||
+        document.getElementById('hero-badge').style.opacity === '') {
+      initHeroAnimations();
+    }
+  }, 175);
+}
+
+/* ─── ONBOARDING CHOOSE ─── */
+function chooseMode(mode) {
+  localStorage.setItem('ls-mode', mode);
+  document.body.classList.remove('modal-open');
+  const ob = document.getElementById('onboarding');
+  ob.classList.add('hidden');
+
+  applyMode(mode, false);
+  particlesRunning = false;
+  setTimeout(initHeroAnimations, 200);
+}
+
+// Check if already visited
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('ls-mode');
+  const ob = document.getElementById('onboarding');
+
+  if (saved) {
+    ob.style.display = 'none';
+    document.body.classList.remove('modal-open');
+    applyMode(saved, false);
+    setTimeout(initHeroAnimations, 300);
+  } else {
+    ob.classList.add('visible');
+    initOnboardingParticles();
+  }
+
+  // Load real Google Reviews (auto-updates every page visit)
+  loadGoogleReviews();
+});
+
+/* ─── MOBILE NAV ─── */
+function toggleMobileNav() {
+  const nav = document.getElementById('mobile-nav');
+  const overlay = document.getElementById('mobile-overlay');
+  const burger = document.getElementById('nav-hamburger');
+  const isOpen = nav.classList.contains('open');
+  nav.classList.toggle('open', !isOpen);
+  overlay.classList.toggle('open', !isOpen);
+  burger.classList.toggle('open', !isOpen);
+  document.body.style.overflow = isOpen ? '' : 'hidden';
+}
+function closeMobileNav() {
+  document.getElementById('mobile-nav').classList.remove('open');
+  document.getElementById('mobile-overlay').classList.remove('open');
+  document.getElementById('nav-hamburger').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+/* ─── ONBOARDING PARTICLES ─── */
+let particlesRunning = true;
+
+function initOnboardingParticles() {
+  const canvas = document.getElementById('onboarding-canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const particles = [];
+  for (let i = 0; i < 60; i++) {
+    particles.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 2.5 + 0.5,
+      speed: Math.random() * 0.4 + 0.1,
+      opacity: Math.random() * 0.5 + 0.1
+    });
+  }
+
+  function draw() {
+    if (!particlesRunning) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => {
+      p.y -= p.speed;
+      if (p.y < -5) p.y = canvas.height + 5;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(201,169,110,${p.opacity})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+/* ─── HERO CANVAS PARTICLES ─── */
+function initHeroCanvas() {
+  const canvas = document.getElementById('hero-canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+
+  const particles = [];
+  for (let i = 0; i < 50; i++) {
+    particles.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 2 + 0.5,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: -(Math.random() * 0.5 + 0.15),
+      opacity: Math.random() * 0.45 + 0.1
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.y < -5) { p.y = canvas.height + 5; p.x = Math.random() * canvas.width; }
+      if (p.x < 0) p.x = canvas.width;
+      if (p.x > canvas.width) p.x = 0;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(201,169,110,${p.opacity})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+}
+initHeroCanvas();
+
+/* ─── HERO ANIMATIONS (GSAP) ─── */
+function initHeroAnimations() {
+  const tl = gsap.timeline();
+  tl.to('#hero-badge', { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' })
+    .to('#ht-line1', { y: '0%', duration: 0.9, ease: 'power4.out' }, '-=0.4')
+    .to('#ht-line2', { y: '0%', duration: 0.9, ease: 'power4.out' }, '-=0.65')
+    .to('#hero-sub', { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, '-=0.5')
+    .to('#hero-actions', { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, '-=0.5')
+    .to('#hero-scroll', { opacity: 1, duration: 0.6 }, '-=0.3');
+}
+
+/* ─── NAVBAR ─── */
+const navbar = document.getElementById('navbar');
+window.addEventListener('scroll', () => {
+  navbar.classList.toggle('scrolled', window.scrollY > 60);
+});
+
+/* ─── PROGRESS BAR ─── */
+window.addEventListener('scroll', () => {
+  const h = document.documentElement;
+  const pct = (window.scrollY / (h.scrollHeight - h.clientHeight)) * 100;
+  document.getElementById('progress-bar').style.width = pct + '%';
+});
+
+/* ─── CUSTOM CURSOR ─── */
+const dot = document.getElementById('cursor-dot');
+const ring = document.getElementById('cursor-ring');
+let mx = 0, my = 0, rx = 0, ry = 0;
+
+document.addEventListener('mousemove', e => {
+  mx = e.clientX; my = e.clientY;
+  gsap.to(dot, { x: mx, y: my, duration: 0.06, ease: 'none' });
+});
+
+function animateCursor() {
+  rx += (mx - rx) * 0.12;
+  ry += (my - ry) * 0.12;
+  gsap.set(ring, { x: rx, y: ry });
+  requestAnimationFrame(animateCursor);
+}
+animateCursor();
+
+/* ─── SCROLL ANIMATIONS (GSAP + ScrollTrigger) ─── */
+// Section headings — clip reveal
+document.querySelectorAll('.section-title, .wf-title').forEach(el => {
+  gsap.from(el, {
+    scrollTrigger: { trigger: el, start: 'top 88%' },
+    opacity: 0,
+    y: 40,
+    duration: 0.9,
+    ease: 'power3.out'
+  });
+});
+
+// Eyebrows
+document.querySelectorAll('.eyebrow').forEach(el => {
+  gsap.from(el, {
+    scrollTrigger: { trigger: el, start: 'top 90%' },
+    opacity: 0,
+    y: 18,
+    duration: 0.65,
+    ease: 'power2.out'
+  });
+});
+
+// Cards with stagger
+document.querySelectorAll('.service-card, .t-card, .wf-pillar, .onboarding-card, .pricing-step, .pricing-callout, .pricing-cta-block').forEach((el, i) => {
+  gsap.from(el, {
+    scrollTrigger: { trigger: el, start: 'top 90%' },
+    opacity: 0,
+    y: 40,
+    scale: 0.97,
+    duration: 0.7,
+    delay: (i % 4) * 0.1,
+    ease: 'power3.out'
+  });
+});
+
+// Gallery items
+document.querySelectorAll('.g-item').forEach((el, i) => {
+  gsap.from(el, {
+    scrollTrigger: { trigger: el, start: 'top 92%' },
+    opacity: 0,
+    scale: 0.94,
+    duration: 0.65,
+    delay: i * 0.07,
+    ease: 'power2.out'
+  });
+});
+
+// Hero parallax
+window.addEventListener('scroll', () => {
+  const heroBg = document.getElementById('hero-bg');
+  if (heroBg) {
+    gsap.set(heroBg, { y: window.scrollY * 0.35 });
+  }
+});
+
+// Stats section — clip reveal
+gsap.from('.stats-section', {
+  scrollTrigger: { trigger: '.stats-section', start: 'top 85%' },
+  opacity: 0,
+  y: 30,
+  duration: 0.8,
+  ease: 'power3.out'
+});
+
+// Dry hire section
+gsap.from('.dh-content > *', {
+  scrollTrigger: { trigger: '.dry-hire', start: 'top 80%' },
+  opacity: 0,
+  x: -40,
+  duration: 0.85,
+  stagger: 0.12,
+  ease: 'power3.out'
+});
+gsap.from('.dh-visual', {
+  scrollTrigger: { trigger: '.dry-hire', start: 'top 80%' },
+  opacity: 0,
+  x: 40,
+  duration: 0.85,
+  ease: 'power3.out'
+});
+
+/* ─── COUNTER ANIMATION ─── */
+document.querySelectorAll('.count').forEach(el => {
+  const target = parseInt(el.dataset.target);
+  ScrollTrigger.create({
+    trigger: el,
+    start: 'top 90%',
+    once: true,
+    onEnter: () => {
+      gsap.to({ val: 0 }, {
+        val: target,
+        duration: 1.6,
+        ease: 'power2.out',
+        onUpdate() { el.textContent = Math.round(this.targets()[0].val); }
+      });
+    }
+  });
+});
+
+/* ─── 3D CARD TILT ─── */
+document.querySelectorAll('.t-card, .service-card').forEach(card => {
+  card.addEventListener('mousemove', e => {
+    const r = card.getBoundingClientRect();
+    const x = e.clientX - r.left - r.width / 2;
+    const y = e.clientY - r.top - r.height / 2;
+    gsap.to(card, {
+      rotateY: x / r.width * 10,
+      rotateX: -(y / r.height) * 8,
+      duration: 0.4,
+      ease: 'power2.out',
+      transformPerspective: 800
+    });
+  });
+  card.addEventListener('mouseleave', () => {
+    gsap.to(card, { rotateY: 0, rotateX: 0, duration: 0.5, ease: 'power2.out' });
+  });
+});
+
+/* ─── MAGNETIC BUTTONS ─── */
+document.querySelectorAll('.btn-primary, .btn-secondary, .nav-cta, .pctb-btn').forEach(btn => {
+  btn.addEventListener('mousemove', e => {
+    const r = btn.getBoundingClientRect();
+    const x = (e.clientX - r.left - r.width / 2) * 0.3;
+    const y = (e.clientY - r.top - r.height / 2) * 0.3;
+    gsap.to(btn, { x, y, duration: 0.3, ease: 'power2.out' });
+  });
+  btn.addEventListener('mouseleave', () => {
+    gsap.to(btn, { x: 0, y: 0, duration: 0.5, ease: 'elastic.out(1, 0.4)' });
+  });
+});
+
+/* ─── FAQ ─── */
+function toggleFaq(btn) {
+  const answer = btn.nextElementSibling;
+  const isOpen = answer.classList.contains('open');
+  document.querySelectorAll('.faq-a.open').forEach(a => a.classList.remove('open'));
+  document.querySelectorAll('.faq-q.open').forEach(b => b.classList.remove('open'));
+  if (!isOpen) {
+    answer.classList.add('open');
+    btn.classList.add('open');
+  }
+}
+
+/* ─── LIGHTBOX ─── */
+function openLb(src) {
+  document.getElementById('lb-img').src = src;
+  document.getElementById('lightbox').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeLb() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLb(); });
+
+/* ─── FORM ─── */
+function handleSubmit(e) {
+  e.preventDefault();
+  const btn = e.target.querySelector('.form-submit');
+  const orig = btn.textContent;
+  btn.textContent = '✓ Sent! We\'ll be in touch soon.';
+  btn.style.background = '#22c55e';
+  setTimeout(() => {
+    btn.textContent = orig;
+    btn.style.background = '';
+    e.target.reset();
+  }, 4000);
+}
+</script>
+
+</body>
+</html>
