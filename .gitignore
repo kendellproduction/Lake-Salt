@@ -31,6 +31,7 @@ static/images/*.MOV
 .env
 .env.*
 !.env.example
+website/firebase-config.js
 *.secret
 *.secrets
 secrets.json

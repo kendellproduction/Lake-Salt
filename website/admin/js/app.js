@@ -248,4 +248,10 @@ async function renderDashboard() {
 }
 
 // ── Boot ──
-document.addEventListener('DOMContentLoaded', initAuth);
+// Scripts are at bottom of <body>, so DOMContentLoaded may have already fired.
+// Use readyState check to guarantee initAuth() always runs.
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initAuth);
+} else {
+  initAuth();
+}

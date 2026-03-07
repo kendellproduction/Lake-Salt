@@ -64,23 +64,16 @@
   <!-- EmailJS -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script>emailjs.init('S5_thaUg6waOnC7bZ');</script>
-  <!-- Firebase (lead capture to Firestore)
-       SECURITY NOTE: Firebase web API keys are public project identifiers, NOT passwords.
-       Real security = Firestore Rules + Firebase Auth + GCP API key referrer restriction.
-       Restrict this key to https://lakesalt.us/* in GCP Console > APIs > Credentials.
-       See: https://firebase.google.com/docs/projects/api-keys -->
+  <!-- Firebase config (gitignored — keys never committed to repo) -->
+  <script src="firebase-config.js"></script>
+  <!-- Firebase SDK (lead capture to Firestore) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script>
-    firebase.initializeApp({
-      apiKey:            "AIzaSyDM0fwljJyweIFdVXTmZqtHoJdJkuWaDrc", // gitleaks:allow
-      authDomain:        "lake-salt.firebaseapp.com",
-      projectId:         "lake-salt",
-      storageBucket:     "lake-salt.firebasestorage.app",
-      messagingSenderId: "763405613762",
-      appId:             "1:763405613762:web:d53537608a6b39bd3d195b"
-    });
-    const _db = firebase.firestore();
+    if (window.FIREBASE_CONFIG) {
+      firebase.initializeApp(window.FIREBASE_CONFIG);
+      window._db = firebase.firestore();
+    }
   </script>
 
   <style>
