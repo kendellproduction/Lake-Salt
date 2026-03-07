@@ -295,6 +295,112 @@
     }
     .onboarding-skip:hover { color: rgba(255,255,255,0.45); }
 
+    /* ── Multi-step onboarding ── */
+    .ob-steps {
+      display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 1.75rem;
+    }
+    .ob-step {
+      width: 28px; height: 3px; border-radius: 2px;
+      background: rgba(255,255,255,0.12); transition: background 0.3s;
+    }
+    .ob-step.active { background: var(--champagne); }
+    .ob-step.done   { background: rgba(201,169,110,0.35); }
+    .ob-panel { display: none; }
+    .ob-panel.active { display: block; animation: obFadeIn 0.35s var(--ease); }
+    @keyframes obFadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .ob-chips {
+      display: flex; flex-wrap: wrap; gap: 0.65rem;
+      justify-content: center; margin-bottom: 1.4rem;
+    }
+    .ob-chip {
+      padding: 0.6rem 1.3rem;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 100px;
+      background: rgba(255,255,255,0.04);
+      color: rgba(255,255,255,0.6);
+      font-size: 0.88rem;
+      font-family: var(--font-body);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .ob-chip:hover { border-color: rgba(201,169,110,0.5); color: rgba(255,255,255,0.9); }
+    .ob-chip.selected {
+      background: rgba(201,169,110,0.14);
+      border-color: rgba(201,169,110,0.8);
+      color: var(--champagne);
+    }
+    .ob-textarea, .ob-input {
+      width: 100%; box-sizing: border-box;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: var(--r-sm);
+      color: var(--white);
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      padding: 0.85rem 1rem;
+      transition: border-color 0.2s;
+    }
+    .ob-textarea { resize: none; min-height: 80px; margin-bottom: 1.4rem; }
+    .ob-input { margin-bottom: 1.4rem; }
+    .ob-textarea::placeholder, .ob-input::placeholder { color: rgba(255,255,255,0.22); }
+    .ob-textarea:focus, .ob-input:focus {
+      outline: none; border-color: rgba(201,169,110,0.45);
+    }
+    .ob-nav {
+      display: flex; align-items: center;
+      justify-content: space-between; margin-top: 0.25rem;
+    }
+    .ob-back {
+      background: none; border: none;
+      color: rgba(255,255,255,0.28);
+      font-family: var(--font-body); font-size: 0.82rem;
+      cursor: pointer; transition: color 0.2s; padding: 0.5rem;
+    }
+    .ob-back:hover { color: rgba(255,255,255,0.6); }
+    .ob-next-btn {
+      padding: 0.72rem 2rem;
+      background: var(--champagne); color: var(--navy);
+      border: none; border-radius: 100px;
+      font-family: var(--font-body); font-size: 0.82rem;
+      font-weight: 700; letter-spacing: 0.06em;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .ob-next-btn:hover { background: var(--champagne-lt); transform: translateY(-1px); }
+    .ob-finish { background: linear-gradient(135deg, var(--champagne), #e8c87a); }
+
+    /* Quote nudge bar */
+    .quote-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(8, 16, 32, 0.97);
+      backdrop-filter: blur(18px);
+      border-top: 1px solid rgba(201,169,110,0.25);
+      padding: 0.9rem 2rem;
+      display: flex; align-items: center; gap: 1rem;
+      z-index: 5000;
+      transform: translateY(100%);
+      transition: transform 0.45s cubic-bezier(0.4,0,0.2,1);
+    }
+    .quote-bar.show { transform: translateY(0); }
+    .quote-bar-text { flex: 1; font-size: 0.8rem; color: rgba(255,255,255,0.6); }
+    .quote-bar-text strong { color: var(--champagne); font-weight: 600; }
+    .quote-bar-btn {
+      padding: 0.5rem 1.3rem;
+      background: var(--champagne); color: var(--navy);
+      border-radius: 100px; font-size: 0.77rem;
+      font-weight: 700; letter-spacing: 0.05em;
+      white-space: nowrap; transition: background 0.2s;
+    }
+    .quote-bar-btn:hover { background: var(--champagne-lt); }
+    .quote-bar-dismiss {
+      background: none; border: none;
+      color: rgba(255,255,255,0.28); font-size: 1rem;
+      cursor: pointer; padding: 0.2rem; transition: color 0.2s; line-height: 1;
+    }
+    .quote-bar-dismiss:hover { color: rgba(255,255,255,0.65); }
+
     /* Canvas particles behind onboarding */
     #onboarding-canvas {
       position: absolute;
@@ -1823,7 +1929,15 @@
       .onboarding-inner { padding-top: 0; }
       .onboarding-q { font-size: clamp(1.6rem, 8vw, 2.4rem); }
       #onboarding::after { display: none; }
-      /* Safety net: if GSAP stalls on mobile, force visibility */
+      .ob-chips { gap: 0.5rem; }
+      .ob-chip { font-size: 0.8rem; padding: 0.52rem 0.9rem; }
+      .ob-nav { margin-top: 0.75rem; }
+      .quote-bar {
+        flex-direction: column; align-items: flex-start;
+        gap: 0.65rem; padding: 1rem 1.25rem 1.5rem;
+      }
+      .quote-bar-text { font-size: 0.78rem; }
+  /* Safety net: if GSAP stalls on mobile, force visibility */
       .dh-content > *, .dh-visual { opacity: 1 !important; transform: none !important; }
 
       .contact-grid { grid-template-columns: 1fr; gap: 2.5rem; }
@@ -1888,28 +2002,80 @@
 <div id="onboarding">
   <canvas id="onboarding-canvas"></canvas>
   <div class="onboarding-inner">
-    <div class="onboarding-badge">🍸 Utah's Premier Bar Service</div>
-    <h2 class="onboarding-q">What are we<br/><em>pouring for?</em></h2>
-    <p class="onboarding-sub">Pick your event type and we'll tailor everything for you</p>
-    <div class="onboarding-cards">
-      <button class="onboarding-card" onclick="chooseMode('wedding')">
-        <span class="card-emoji">🥂</span>
-        <div class="card-title">Wedding</div>
-        <div class="card-desc">Ceremony, reception,<br/>cocktail hour &amp; toasts</div>
-      </button>
-      <button class="onboarding-card" onclick="chooseMode('corporate')">
-        <span class="card-emoji">🍾</span>
-        <div class="card-title">Corporate</div>
-        <div class="card-desc">Company events,<br/>parties &amp; conferences</div>
-      </button>
-      <button class="onboarding-card" onclick="chooseMode('all')">
-        <span class="card-emoji">🎊</span>
-        <div class="card-title">Celebration</div>
-        <div class="card-desc">Birthdays, private parties<br/>&amp; everything else</div>
-      </button>
+    <!-- Step dots -->
+    <div class="ob-steps">
+      <span class="ob-step active"></span>
+      <span class="ob-step"></span>
+      <span class="ob-step"></span>
     </div>
-    <button class="onboarding-skip" onclick="chooseMode('all')">skip &rarr;</button>
-  </div>
+
+    <!-- Step 1: Event type -->
+    <div class="ob-panel active" id="ob-p1">
+      <div class="onboarding-badge">🍸 Utah's Premier Bar Service</div>
+      <h2 class="onboarding-q">What are we<br/><em>pouring for?</em></h2>
+      <p class="onboarding-sub">Pick your event type</p>
+      <div class="onboarding-cards">
+        <button class="onboarding-card" onclick="obSelect('eventType','wedding'); obNext()">
+          <span class="card-emoji">🥂</span>
+          <div class="card-title">Wedding</div>
+          <div class="card-desc">Ceremony, reception,<br/>cocktail hour &amp; toasts</div>
+        </button>
+        <button class="onboarding-card" onclick="obSelect('eventType','corporate'); obNext()">
+          <span class="card-emoji">🍾</span>
+          <div class="card-title">Corporate</div>
+          <div class="card-desc">Company events,<br/>parties &amp; conferences</div>
+        </button>
+        <button class="onboarding-card" onclick="obSelect('eventType','all'); obNext()">
+          <span class="card-emoji">🎊</span>
+          <div class="card-title">Celebration</div>
+          <div class="card-desc">Birthdays, private parties<br/>&amp; everything else</div>
+        </button>
+      </div>
+      <button class="onboarding-skip" onclick="obSkipAll()">skip &rarr;</button>
+    </div><!-- /ob-p1 -->
+
+    <!-- Step 2: Drinks -->
+    <div class="ob-panel" id="ob-p2">
+      <h2 class="onboarding-q">What's on the<br/><em>menu?</em></h2>
+      <p class="onboarding-sub">Select all that apply</p>
+      <div class="ob-chips" id="ob-drinks">
+        <button class="ob-chip" data-val="mocktails" onclick="obToggleChip(this,'drinks')">🍹 Mocktails</button>
+        <button class="ob-chip" data-val="cocktails" onclick="obToggleChip(this,'drinks')">🍸 Cocktails</button>
+        <button class="ob-chip" data-val="beer" onclick="obToggleChip(this,'drinks')">🍺 Beer</button>
+        <button class="ob-chip" data-val="wine" onclick="obToggleChip(this,'drinks')">🍷 Wine</button>
+      </div>
+      <textarea class="ob-textarea" id="ob-notes" placeholder="Signature drinks, themes, or anything else on your mind..."></textarea>
+      <div class="ob-nav">
+        <button class="ob-back" onclick="obGoTo(1)">← Back</button>
+        <button class="ob-next-btn" onclick="obNext()">Next →</button>
+      </div>
+    </div><!-- /ob-p2 -->
+
+    <!-- Step 3: Venue -->
+    <div class="ob-panel" id="ob-p3">
+      <h2 class="onboarding-q">Where's the<br/><em>party?</em></h2>
+      <p class="onboarding-sub">Choose your venue type</p>
+      <div class="ob-chips" id="ob-venue">
+        <button class="ob-chip" data-val="home" onclick="obToggleChip(this,'venue',true)">🏠 At a Home</button>
+        <button class="ob-chip" data-val="business" onclick="obToggleChip(this,'venue',true)">🏢 At a Business</button>
+        <button class="ob-chip" data-val="venue_hall" onclick="obToggleChip(this,'venue',true)">🎪 At a Venue</button>
+        <button class="ob-chip" data-val="outdoors" onclick="obToggleChip(this,'venue',true)">🌿 Outdoors</button>
+      </div>
+      <input class="ob-input" id="ob-venue-text" type="text" placeholder="Venue name or city (optional)" />
+      <div class="ob-nav">
+        <button class="ob-back" onclick="obGoTo(2)">← Back</button>
+        <button class="ob-next-btn ob-finish" onclick="obFinish()">Build My Quote →</button>
+      </div>
+    </div><!-- /ob-p3 -->
+
+  </div><!-- /onboarding-inner -->
+</div><!-- /#onboarding -->
+
+<!-- Quote nudge bar -->
+<div class="quote-bar" id="quote-bar">
+  <span class="quote-bar-text">✨ Your details are saved — <strong>ready to request a quote?</strong></span>
+  <a href="#contact" class="quote-bar-btn" onclick="document.getElementById('quote-bar').classList.remove('show')">Complete Quote →</a>
+  <button class="quote-bar-dismiss" onclick="document.getElementById('quote-bar').classList.remove('show')" aria-label="Dismiss">✕</button>
 </div>
 
 <!-- ═══════════════════════════════════════════
@@ -2006,8 +2172,8 @@
         alt="Freshly crafted margarita with lime garnish"
         class="wf-img-accent" loading="lazy" />
       <div class="wf-label-float">
-        <div class="big">100<span style="font-size:1.2rem">+</span></div>
-        <div class="small">Weddings Served</div>
+        <div class="big">5.0<span style="font-size:1.4rem">★</span></div>
+        <div class="small">Google Rated</div>
       </div>
     </div>
     <div class="wf-content">
@@ -2401,7 +2567,7 @@
         <div class="stat-desc">Perfect score across every review</div>
       </div>
       <div class="stat-item">
-        <div class="stat-num"><span class="count" data-target="100">0</span><span class="accent">+</span></div>
+        <div class="stat-num"><span class="count" data-target="15">0</span><span class="accent">+</span></div>
         <div class="stat-label">Events Served</div>
         <div class="stat-desc">Weddings, corporate &amp; private celebrations</div>
       </div>
@@ -2905,6 +3071,86 @@ function switchMode(mode) {
       initHeroAnimations();
     }
   }, 175);
+}
+
+/* ─── MULTI-STEP ONBOARDING ─── */
+let obStep = 1;
+const obTotalSteps = 3;
+let obData = { eventType: 'all', drinks: [], venue: null, venueText: '', notes: '' };
+
+function obSelect(key, value) { obData[key] = value; }
+
+function obToggleChip(el, key, singleSelect) {
+  const container = el.parentElement;
+  if (singleSelect) {
+    container.querySelectorAll('.ob-chip').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    obData[key] = el.dataset.val;
+  } else {
+    el.classList.toggle('selected');
+    obData[key] = Array.from(container.querySelectorAll('.ob-chip.selected')).map(c => c.dataset.val);
+  }
+}
+
+function obGoTo(step) {
+  const cur = document.getElementById(`ob-p${obStep}`);
+  const nxt = document.getElementById(`ob-p${step}`);
+  if (!nxt) return;
+  if (cur) cur.classList.remove('active');
+  nxt.classList.add('active');
+  obStep = step;
+  document.querySelectorAll('.ob-step').forEach((dot, i) => {
+    dot.classList.toggle('active', i + 1 === obStep);
+    dot.classList.toggle('done',   i + 1 < obStep);
+  });
+}
+
+function obNext() {
+  if (obStep < obTotalSteps) obGoTo(obStep + 1);
+}
+
+function obSkipAll() {
+  chooseMode(obData.eventType || 'all');
+}
+
+function obFinish() {
+  const notesEl = document.getElementById('ob-notes');
+  const venueTextEl = document.getElementById('ob-venue-text');
+  if (notesEl) obData.notes = notesEl.value.trim();
+  if (venueTextEl) obData.venueText = venueTextEl.value.trim();
+  localStorage.setItem('ls-quote-data', JSON.stringify(obData));
+  chooseMode(obData.eventType || 'all');
+  setTimeout(prefillForm, 450);
+  setTimeout(() => { document.getElementById('quote-bar').classList.add('show'); }, 1400);
+}
+
+function prefillForm() {
+  const d = obData;
+  const evtSel = document.querySelector('select[name="event_type"]');
+  if (evtSel && d.eventType) {
+    const map = { wedding: 'Wedding', corporate: 'Corporate Event', all: 'Private Celebration' };
+    const val = map[d.eventType] || '';
+    Array.from(evtSel.options).forEach(o => { if (o.text === val) o.selected = true; });
+  }
+  const venueInput = document.querySelector('input[name="venue"]');
+  if (venueInput) {
+    if (d.venueText) {
+      venueInput.value = d.venueText;
+    } else if (d.venue) {
+      const vl = { home: 'At a Home', business: 'At a Business', venue_hall: 'At a Venue', outdoors: 'Outdoors' };
+      venueInput.value = vl[d.venue] || '';
+    }
+  }
+  const msgArea = document.querySelector('textarea[name="message"]');
+  if (msgArea) {
+    const parts = [];
+    if (d.drinks && d.drinks.length) {
+      const dl = { mocktails: 'Mocktails', cocktails: 'Cocktails', beer: 'Beer', wine: 'Wine' };
+      parts.push('Drinks: ' + d.drinks.map(k => dl[k] || k).join(', '));
+    }
+    if (d.notes) parts.push(d.notes);
+    if (parts.length) msgArea.value = parts.join('\n');
+  }
 }
 
 /* ─── ONBOARDING CHOOSE ─── */
