@@ -64,6 +64,20 @@
   <!-- EmailJS -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script>emailjs.init('S5_thaUg6waOnC7bZ');</script>
+  <!-- Firebase (lead capture to Firestore) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script>
+    firebase.initializeApp({
+      apiKey:            "AIzaSyDM0fwljJyweIFdVXTmZqtHoJdJkuWaDrc",
+      authDomain:        "lake-salt.firebaseapp.com",
+      projectId:         "lake-salt",
+      storageBucket:     "lake-salt.firebasestorage.app",
+      messagingSenderId: "763405613762",
+      appId:             "1:763405613762:web:d53537608a6b39bd3d195b"
+    });
+    const _db = firebase.firestore();
+  </script>
 
   <style>
     /* ─────────────────────────────────────────
@@ -3595,6 +3609,26 @@ function handleSubmit(e) {
 
   btn.textContent = 'Sending…';
   btn.disabled = true;
+
+  // Capture lead data for Firestore
+  const leadData = {
+    name:       form.querySelector('[name="from_name"]')?.value || '',
+    email:      emailVal,
+    phone:      form.querySelector('[name="phone"]')?.value || '',
+    eventType:  form.querySelector('[name="event_type"]')?.value || '',
+    eventDate:  form.querySelector('[name="event_date"]')?.value || '',
+    guestCount: form.querySelector('[name="guest_count"]')?.value || '',
+    venue:      form.querySelector('[name="venue"]')?.value || '',
+    message:    form.querySelector('[name="message"]')?.value || '',
+    stage:      'New Lead',
+    source:     'Website Form',
+    createdAt:  firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  // Save lead to Firestore (fire-and-forget — don't block EmailJS)
+  _db.collection('leads').add(leadData).catch(err => {
+    console.warn('Firestore lead save failed:', err);
+  });
 
   emailjs.sendForm('service_rbzoxto', 'template_fch6b4c', form)
     .then(() => {
