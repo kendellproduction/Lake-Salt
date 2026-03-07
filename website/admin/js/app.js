@@ -1,15 +1,18 @@
 /* ─── APP SHELL: ROUTING, NAV, TOAST, MODAL ─── */
 
 // ── Module registry ──
+// Arrow functions are used so each render* reference is resolved lazily at
+// call time (not at parse time), avoiding ReferenceErrors when app.js loads
+// before the individual module scripts have run.
 const MODULES = {
-  dashboard:  renderDashboard,
-  crm:        renderCRM,
-  projects:   renderProjects,
-  bartenders: renderBartenders,
-  analytics:  renderAnalytics,
-  expenses:   renderExpenses,
-  inventory:  renderInventory,
-  funnel:     renderFunnel
+  dashboard:  () => renderDashboard(),
+  crm:        () => renderCRM(),
+  projects:   () => renderProjects(),
+  bartenders: () => renderBartenders(),
+  analytics:  () => renderAnalytics(),
+  expenses:   () => renderExpenses(),
+  inventory:  () => renderInventory(),
+  funnel:     () => renderFunnel()
 };
 
 // ── Load a module ──
