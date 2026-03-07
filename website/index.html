@@ -2002,9 +2002,11 @@
 <div id="onboarding">
   <canvas id="onboarding-canvas"></canvas>
   <div class="onboarding-inner">
-    <!-- Step dots -->
+    <!-- Step dots (5 steps) -->
     <div class="ob-steps">
       <span class="ob-step active"></span>
+      <span class="ob-step"></span>
+      <span class="ob-step"></span>
       <span class="ob-step"></span>
       <span class="ob-step"></span>
     </div>
@@ -2037,14 +2039,15 @@
     <!-- Step 2: Drinks -->
     <div class="ob-panel" id="ob-p2">
       <h2 class="onboarding-q">What's on the<br/><em>menu?</em></h2>
-      <p class="onboarding-sub">Select all that apply</p>
+      <p class="onboarding-sub">Pick a style — the more specific, the better</p>
       <div class="ob-chips" id="ob-drinks">
-        <button class="ob-chip" data-val="mocktails" onclick="obToggleChip(this,'drinks')">🍹 Mocktails</button>
         <button class="ob-chip" data-val="cocktails" onclick="obToggleChip(this,'drinks')">🍸 Cocktails</button>
+        <button class="ob-chip" data-val="mocktails" onclick="obToggleChip(this,'drinks')">🍹 Mocktails</button>
         <button class="ob-chip" data-val="beer" onclick="obToggleChip(this,'drinks')">🍺 Beer</button>
         <button class="ob-chip" data-val="wine" onclick="obToggleChip(this,'drinks')">🍷 Wine</button>
+        <button class="ob-chip" data-val="open_bar" onclick="obToggleChip(this,'drinks',true)">🎉 Open Bar</button>
       </div>
-      <textarea class="ob-textarea" id="ob-notes" placeholder="Signature drinks, themes, or anything else on your mind..."></textarea>
+      <input class="ob-input" id="ob-drink-detail" type="text" placeholder="Specific drinks? e.g. margaritas, sangria, moscow mules" />
       <div class="ob-nav">
         <button class="ob-back" onclick="obGoTo(1)">← Back</button>
         <button class="ob-next-btn" onclick="obNext()">Next →</button>
@@ -2054,7 +2057,6 @@
     <!-- Step 3: Venue -->
     <div class="ob-panel" id="ob-p3">
       <h2 class="onboarding-q">Where's the<br/><em>party?</em></h2>
-      <p class="onboarding-sub">Choose your venue type</p>
       <div class="ob-chips" id="ob-venue">
         <button class="ob-chip" data-val="home" onclick="obToggleChip(this,'venue',true)">🏠 At a Home</button>
         <button class="ob-chip" data-val="business" onclick="obToggleChip(this,'venue',true)">🏢 At a Business</button>
@@ -2064,9 +2066,36 @@
       <input class="ob-input" id="ob-venue-text" type="text" placeholder="Venue name or city (optional)" />
       <div class="ob-nav">
         <button class="ob-back" onclick="obGoTo(2)">← Back</button>
-        <button class="ob-next-btn ob-finish" onclick="obFinish()">Build My Quote →</button>
+        <button class="ob-next-btn" onclick="obNext()">Next →</button>
       </div>
     </div><!-- /ob-p3 -->
+
+    <!-- Step 4: Date -->
+    <div class="ob-panel" id="ob-p4">
+      <h2 class="onboarding-q">When's the<br/><em>event?</em></h2>
+      <p class="onboarding-sub">Approximate is fine</p>
+      <input class="ob-input ob-input-lg" id="ob-date" type="text" placeholder="e.g. June 14, 2026 or next summer" />
+      <div class="ob-nav">
+        <button class="ob-back" onclick="obGoTo(3)">← Back</button>
+        <button class="ob-next-btn" onclick="obNext()">Next →</button>
+      </div>
+    </div><!-- /ob-p4 -->
+
+    <!-- Step 5: Guest count -->
+    <div class="ob-panel" id="ob-p5">
+      <h2 class="onboarding-q">How many<br/><em>guests?</em></h2>
+      <div class="ob-chips" id="ob-guests">
+        <button class="ob-chip" data-val="under_50" onclick="obToggleChip(this,'guestRange',true)">Under 50</button>
+        <button class="ob-chip" data-val="50_100" onclick="obToggleChip(this,'guestRange',true)">50–100</button>
+        <button class="ob-chip" data-val="100_200" onclick="obToggleChip(this,'guestRange',true)">100–200</button>
+        <button class="ob-chip" data-val="200_plus" onclick="obToggleChip(this,'guestRange',true)">200+</button>
+      </div>
+      <input class="ob-input" id="ob-guest-num" type="number" placeholder="Or enter a number" min="1" />
+      <div class="ob-nav">
+        <button class="ob-back" onclick="obGoTo(4)">← Back</button>
+        <button class="ob-next-btn ob-finish" onclick="obFinish()">Build My Quote →</button>
+      </div>
+    </div><!-- /ob-p5 -->
 
   </div><!-- /onboarding-inner -->
 </div><!-- /#onboarding -->
@@ -3075,8 +3104,8 @@ function switchMode(mode) {
 
 /* ─── MULTI-STEP ONBOARDING ─── */
 let obStep = 1;
-const obTotalSteps = 3;
-let obData = { eventType: 'all', drinks: [], venue: null, venueText: '', notes: '' };
+const obTotalSteps = 5;
+let obData = { eventType: 'all', drinks: [], drinkDetail: '', venue: null, venueText: '', date: '', guestRange: null, guestNum: '' };
 
 function obSelect(key, value) { obData[key] = value; }
 
@@ -3114,10 +3143,14 @@ function obSkipAll() {
 }
 
 function obFinish() {
-  const notesEl = document.getElementById('ob-notes');
-  const venueTextEl = document.getElementById('ob-venue-text');
-  if (notesEl) obData.notes = notesEl.value.trim();
-  if (venueTextEl) obData.venueText = venueTextEl.value.trim();
+  const drinkDetailEl = document.getElementById('ob-drink-detail');
+  const venueTextEl   = document.getElementById('ob-venue-text');
+  const dateEl        = document.getElementById('ob-date');
+  const guestNumEl    = document.getElementById('ob-guest-num');
+  if (drinkDetailEl) obData.drinkDetail = drinkDetailEl.value.trim();
+  if (venueTextEl)   obData.venueText   = venueTextEl.value.trim();
+  if (dateEl)        obData.date        = dateEl.value.trim();
+  if (guestNumEl)    obData.guestNum    = guestNumEl.value.trim();
   localStorage.setItem('ls-quote-data', JSON.stringify(obData));
   chooseMode(obData.eventType || 'all');
   setTimeout(prefillForm, 450);
@@ -3126,12 +3159,16 @@ function obFinish() {
 
 function prefillForm() {
   const d = obData;
+
+  // Event type
   const evtSel = document.querySelector('select[name="event_type"]');
   if (evtSel && d.eventType) {
     const map = { wedding: 'Wedding', corporate: 'Corporate Event', all: 'Private Celebration' };
     const val = map[d.eventType] || '';
     Array.from(evtSel.options).forEach(o => { if (o.text === val) o.selected = true; });
   }
+
+  // Venue
   const venueInput = document.querySelector('input[name="venue"]');
   if (venueInput) {
     if (d.venueText) {
@@ -3141,14 +3178,36 @@ function prefillForm() {
       venueInput.value = vl[d.venue] || '';
     }
   }
+
+  // Event date (text field — pass as-is)
+  const dateInput = document.querySelector('input[name="event_date"]');
+  if (dateInput && d.date) {
+    // Try parsing to an actual date value; fall back to leaving it for the message
+    const parsed = new Date(d.date);
+    if (!isNaN(parsed)) dateInput.value = parsed.toISOString().split('T')[0];
+  }
+
+  // Guest count
+  const guestInput = document.querySelector('input[name="guest_count"]');
+  if (guestInput) {
+    if (d.guestNum) {
+      guestInput.value = d.guestNum;
+    } else if (d.guestRange) {
+      const gl = { under_50: 'Under 50', '50_100': '50–100', '100_200': '100–200', '200_plus': '200+' };
+      guestInput.value = gl[d.guestRange] || '';
+    }
+  }
+
+  // Message — drinks summary + specific requests + date if not parseable
   const msgArea = document.querySelector('textarea[name="message"]');
   if (msgArea) {
     const parts = [];
     if (d.drinks && d.drinks.length) {
-      const dl = { mocktails: 'Mocktails', cocktails: 'Cocktails', beer: 'Beer', wine: 'Wine' };
+      const dl = { cocktails: 'Cocktails', mocktails: 'Mocktails', beer: 'Beer', wine: 'Wine', open_bar: 'Open Bar' };
       parts.push('Drinks: ' + d.drinks.map(k => dl[k] || k).join(', '));
     }
-    if (d.notes) parts.push(d.notes);
+    if (d.drinkDetail) parts.push('Specific drinks: ' + d.drinkDetail);
+    if (d.date && isNaN(new Date(d.date))) parts.push('Event date: ' + d.date);
     if (parts.length) msgArea.value = parts.join('\n');
   }
 }
