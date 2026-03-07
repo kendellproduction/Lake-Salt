@@ -1,4 +1,4 @@
-# Logs
+# ── Logs ──────────────────────────────────────
 logs
 *.log
 npm-debug.log*
@@ -7,12 +7,13 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# ── Dependencies ───────────────────────────────
 node_modules
 dist
 dist-ssr
 *.local
 
-# Editor directories and files
+# ── Editor ─────────────────────────────────────
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -22,5 +23,24 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# ── Media ──────────────────────────────────────
 static/images/*.MOV
-static/images/*.MOV
+
+# ── SECRETS — never commit these ───────────────
+.env
+.env.*
+!.env.example
+*.secret
+*.secrets
+secrets.json
+service-account.json
+*-service-account.json
+firebase-adminsdk*.json
+google-credentials.json
+.firebase/
+firebase-debug.log
+firestore-debug.log
+
+# ── Firebase hosting cache ─────────────────────
+.firebase/

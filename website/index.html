@@ -64,12 +64,16 @@
   <!-- EmailJS -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script>emailjs.init('S5_thaUg6waOnC7bZ');</script>
-  <!-- Firebase (lead capture to Firestore) -->
+  <!-- Firebase (lead capture to Firestore)
+       SECURITY NOTE: Firebase web API keys are public project identifiers, NOT passwords.
+       Real security = Firestore Rules + Firebase Auth + GCP API key referrer restriction.
+       Restrict this key to https://lakesalt.us/* in GCP Console > APIs > Credentials.
+       See: https://firebase.google.com/docs/projects/api-keys -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script>
     firebase.initializeApp({
-      apiKey:            "AIzaSyDM0fwljJyweIFdVXTmZqtHoJdJkuWaDrc",
+      apiKey:            "AIzaSyDM0fwljJyweIFdVXTmZqtHoJdJkuWaDrc", // gitleaks:allow
       authDomain:        "lake-salt.firebaseapp.com",
       projectId:         "lake-salt",
       storageBucket:     "lake-salt.firebasestorage.app",
