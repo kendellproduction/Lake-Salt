@@ -3240,20 +3240,15 @@ function chooseMode(mode) {
   setTimeout(() => ScrollTrigger.refresh(), 300);
 }
 
-// Check if already visited
+// Always show onboarding quiz on every fresh page load
 window.addEventListener('DOMContentLoaded', () => {
-  const saved = localStorage.getItem('ls-mode');
   const ob = document.getElementById('onboarding');
 
-  if (saved) {
-    ob.style.display = 'none';
-    document.body.classList.remove('modal-open');
-    applyMode(saved, false);
-    setTimeout(initHeroAnimations, 300);
-  } else {
-    ob.classList.add('visible');
-    initOnboardingParticles();
-  }
+  // Clear any previously saved mode so the quiz always appears
+  localStorage.removeItem('ls-mode');
+
+  ob.classList.add('visible');
+  initOnboardingParticles();
 
   // Load real Google Reviews (auto-updates every page visit)
   loadGoogleReviews();
