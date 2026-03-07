@@ -179,24 +179,44 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(8, 13, 24, 0.97);
+      background: radial-gradient(ellipse at 60% 40%, rgba(28,20,8,0.98) 0%, rgba(6,10,20,0.99) 100%);
       backdrop-filter: blur(12px);
       opacity: 0;
       transition: opacity 0.5s var(--ease);
       padding: 2rem;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
     #onboarding.visible { opacity: 1; }
     #onboarding.hidden  { opacity: 0; pointer-events: none; }
+
+    /* Decorative drink icon watermark */
+    #onboarding::after {
+      content: '🍸';
+      position: fixed;
+      bottom: -2rem;
+      right: -1rem;
+      font-size: 12rem;
+      opacity: 0.04;
+      pointer-events: none;
+      filter: grayscale(1);
+      z-index: 0;
+    }
 
     .onboarding-inner {
       max-width: 760px;
       width: 100%;
       text-align: center;
+      position: relative;
+      z-index: 1;
+      padding: 1rem 0 2rem;
     }
     .onboarding-badge {
-      display: inline-block;
-      padding: 0.3rem 1rem;
-      border: 1px solid rgba(201,169,110,0.35);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 1.1rem;
+      border: 1px solid rgba(201,169,110,0.4);
       border-radius: 100px;
       color: var(--champagne);
       font-size: 0.7rem;
@@ -204,6 +224,7 @@
       letter-spacing: 0.18em;
       text-transform: uppercase;
       margin-bottom: 1.5rem;
+      background: rgba(201,169,110,0.06);
     }
     .onboarding-q {
       font-family: var(--font-display);
@@ -216,7 +237,7 @@
     .onboarding-sub {
       font-size: 0.88rem;
       color: rgba(255,255,255,0.4);
-      margin-bottom: 2.75rem;
+      margin-bottom: 2.5rem;
     }
     .onboarding-cards {
       display: grid;
@@ -238,16 +259,17 @@
       content: '';
       position: absolute;
       inset: 0;
-      background: linear-gradient(135deg, rgba(201,169,110,0.08), transparent);
+      background: linear-gradient(135deg, rgba(201,169,110,0.1), transparent);
       opacity: 0;
       transition: opacity 0.3s var(--ease);
     }
     .onboarding-card:hover {
-      border-color: rgba(201,169,110,0.5);
+      border-color: rgba(201,169,110,0.55);
       transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.4);
     }
     .onboarding-card:hover::before { opacity: 1; }
-    .onboarding-card .card-emoji { font-size: 2.5rem; margin-bottom: 0.85rem; display: block; }
+    .onboarding-card .card-emoji { font-size: 2.6rem; margin-bottom: 0.85rem; display: block; }
     .onboarding-card .card-title {
       font-family: var(--font-display);
       font-size: 1.3rem;
@@ -261,7 +283,7 @@
       line-height: 1.5;
     }
     .onboarding-skip {
-      color: rgba(255,255,255,0.18);
+      color: rgba(255,255,255,0.2);
       font-size: 0.72rem;
       letter-spacing: 0.08em;
       cursor: none;
@@ -271,7 +293,7 @@
       font-family: var(--font-body);
       padding: 0.5rem;
     }
-    .onboarding-skip:hover { color: rgba(255,255,255,0.4); }
+    .onboarding-skip:hover { color: rgba(255,255,255,0.45); }
 
     /* Canvas particles behind onboarding */
     #onboarding-canvas {
@@ -1307,6 +1329,25 @@
       border: none;
     }
     #lb-close:hover { background: var(--champagne); color: var(--navy); }
+    #lb-prev, #lb-next {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+      color: var(--white);
+      font-size: 2rem;
+      line-height: 1;
+      display: none; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid rgba(255,255,255,0.12);
+      z-index: 2;
+    }
+    #lb-prev { left: 1.5rem; }
+    #lb-next { right: 1.5rem; }
+    #lb-prev:hover, #lb-next:hover { background: var(--champagne); color: var(--navy); border-color: var(--champagne); }
+    #lightbox.has-nav #lb-prev,
+    #lightbox.has-nav #lb-next { display: flex; }
 
     /* ─────────────────────────────────────────
        RESPONSIVE
@@ -1316,6 +1357,8 @@
       .wf-img-main { height: 420px; }
       .wf-img-accent { bottom: -1.5rem; right: -1rem; width: 160px; height: 160px; }
       .dh-grid { grid-template-columns: 1fr; gap: 3rem; }
+      .dh-content { text-align: center; }
+      .dh-content .eyebrow { text-align: center; }
       .packages-grid { grid-template-columns: 1fr; max-width: 380px; }
       .t-grid { grid-template-columns: 1fr; }
       .stats-grid { grid-template-columns: repeat(2,1fr); }
@@ -1418,6 +1461,8 @@
     body.mode-corporate .nav-cta:hover {
       background: #7AAAD8 !important;
     }
+    /* Hide wedding-specific section in corporate mode */
+    body.mode-corporate .wedding-feature { display: none; }
 
     /* ─────────────────────────────────────────
        MOBILE HAMBURGER NAV
@@ -1498,6 +1543,53 @@
       border-bottom: none;
     }
     .mobile-nav .mn-cta:hover { background: var(--champagne-lt); padding-left: 0; }
+
+    /* Mobile nav mode switcher */
+    .mn-mode-section {
+      padding: 0.5rem 0 1.1rem;
+      border-bottom: 1px solid rgba(201,169,110,0.18);
+      margin-bottom: 0.25rem;
+    }
+    .mn-mode-label {
+      font-size: 0.6rem;
+      font-family: var(--font-body);
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(201,169,110,0.55);
+      margin-bottom: 0.65rem;
+    }
+    .mn-mode-btns {
+      display: flex;
+      gap: 0.45rem;
+    }
+    .mn-mode-btn {
+      flex: 1;
+      padding: 0.55rem 0.2rem;
+      font-size: 0.72rem;
+      font-family: var(--font-body);
+      font-weight: 600;
+      color: rgba(255,255,255,0.55);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.04);
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+      width: auto;
+      display: inline-block;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .mn-mode-btn.active {
+      background: rgba(201,169,110,0.14);
+      border-color: rgba(201,169,110,0.7) !important;
+      color: var(--champagne);
+    }
+    .mn-mode-btn:hover:not(.active) {
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.85);
+      padding-left: 0.2rem;
+    }
     .mobile-overlay {
       position: fixed;
       inset: 0;
@@ -1721,8 +1813,18 @@
       .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
       .stat-num { font-size: 2.8rem; }
 
-      .onboarding-cards { grid-template-columns: 1fr; gap: 0.85rem; }
-      .onboarding-card { padding: 1.5rem 1rem; }
+      .onboarding-cards { grid-template-columns: 1fr; gap: 0.75rem; }
+      .onboarding-card { padding: 1.25rem 1rem; }
+      .onboarding-card .card-emoji { font-size: 2rem; margin-bottom: 0.5rem; }
+      #onboarding {
+        align-items: flex-start;
+        padding: max(3rem, env(safe-area-inset-top, 2rem)) 1.25rem max(4rem, env(safe-area-inset-bottom, 2rem));
+      }
+      .onboarding-inner { padding-top: 0; }
+      .onboarding-q { font-size: clamp(1.6rem, 8vw, 2.4rem); }
+      #onboarding::after { display: none; }
+      /* Safety net: if GSAP stalls on mobile, force visibility */
+      .dh-content > *, .dh-visual { opacity: 1 !important; transform: none !important; }
 
       .contact-grid { grid-template-columns: 1fr; gap: 2.5rem; }
       .form-row { grid-template-columns: 1fr; }
@@ -1763,7 +1865,15 @@
 
 <!-- Mobile Nav Drawer -->
 <nav class="mobile-nav" id="mobile-nav">
-  <a href="#weddings" onclick="closeMobileNav()">Weddings</a>
+  <div class="mn-mode-section">
+    <div class="mn-mode-label">Event Type</div>
+    <div class="mn-mode-btns">
+      <button class="mn-mode-btn active" id="mn-mb-wedding" onclick="switchMode('wedding'); closeMobileNav()">🥂 Wedding</button>
+      <button class="mn-mode-btn" id="mn-mb-corporate" onclick="switchMode('corporate'); closeMobileNav()">🍾 Corporate</button>
+      <button class="mn-mode-btn" id="mn-mb-all" onclick="switchMode('all'); closeMobileNav()">✨ All</button>
+    </div>
+  </div>
+  <a href="#weddings" id="mn-weddings" onclick="closeMobileNav()">Weddings</a>
   <a href="#dryhire" onclick="closeMobileNav()">Dry Hire</a>
   <a href="#services" onclick="closeMobileNav()">Services</a>
   <a href="#pricing" onclick="closeMobileNav()">Pricing</a>
@@ -1778,27 +1888,27 @@
 <div id="onboarding">
   <canvas id="onboarding-canvas"></canvas>
   <div class="onboarding-inner">
-    <div class="onboarding-badge">Welcome to Lake Salt</div>
-    <h2 class="onboarding-q">What type of event<br/>are you celebrating?</h2>
-    <p class="onboarding-sub">We'll tailor your experience based on your event type</p>
+    <div class="onboarding-badge">🍸 Utah's Premier Bar Service</div>
+    <h2 class="onboarding-q">What are we<br/><em>pouring for?</em></h2>
+    <p class="onboarding-sub">Pick your event type and we'll tailor everything for you</p>
     <div class="onboarding-cards">
       <button class="onboarding-card" onclick="chooseMode('wedding')">
-        <span class="card-emoji">💍</span>
+        <span class="card-emoji">🥂</span>
         <div class="card-title">Wedding</div>
         <div class="card-desc">Ceremony, reception,<br/>cocktail hour &amp; toasts</div>
       </button>
       <button class="onboarding-card" onclick="chooseMode('corporate')">
-        <span class="card-emoji">🏢</span>
+        <span class="card-emoji">🍾</span>
         <div class="card-title">Corporate</div>
         <div class="card-desc">Company events,<br/>parties &amp; conferences</div>
       </button>
       <button class="onboarding-card" onclick="chooseMode('all')">
-        <span class="card-emoji">🎉</span>
+        <span class="card-emoji">🎊</span>
         <div class="card-title">Celebration</div>
         <div class="card-desc">Birthdays, private parties<br/>&amp; everything else</div>
       </button>
     </div>
-    <button class="onboarding-skip" onclick="chooseMode('all')">skip</button>
+    <button class="onboarding-skip" onclick="chooseMode('all')">skip &rarr;</button>
   </div>
 </div>
 
@@ -1953,7 +2063,7 @@
   <div class="section-inner">
     <div class="dh-grid">
       <div class="dh-content">
-        <span class="eyebrow" style="text-align:left; display:block;">How We Work</span>
+        <span class="eyebrow" style="display:block;">How We Work</span>
         <h2 class="wf-title" style="color:var(--white);">
           We're a <em>Dry Hire</em><br/>Bar Service
         </h2>
@@ -2121,7 +2231,7 @@
           <div class="ps-num">3</div>
           <div class="ps-body">
             <div class="ps-title">You receive your shopping list</div>
-            <div class="ps-desc">Because we're dry hire, you purchase the alcohol. We send a precise shopping list — every spirit, wine, beer, and mixer — so there's zero guesswork or wasted spend.</div>
+            <div class="ps-desc">Because we're dry hire, you purchase the alcohol. We send a precise shopping list — every spirit, wine, and beer — so there's zero guesswork or wasted spend.</div>
           </div>
         </div>
         <div class="pricing-step">
@@ -2192,35 +2302,35 @@
       <p class="section-sub">A glimpse into the celebrations we've had the honor of being a part of across Utah's most beautiful venues.</p>
     </div>
     <div class="gallery-strip">
-      <div class="g-item tall" onclick="openLb('images/IMG_5958.JPG')">
+      <div class="g-item tall" onclick="openLbGallery(0)">
         <img src="images/IMG_5958.JPG" alt="Lake Salt bartender at outdoor bar with Utah mountains at dusk" loading="lazy" />
         <div class="g-overlay"><span class="g-caption">Private Outdoor Event</span></div>
       </div>
-      <div class="g-item wide" onclick="openLb('images/IMG_6936.jpeg')">
+      <div class="g-item wide" onclick="openLbGallery(1)">
         <img src="images/IMG_6936.jpeg" alt="Large corporate event with Lake Salt bar, Utah venue" loading="lazy" />
         <div class="g-overlay"><span class="g-caption">Corporate Event — Utah</span></div>
       </div>
-      <div class="g-item" onclick="openLb('images/IMG_8640.PNG')">
+      <div class="g-item" onclick="openLbGallery(2)">
         <img src="images/IMG_8640.PNG" alt="Freshly shaken margarita with lime garnish" loading="lazy" />
         <div class="g-overlay"><span class="g-caption">Signature Margarita</span></div>
       </div>
-      <div class="g-item" onclick="openLb('images/IMG_6950.jpeg')">
+      <div class="g-item" onclick="openLbGallery(3)">
         <img src="images/IMG_6950.jpeg" alt="Guest enjoying a handcrafted Lake Salt cocktail" loading="lazy" />
         <div class="g-overlay"><span class="g-caption">Happy Guests</span></div>
       </div>
-      <div class="g-item" onclick="openLb('images/IMG_8643.PNG')">
+      <div class="g-item" onclick="openLbGallery(4)">
         <img src="images/IMG_8643.PNG" alt="Bourbon cocktail with blackberry garnish and orange peel" loading="lazy" />
         <div class="g-overlay"><span class="g-caption">Craft Bourbon Cocktail</span></div>
       </div>
-      <div class="g-item tall" onclick="openLb('images/IMG_8469.jpeg')">
+      <div class="g-item tall" onclick="openLbGallery(5)">
         <img src="images/IMG_8469.jpeg" alt="Lake Salt bartender crafting cocktails at a full bar" loading="lazy" />
         <div class="g-overlay"><span class="g-caption">Behind the Bar</span></div>
       </div>
-      <div class="g-item" onclick="openLb('images/IMG_6903.jpeg')">
+      <div class="g-item" onclick="openLbGallery(6)">
         <img src="images/IMG_6903.jpeg" alt="Fresh citrus garnish station — limes, oranges, lemons" loading="lazy" />
         <div class="g-overlay"><span class="g-caption">Fresh Garnish Station</span></div>
       </div>
-      <div class="g-item wide" onclick="openLb('images/IMG_2494.jpeg')">
+      <div class="g-item wide" onclick="openLbGallery(7)">
         <img src="images/IMG_2494.jpeg" alt="Lake Salt team at Oktoberfest themed corporate event" loading="lazy" />
         <div class="g-overlay"><span class="g-caption">Oktoberfest at Adobe</span></div>
       </div>
@@ -2543,7 +2653,9 @@
 
 <!-- LIGHTBOX -->
 <div id="lightbox" onclick="closeLb()">
-  <img id="lb-img" src="" alt="" loading="lazy" />
+  <button id="lb-prev" onclick="event.stopPropagation(); prevLb()">&#8249;</button>
+  <img id="lb-img" src="" alt="" loading="lazy" onclick="event.stopPropagation()" />
+  <button id="lb-next" onclick="event.stopPropagation(); nextLb()">&#8250;</button>
   <button id="lb-close" onclick="closeLb()">✕</button>
 </div>
 
@@ -2687,8 +2799,8 @@ const modes = {
     sub: "Full cocktail & mocktail programs for corporate events — inclusive, professional, and perfect for Utah's diverse workforce. Trusted by Adobe Lehi.",
     cta:   "Get a Corporate Quote",
     ctaHref: "#dryhire",
-    heroBg: "images/IMG_6919.jpeg",
-    heroBgPos: "center bottom",
+    heroBg: "images/IMG_6936_hero.jpeg",
+    heroBgPos: "center 80%",
     bodyClass: "mode-corporate"
   },
   all: {
@@ -2728,6 +2840,7 @@ function applyMode(mode, animate) {
   const heroBg = document.getElementById('hero-bg');
   heroBg.style.backgroundImage = `url('${m.heroBg}')`;
   heroBg.style.backgroundPosition = m.heroBgPos || 'center top';
+  heroBg.style.backgroundSize = m.heroBgSize || 'cover';
 
   // Swap main feature image based on mode
   const wfMain = document.querySelector('.wf-img-main');
@@ -2740,11 +2853,39 @@ function applyMode(mode, animate) {
       : 'Lake Salt bartender at an elegant wedding venue';
   }
 
-  // Nav mode switcher buttons
+  // Desktop nav mode switcher buttons
   ['wedding','corporate','all'].forEach(k => {
     const btn = document.getElementById(`nmb-${k}`);
     if (btn) btn.classList.toggle('active', k === mode);
   });
+
+  // Mobile nav mode switcher buttons
+  ['wedding','corporate','all'].forEach(k => {
+    const mbtn = document.getElementById(`mn-mb-${k}`);
+    if (mbtn) mbtn.classList.toggle('active', k === mode);
+  });
+
+  // Update first nav tab based on mode (desktop + mobile)
+  const navWeddings = document.getElementById('nav-weddings');
+  if (navWeddings) {
+    if (mode === 'corporate') {
+      navWeddings.textContent = 'Corporate';
+      navWeddings.href = '#dryhire';
+    } else {
+      navWeddings.textContent = 'Weddings';
+      navWeddings.href = '#weddings';
+    }
+  }
+  const mnWeddings = document.getElementById('mn-weddings');
+  if (mnWeddings) {
+    if (mode === 'corporate') {
+      mnWeddings.textContent = 'Corporate';
+      mnWeddings.href = '#dryhire';
+    } else {
+      mnWeddings.textContent = 'Weddings';
+      mnWeddings.href = '#weddings';
+    }
+  }
 }
 
 /* ─── SWITCH MODE (with animated transition) ─── */
@@ -2776,6 +2917,8 @@ function chooseMode(mode) {
   applyMode(mode, false);
   particlesRunning = false;
   setTimeout(initHeroAnimations, 200);
+  // Recalculate scroll positions after modal/overflow change
+  setTimeout(() => ScrollTrigger.refresh(), 300);
 }
 
 // Check if already visited
@@ -2998,19 +3141,21 @@ gsap.from('.stats-section', {
 
 // Dry hire section
 gsap.from('.dh-content > *', {
-  scrollTrigger: { trigger: '.dry-hire', start: 'top 80%' },
+  scrollTrigger: { trigger: '.dry-hire', start: 'top 85%', once: true },
   opacity: 0,
   x: -40,
   duration: 0.85,
   stagger: 0.12,
-  ease: 'power3.out'
+  ease: 'power3.out',
+  overwrite: 'auto'
 });
 gsap.from('.dh-visual', {
-  scrollTrigger: { trigger: '.dry-hire', start: 'top 80%' },
+  scrollTrigger: { trigger: '.dry-hire', start: 'top 85%', once: true },
   opacity: 0,
   x: 40,
   duration: 0.85,
-  ease: 'power3.out'
+  ease: 'power3.out',
+  overwrite: 'auto'
 });
 
 /* ─── COUNTER ANIMATION ─── */
@@ -3076,16 +3221,61 @@ function toggleFaq(btn) {
 }
 
 /* ─── LIGHTBOX ─── */
+const galleryImages = [
+  'images/IMG_5958.JPG',
+  'images/IMG_6936.jpeg',
+  'images/IMG_8640.PNG',
+  'images/IMG_6950.jpeg',
+  'images/IMG_8643.PNG',
+  'images/IMG_8469.jpeg',
+  'images/IMG_6903.jpeg',
+  'images/IMG_2494.jpeg',
+];
+let currentLbIndex = -1;
+
 function openLb(src) {
+  // Used for menus — no swipe nav
+  currentLbIndex = -1;
   document.getElementById('lb-img').src = src;
+  document.getElementById('lightbox').classList.remove('has-nav');
   document.getElementById('lightbox').classList.add('open');
   document.body.style.overflow = 'hidden';
 }
-function closeLb() {
-  document.getElementById('lightbox').classList.remove('open');
-  document.body.style.overflow = '';
+function openLbGallery(index) {
+  currentLbIndex = index;
+  document.getElementById('lb-img').src = galleryImages[index];
+  document.getElementById('lightbox').classList.add('open', 'has-nav');
+  document.body.style.overflow = 'hidden';
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLb(); });
+function prevLb() {
+  if (currentLbIndex < 0) return;
+  currentLbIndex = (currentLbIndex - 1 + galleryImages.length) % galleryImages.length;
+  document.getElementById('lb-img').src = galleryImages[currentLbIndex];
+}
+function nextLb() {
+  if (currentLbIndex < 0) return;
+  currentLbIndex = (currentLbIndex + 1) % galleryImages.length;
+  document.getElementById('lb-img').src = galleryImages[currentLbIndex];
+}
+function closeLb() {
+  document.getElementById('lightbox').classList.remove('open', 'has-nav');
+  document.body.style.overflow = '';
+  currentLbIndex = -1;
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeLb();
+  if (e.key === 'ArrowLeft') prevLb();
+  if (e.key === 'ArrowRight') nextLb();
+});
+// Touch swipe support
+let lbTouchX = 0;
+document.getElementById('lightbox').addEventListener('touchstart', e => {
+  lbTouchX = e.touches[0].clientX;
+}, { passive: true });
+document.getElementById('lightbox').addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - lbTouchX;
+  if (Math.abs(dx) > 50) { dx < 0 ? nextLb() : prevLb(); }
+}, { passive: true });
 
 /* ─── FORM ─── */
 function handleSubmit(e) {
