@@ -8,7 +8,24 @@ function initAuth() {
   const authScreen = document.getElementById('auth-screen');
   const adminApp   = document.getElementById('admin-app');
 
+  /* Show loading indicator while Firebase resolves auth state —
+     prevents the "signed out" flash when navigating back from sub-pages */
+  const signinBtn = document.getElementById('google-signin-btn');
+  const loadingEl = document.createElement('p');
+  loadingEl.id = 'auth-loading-msg';
+  loadingEl.style.cssText = 'color:#9A8A7F;font-size:13px;padding:16px 0;letter-spacing:0.03em';
+  loadingEl.textContent = 'Loading…';
+  if (signinBtn) {
+    signinBtn.style.display = 'none';
+    signinBtn.parentNode.insertBefore(loadingEl, signinBtn);
+  }
+
   auth.onAuthStateChanged(async (user) => {
+    /* Remove loading indicator, reveal sign-in button if needed */
+    const loadMsg = document.getElementById('auth-loading-msg');
+    if (loadMsg) loadMsg.remove();
+    if (signinBtn) signinBtn.style.display = '';
+
     if (user) {
       // Check admins collection first
       const adminDoc = await db.collection('admins').doc(user.uid).get();

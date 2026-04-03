@@ -20,3 +20,19 @@ const storage = firebase.storage();
 // Convenience timestamp helpers
 const TS     = () => firebase.firestore.FieldValue.serverTimestamp();
 const TS_NOW = firebase.firestore.Timestamp.now;
+
+/* ── FIRESTORE RULES NEEDED ────────────────────────────────────────────────────
+   Add these collections to your Firebase Console → Firestore → Rules:
+
+   match /notes/{docId} {
+     allow read, write: if request.auth != null;
+   }
+   match /graphics/{docId} {
+     allow read, write: if request.auth != null;
+   }
+
+   STORAGE RULES (Firebase Console → Storage → Rules):
+   match /graphics/{allPaths=**} {
+     allow read, write: if request.auth != null;
+   }
+─────────────────────────────────────────────────────────────────────────────── */

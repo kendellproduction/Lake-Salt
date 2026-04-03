@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lake Salt — Content Creator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,300;0,6..96,400;0,6..96,500;1,6..96,300;1,6..96,400&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --navy:      #1A1412;
+      --navy-mid:  #211915;
+      --navy-panel:#1E1613;
+      --navy-lt:   #241C18;
+      --navy-bd:   #362920;
+      --champagne: #C9A96E;
+      --gold:      #C9A84C;
+      --ivory:     #FAF8F4;
+      --blush:     #E8C4BB;
+      --sage:      #8B9B7E;
+      --cream:     #F2EDE0;
+      --muted:     #9A8A7F;
+      --text:      #F2EAE2;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--navy);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ─── HEADER ─── */
+    .page-header {
+      background: var(--navy-panel);
+      border-bottom: 1px solid var(--navy-bd);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .back-btn {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 14px; background: var(--navy-lt); border: 1px solid var(--navy-bd);
+      color: var(--muted); border-radius: 8px; font-size: 13px; font-weight: 500;
+      text-decoration: none; transition: all 0.15s;
+    }
+    .back-btn:hover { border-color: var(--gold); color: var(--gold); }
+    .page-title-block { }
+    .page-title { font-size: 18px; font-weight: 600; color: var(--text); }
+    .page-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* ─── LAYOUT ─── */
+    .creator-layout {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      min-height: calc(100vh - 65px);
+    }
+
+    /* ─── LEFT PANEL ─── */
+    .controls-panel {
+      background: var(--navy-panel);
+      border-right: 1px solid var(--navy-bd);
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .panel-section { margin-bottom: 24px; }
+    .panel-section-title {
+      font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+      text-transform: uppercase; color: var(--muted);
+      margin-bottom: 12px; padding-bottom: 8px;
+      border-bottom: 1px solid var(--navy-bd);
+    }
+
+    /* Template picker */
+    .template-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .template-btn {
+      background: var(--navy-lt); border: 2px solid var(--navy-bd);
+      border-radius: 8px; padding: 10px 8px; cursor: pointer;
+      transition: all 0.15s; text-align: center;
+    }
+    .template-btn:hover { border-color: var(--gold); }
+    .template-btn.active { border-color: var(--gold); background: rgba(201,168,76,0.12); }
+    .template-btn .t-icon { font-size: 22px; margin-bottom: 5px; }
+    .template-btn .t-name { font-size: 11px; font-weight: 600; color: var(--text); }
+    .template-btn .t-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+    /* Form controls */
+    label {
+      display: block; font-size: 11px; font-weight: 600;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px;
+      margin-bottom: 6px;
+    }
+    input[type="text"], textarea, select {
+      width: 100%; padding: 10px 12px;
+      background: var(--navy-lt); border: 1px solid var(--navy-bd);
+      border-radius: 8px; color: var(--text); font-family: 'Inter', sans-serif;
+      font-size: 13px; outline: none; transition: border-color 0.15s;
+      resize: vertical;
+    }
+    input[type="text"]:focus,
+    textarea:focus,
+    select:focus { border-color: var(--gold); }
+    select option { background: var(--navy-lt); }
+
+    .form-group { margin-bottom: 14px; }
+
+    /* Color picker row */
+    .color-row {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;
+    }
+    .color-dot {
+      width: 32px; height: 32px; border-radius: 50%; cursor: pointer;
+      border: 3px solid transparent; transition: border-color 0.15s;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+    .color-dot.active { border-color: white; }
+
+    /* Action buttons */
+    .btn-primary {
+      width: 100%; padding: 12px; background: var(--gold);
+      color: #0D1B2A; border: none; border-radius: 10px;
+      font-size: 14px; font-weight: 700; cursor: pointer;
+      transition: all 0.15s; margin-bottom: 8px;
+    }
+    .btn-primary:hover { background: var(--champagne); transform: translateY(-1px); }
+    .btn-secondary {
+      width: 100%; padding: 11px; background: transparent;
+      color: var(--muted); border: 1px solid var(--navy-bd);
+      border-radius: 10px; font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .btn-secondary:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* ─── RIGHT PANEL: CANVAS AREA ─── */
+    .canvas-area {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: flex-start;
+      padding: 32px; background: var(--navy-mid);
+      gap: 20px;
+    }
+
+    .canvas-wrapper {
+      position: relative;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    #postCanvas {
+      display: block;
+      max-width: 100%;
+      height: auto;
+    }
+
+    /* Caption box */
+    .caption-preview {
+      width: 100%; max-width: 540px;
+      background: var(--navy-panel); border: 1px solid var(--navy-bd);
+      border-radius: 12px; padding: 20px;
+    }
+    .caption-preview h3 {
+      font-size: 12px; font-weight: 700; letter-spacing: 1px;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 12px;
+    }
+    #captionOutput {
+      font-size: 13px; line-height: 1.7; color: var(--text);
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .copy-caption-btn {
+      margin-top: 14px; padding: 9px 18px;
+      background: var(--navy-lt); border: 1px solid var(--navy-bd);
+      color: var(--muted); border-radius: 8px; font-size: 12px;
+      font-weight: 500; cursor: pointer; transition: all 0.15s;
+    }
+    .copy-caption-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* Size indicators */
+    .size-badges {
+      display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .size-badge {
+      padding: 5px 12px; border-radius: 20px;
+      font-size: 11px; font-weight: 600;
+      background: var(--navy-lt); border: 1px solid var(--navy-bd); color: var(--muted);
+      cursor: pointer; transition: all 0.15s;
+    }
+    .size-badge.active {
+      background: rgba(201,168,76,0.15); border-color: var(--gold); color: var(--gold);
+    }
+
+    /* Photo upload */
+    .upload-photo-btn {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--navy-lt);
+      border: 1px dashed var(--navy-bd);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+      display: block;
+    }
+    .upload-photo-btn:hover { border-color: var(--gold); color: var(--gold); }
+    .photo-thumb {
+      width: 100%; height: 60px; object-fit: cover;
+      border-radius: 6px; margin-top: 8px; display: none;
+    }
+
+    /* Range slider */
+    input[type="range"] {
+      width: 100%; accent-color: var(--gold);
+      cursor: pointer; margin: 4px 0;
+    }
+
+    /* 2-col button row */
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .btn-row .template-btn { margin: 0; }
+
+    @media (max-width: 768px) {
+      .creator-layout { grid-template-columns: 1fr; }
+      .controls-panel { border-right: none; border-bottom: 1px solid var(--navy-bd); }
+      .canvas-area { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── HEADER ─── -->
+<div class="page-header">
+  <div class="header-left">
+    <a href="index.html#marketing" class="back-btn" onclick="if(window.opener){window.opener.focus();window.close();return false;}else{history.back();return false;}">← Admin</a>
+    <div class="page-title-block">
+      <div class="page-title">Content Creator</div>
+      <div class="page-sub">Build on-brand social media graphics</div>
+    </div>
+  </div>
+  <div class="size-badges">
+    <button class="size-badge active" onclick="setSize(1080,1080,this)">1080×1080 (IG Square)</button>
+    <button class="size-badge" onclick="setSize(1080,1350,this)">1080×1350 (IG Portrait)</button>
+    <button class="size-badge" onclick="setSize(1080,1920,this)">1080×1920 (Story/TikTok)</button>
+  </div>
+</div>
+
+<!-- ─── MAIN LAYOUT ─── -->
+<div class="creator-layout">
+
+  <!-- ── LEFT: CONTROLS ── -->
+  <div class="controls-panel">
+
+    <!-- Template picker -->
+    <div class="panel-section">
+      <div class="panel-section-title">Template</div>
+      <div class="template-grid">
+        <button class="template-btn active" onclick="selectTemplate('drink-recipe',this)">
+          <div class="t-icon">🍸</div>
+          <div class="t-name">Drink Recipe</div>
+          <div class="t-sub">Behind the bar</div>
+        </button>
+        <button class="template-btn" onclick="selectTemplate('event-highlight',this)">
+          <div class="t-icon">🎉</div>
+          <div class="t-name">Event Highlight</div>
+          <div class="t-sub">Recap & promo</div>
+        </button>
+        <button class="template-btn" onclick="selectTemplate('menu-spotlight',this)">
+          <div class="t-icon">📋</div>
+          <div class="t-name">Menu Spotlight</div>
+          <div class="t-sub">Feature a drink</div>
+        </button>
+        <button class="template-btn" onclick="selectTemplate('cta-booking',this)">
+          <div class="t-icon">📲</div>
+          <div class="t-name">Book With Us</div>
+          <div class="t-sub">Lead gen CTA</div>
+        </button>
+        <button class="template-btn" onclick="selectTemplate('utah-local',this)">
+          <div class="t-icon">🏔️</div>
+          <div class="t-name">Utah Local</div>
+          <div class="t-sub">Geo content</div>
+        </button>
+        <button class="template-btn" onclick="selectTemplate('mocktail',this)">
+          <div class="t-icon">🧊</div>
+          <div class="t-name">Mocktail</div>
+          <div class="t-sub">Zero proof</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Content inputs -->
+    <div class="panel-section" id="content-inputs">
+      <div class="panel-section-title">Content</div>
+      <div class="form-group">
+        <label>Drink / Event Name</label>
+        <input type="text" id="inp-title" placeholder="e.g. Espresso Martini" oninput="renderPost()" value="Espresso Martini">
+      </div>
+      <div class="form-group">
+        <label>Subtitle / Tagline</label>
+        <input type="text" id="inp-subtitle" placeholder="e.g. Our most requested cocktail" oninput="renderPost()" value="Our most requested cocktail">
+      </div>
+      <div class="form-group" id="group-ingredients">
+        <label>Key Ingredients (one per line)</label>
+        <textarea id="inp-ingredients" rows="4" placeholder="Vodka&#10;Espresso&#10;Coffee Liqueur&#10;Simple Syrup" oninput="renderPost()">Vodka
+Espresso
+Coffee Liqueur
+Simple Syrup</textarea>
+      </div>
+      <div class="form-group" id="group-detail">
+        <label>Detail / CTA Text</label>
+        <input type="text" id="inp-detail" placeholder="e.g. Available at every Lake Salt event" oninput="renderPost()" value="Available at every Lake Salt event">
+      </div>
+    </div>
+
+    <!-- Background style -->
+    <div class="panel-section">
+      <div class="panel-section-title">Background</div>
+      <div class="color-row" id="bg-colors" style="grid-template-columns:repeat(6,1fr)">
+        <div class="color-dot active" style="background:linear-gradient(145deg,#1A1412,#2A1E18)" data-bg="navy" onclick="setBg('navy',this)" title="Charcoal"></div>
+        <div class="color-dot" style="background:linear-gradient(145deg,#C9A96E,#A07840)" data-bg="champagne" onclick="setBg('champagne',this)" title="Champagne"></div>
+        <div class="color-dot" style="background:linear-gradient(145deg,#E8C4BB,#C9978A)" data-bg="blush" onclick="setBg('blush',this)" title="Blush"></div>
+        <div class="color-dot" style="background:linear-gradient(145deg,#FAF8F4,#F0EBE0)" data-bg="ivory" onclick="setBg('ivory',this)" title="Ivory"></div>
+        <div class="color-dot" style="background:linear-gradient(145deg,#6B7D62,#8B9B7E)" data-bg="sage" onclick="setBg('sage',this)" title="Sage"></div>
+        <div class="color-dot" style="background:linear-gradient(145deg,#F2EDE0,#E8E0CF)" data-bg="cream" onclick="setBg('cream',this)" title="Cream"></div>
+      </div>
+      <!-- Photo background -->
+      <div style="margin-top:10px">
+        <label class="upload-photo-btn" for="photo-upload">📷 Upload Photo Background</label>
+        <input type="file" id="photo-upload" accept="image/*" onchange="loadPhotoBackground(event)" style="display:none">
+        <img id="photo-thumb" class="photo-thumb" alt="Background photo">
+        <div id="photo-controls" style="display:none;margin-top:10px">
+          <label style="margin-bottom:2px">Dark overlay: <strong id="opacity-val">60%</strong></label>
+          <input type="range" id="overlay-opacity" min="0" max="85" value="60" oninput="updateOverlay(this.value)">
+          <button onclick="clearPhoto()" style="margin-top:8px;width:100%;padding:8px;background:transparent;border:1px solid var(--navy-bd);color:var(--muted);border-radius:6px;font-size:11px;cursor:pointer;">✕ Remove photo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Accent color -->
+    <div class="panel-section">
+      <div class="panel-section-title">Accent Color</div>
+      <div class="color-row" id="accent-colors" style="grid-template-columns:repeat(5,1fr)">
+        <div class="color-dot active" style="background:#C9A96E" data-acc="champagne" onclick="setAccent('champagne',this)" title="Champagne Gold"></div>
+        <div class="color-dot" style="background:#8B9B7E" data-acc="sage" onclick="setAccent('sage',this)" title="Sage"></div>
+        <div class="color-dot" style="background:#E8C4BB" data-acc="blush" onclick="setAccent('blush',this)" title="Blush"></div>
+        <div class="color-dot" style="background:#FFFFFF" data-acc="white" onclick="setAccent('white',this)" title="White"></div>
+        <div class="color-dot" style="background:#1A1412;border:1px solid #555" data-acc="navy" onclick="setAccent('navy',this)" title="Charcoal"></div>
+      </div>
+    </div>
+
+    <!-- Decoration style -->
+    <div class="panel-section">
+      <div class="panel-section-title">Decoration Style</div>
+      <div class="btn-row">
+        <button class="template-btn active" onclick="setDeco('diagonal',this)"><div class="t-icon">╱╱</div><div class="t-name">Lines</div></button>
+        <button class="template-btn" onclick="setDeco('circles',this)"><div class="t-icon">◎</div><div class="t-name">Circles</div></button>
+        <button class="template-btn" onclick="setDeco('floral',this)"><div class="t-icon">✿</div><div class="t-name">Floral</div></button>
+        <button class="template-btn" onclick="setDeco('minimal',this)"><div class="t-icon">—</div><div class="t-name">Minimal</div></button>
+      </div>
+    </div>
+
+    <!-- Headline size -->
+    <div class="panel-section">
+      <div class="panel-section-title">Headline Size</div>
+      <input type="range" id="headline-size" min="65" max="140" value="100" oninput="renderPost()">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:2px">
+        <span>Smaller</span><span>Larger</span>
+      </div>
+    </div>
+
+    <!-- Logo Placement -->
+    <div class="panel-section">
+      <div class="panel-section-title">Logo Placement</div>
+      <div class="form-group">
+        <select id="logo-select" onchange="renderPost()">
+          <option value="circle-gold">Gold Circle (white text) — bottom right</option>
+          <option value="utah-white">Utah Outline (white) — bottom right</option>
+          <option value="none">No logo</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="panel-section">
+      <div class="panel-section-title">Actions</div>
+      <button class="btn-primary" onclick="downloadPost()">↓ Download PNG</button>
+      <button class="btn-secondary" onclick="generateCaption()">✨ Generate Caption</button>
+    </div>
+
+  </div>
+
+  <!-- ── RIGHT: CANVAS PREVIEW ── -->
+  <div class="canvas-area">
+    <div class="canvas-wrapper">
+      <canvas id="postCanvas" width="1080" height="1080"></canvas>
+    </div>
+    <div class="caption-preview" id="caption-box" style="display:none">
+      <h3>Caption for this post</h3>
+      <div id="captionOutput"></div>
+      <button class="copy-caption-btn" onclick="copyCaption()">📋 Copy Caption</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   LAKE SALT CONTENT CREATOR
+   In-browser canvas-based Instagram post generator
+   Uses HTML5 Canvas API — no server required
+═══════════════════════════════════════════════════════ */
+
+// ── State ──
+const state = {
+  template: 'drink-recipe',
+  bgKey: 'navy',
+  accentKey: 'champagne',
+  canvasW: 1080,
+  canvasH: 1080,
+  logoKey: 'circle-gold',
+  logoImgs: {},
+  decoKey: 'diagonal',
+  headlineScale: 1.0,
+  photoImg: null,
+  overlayOpacity: 60
+};
+
+// ── Color palettes ──
+const BG_COLORS = {
+  'navy':      { bg1: '#1A1412', bg2: '#2A1E18', textLight: true },
+  'champagne': { bg1: '#8B6914', bg2: '#C9A96E', textLight: true },
+  'blush':     { bg1: '#D4A599', bg2: '#F0D8D2', textLight: false },
+  'ivory':     { bg1: '#FAF8F4', bg2: '#F0EBE0', textLight: false },
+  'sage':      { bg1: '#4A5C43', bg2: '#6B7D62', textLight: true },
+  'cream':     { bg1: '#F2EDE0', bg2: '#E8E0CF', textLight: false }
+};
+
+const ACCENT_COLORS = {
+  'champagne': '#C9A96E',
+  'sage':      '#8B9B7E',
+  'blush':     '#E8C4BB',
+  'white':     '#FFFFFF',
+  'navy':      '#1A1412'
+};
+
+// ── Canvas setup ──
+const canvas = document.getElementById('postCanvas');
+const ctx = canvas.getContext('2d');
+
+// ── Logo images ──
+const LOGOS = {
+  'circle-gold': 'logos/Gold Circle With White Text.svg',
+  'utah-white':  'logos/White Utah Outline with White Text.svg'
+};
+
+function preloadLogos() {
+  Object.entries(LOGOS).forEach(([key, src]) => {
+    const img = new Image();
+    img.onload = () => { state.logoImgs[key] = img; renderPost(); };
+    img.onerror = () => { state.logoImgs[key] = null; };
+    img.src = src;
+  });
+}
+
+// ── Size setter ──
+function setSize(w, h, btn) {
+  state.canvasW = w; state.canvasH = h;
+  canvas.width = w; canvas.height = h;
+  document.querySelectorAll('.size-badge').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  // Scale canvas display to max 540px wide
+  const scale = Math.min(540 / w, 700 / h);
+  canvas.style.width = Math.round(w * scale) + 'px';
+  canvas.style.height = Math.round(h * scale) + 'px';
+
+  renderPost();
+}
+
+// ── Photo background ──
+function loadPhotoBackground(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      state.photoImg = img;
+      const thumb = document.getElementById('photo-thumb');
+      thumb.src = e.target.result;
+      thumb.style.display = 'block';
+      document.getElementById('photo-controls').style.display = 'block';
+      renderPost();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearPhoto() {
+  state.photoImg = null;
+  const thumb = document.getElementById('photo-thumb');
+  thumb.src = '';
+  thumb.style.display = 'none';
+  document.getElementById('photo-controls').style.display = 'none';
+  document.getElementById('photo-upload').value = '';
+  renderPost();
+}
+
+function updateOverlay(value) {
+  state.overlayOpacity = parseInt(value);
+  document.getElementById('opacity-val').textContent = value + '%';
+  renderPost();
+}
+
+// ── Decoration style ──
+function setDeco(key, btn) {
+  state.decoKey = key;
+  document.querySelectorAll('.btn-row .template-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderPost();
+}
+
+// ── Template selector ──
+function selectTemplate(key, btn) {
+  state.template = key;
+  document.querySelectorAll('.template-grid .template-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  // Update placeholder content
+  const defaults = {
+    'drink-recipe':    { title: 'Espresso Martini', subtitle: 'Our most requested cocktail', ingredients: 'Vodka\nEspresso\nCoffee Liqueur\nSimple Syrup', detail: 'Available at every Lake Salt event' },
+    'event-highlight': { title: 'Corporate Event Recap', subtitle: 'Goldman Sachs Annual Gala', ingredients: '', detail: 'We brought the bar — they brought the energy ✨' },
+    'menu-spotlight':  { title: 'Old Fashioned', subtitle: 'A timeless classic', ingredients: 'Bourbon\nAngostura Bitters\nSimple Syrup\nOrange Peel', detail: 'Craft cocktails for your next event' },
+    'cta-booking':     { title: 'Book Lake Salt', subtitle: 'Premium mobile bartending', ingredients: '', detail: 'lakesalt.us · @lakesaltbar' },
+    'utah-local':      { title: 'Utah Wedding Season', subtitle: 'Is almost here', ingredients: '', detail: 'We serve the Wasatch Front & beyond' },
+    'mocktail':        { title: 'Virgin Paloma', subtitle: 'No alcohol, all flavor', ingredients: 'Grapefruit Juice\nLime\nSparkling Water\nHoney Syrup', detail: 'Mocktail menus available for all events' }
+  };
+
+  const d = defaults[key] || defaults['drink-recipe'];
+  document.getElementById('inp-title').value = d.title;
+  document.getElementById('inp-subtitle').value = d.subtitle;
+  document.getElementById('inp-ingredients').value = d.ingredients;
+  document.getElementById('inp-detail').value = d.detail;
+
+  const showIngredients = ['drink-recipe','menu-spotlight','mocktail'].includes(key);
+  document.getElementById('group-ingredients').style.display = showIngredients ? 'block' : 'none';
+
+  renderPost();
+}
+
+// ── Background setter ──
+function setBg(key, el) {
+  state.bgKey = key;
+  document.querySelectorAll('#bg-colors .color-dot').forEach(d => d.classList.remove('active'));
+  el.classList.add('active');
+  renderPost();
+}
+
+// ── Accent setter ──
+function setAccent(key, el) {
+  state.accentKey = key;
+  document.querySelectorAll('#accent-colors .color-dot').forEach(d => d.classList.remove('active'));
+  el.classList.add('active');
+  renderPost();
+}
+
+// ── Core render function ──
+function renderPost() {
+  const W = state.canvasW;
+  const H = state.canvasH;
+  const bg = BG_COLORS[state.bgKey] || BG_COLORS['navy'];
+  const accent = ACCENT_COLORS[state.accentKey] || ACCENT_COLORS['champagne'];
+  state.headlineScale = parseInt(document.getElementById('headline-size').value) / 100;
+  const hScale = state.headlineScale;
+
+  let textColor, mutedColor;
+  ctx.clearRect(0, 0, W, H);
+
+  // ── Background: photo or gradient ──
+  if (state.photoImg) {
+    // Scale photo to fill canvas (cover)
+    const iw = state.photoImg.width;
+    const ih = state.photoImg.height;
+    const sc = Math.max(W / iw, H / ih);
+    const dw = iw * sc, dh = ih * sc;
+    ctx.drawImage(state.photoImg, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    // Dark overlay for readability
+    ctx.fillStyle = `rgba(0,0,0,${state.overlayOpacity / 100})`;
+    ctx.fillRect(0, 0, W, H);
+    textColor  = '#FFFFFF';
+    mutedColor = 'rgba(255,255,255,0.60)';
+  } else {
+    const grad = ctx.createLinearGradient(0, 0, W * 0.4, H);
+    grad.addColorStop(0, bg.bg1);
+    grad.addColorStop(1, bg.bg2);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+    textColor  = bg.textLight ? '#FFFFFF' : '#0C1526';
+    mutedColor = bg.textLight ? 'rgba(255,255,255,0.55)' : 'rgba(12,21,38,0.55)';
+  }
+
+  const title         = document.getElementById('inp-title').value || 'Drink Name';
+  const subtitle      = document.getElementById('inp-subtitle').value || '';
+  const ingredientsRaw = document.getElementById('inp-ingredients').value || '';
+  const detail        = document.getElementById('inp-detail').value || '';
+  const template      = state.template;
+  const isLight       = state.photoImg ? true : bg.textLight;
+
+  // ── Decorative elements ──
+  drawDecorations(ctx, W, H, accent, isLight, template);
+
+  // ── Content based on template ──
+  if (template === 'cta-booking' || template === 'utah-local') {
+    renderCTALayout(ctx, W, H, title, subtitle, detail, textColor, mutedColor, accent, hScale);
+  } else if (template === 'event-highlight') {
+    renderEventLayout(ctx, W, H, title, subtitle, detail, textColor, mutedColor, accent, hScale);
+  } else {
+    const ingredients = ingredientsRaw.split('\n').filter(i => i.trim());
+    renderDrinkLayout(ctx, W, H, title, subtitle, ingredients, detail, textColor, mutedColor, accent, template, hScale);
+  }
+
+  // ── Logo overlay ──
+  const logoKey = document.getElementById('logo-select').value;
+  if (logoKey !== 'none' && state.logoImgs[logoKey]) {
+    drawLogo(ctx, W, H, state.logoImgs[logoKey], logoKey);
+  }
+
+  // ── Watermark ──
+  ctx.font = `${Math.round(W * 0.018)}px Inter, sans-serif`;
+  ctx.fillStyle = isLight ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.15)';
+  ctx.textAlign = 'center';
+  ctx.fillText('@lakesaltbar', W / 2, H - Math.round(H * 0.025));
+}
+
+function drawDecorations(ctx, W, H, accent, textLight, template) {
+  const alpha = textLight ? 0.10 : 0.07;
+  const deco = state.decoKey || 'diagonal';
+
+  if (deco === 'minimal') {
+    // Just the top bar — totally clean
+    ctx.fillStyle = accent;
+    ctx.fillRect(0, 0, W, Math.round(H * 0.007));
+    return;
+  }
+
+  if (deco === 'circles') {
+    // Concentric rings top-right
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath();
+      ctx.arc(W * 0.88, H * 0.15, W * (0.14 + i * 0.10), 0, Math.PI * 2);
+      ctx.strokeStyle = hexToRgba(accent, alpha * Math.max(0.2, 1 - i * 0.18));
+      ctx.lineWidth = W * 0.005;
+      ctx.stroke();
+    }
+    // Small echo bottom-left
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.arc(W * 0.06, H * 0.90, W * (0.05 + i * 0.07), 0, Math.PI * 2);
+      ctx.strokeStyle = hexToRgba(accent, alpha * 0.5);
+      ctx.lineWidth = W * 0.003;
+      ctx.stroke();
+    }
+  } else if (deco === 'floral') {
+    // Overlapping petal circles — top right cluster
+    const petals = [
+      [W * 0.82, H * 0.09, W * 0.14],
+      [W * 0.93, H * 0.18, W * 0.11],
+      [W * 0.75, H * 0.20, W * 0.10],
+      [W * 0.90, H * 0.04, W * 0.09],
+      [W * 1.00, H * 0.10, W * 0.12],
+    ];
+    petals.forEach(([cx, cy, r]) => {
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.strokeStyle = hexToRgba(accent, alpha * 0.9);
+      ctx.lineWidth = W * 0.004;
+      ctx.stroke();
+    });
+    // Bottom-left echo
+    const bottomPetals = [
+      [W * 0.10, H * 0.88, W * 0.09],
+      [W * 0.02, H * 0.94, W * 0.07],
+      [W * 0.19, H * 0.95, W * 0.07],
+    ];
+    bottomPetals.forEach(([cx, cy, r]) => {
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.strokeStyle = hexToRgba(accent, alpha * 0.5);
+      ctx.lineWidth = W * 0.003;
+      ctx.stroke();
+    });
+  } else {
+    // Diagonal lines (default)
+    if (template === 'utah-local') {
+      // Concentric arcs for Utah theme
+      for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        ctx.arc(W * 0.85, H * 0.2, W * (0.3 + i * 0.12), 0, Math.PI * 2);
+        ctx.strokeStyle = hexToRgba(accent, alpha);
+        ctx.lineWidth = W * 0.008;
+        ctx.stroke();
+      }
+    } else {
+      // Elegant diagonal lines — top right
+      ctx.save();
+      ctx.globalAlpha = alpha * 1.5;
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = W * 0.003;
+      for (let i = 0; i < 6; i++) {
+        ctx.beginPath();
+        ctx.moveTo(W * (0.55 + i * 0.07), 0);
+        ctx.lineTo(W, H * (0.2 + i * 0.07));
+        ctx.stroke();
+      }
+      ctx.restore();
+      // Soft arc — bottom left
+      ctx.save();
+      ctx.globalAlpha = alpha * 0.6;
+      ctx.beginPath();
+      ctx.arc(-W * 0.05, H * 1.08, W * 0.55, 0, Math.PI * 2);
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = W * 0.015;
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // Top accent bar (always present)
+  ctx.fillStyle = accent;
+  ctx.fillRect(0, 0, W, Math.round(H * 0.006));
+}
+
+function renderDrinkLayout(ctx, W, H, title, subtitle, ingredients, detail, textColor, mutedColor, accent, template, hScale) {
+  hScale = hScale || 1.0;
+  const P = W * 0.085;
+  const isStory = H > W;
+  const topY = isStory ? H * 0.12 : H * 0.1;
+
+  const labelMap = { 'drink-recipe': 'Behind the Bar', 'menu-spotlight': 'Menu Spotlight', 'mocktail': 'Mocktail Bar' };
+
+  ctx.font = `600 ${Math.round(W * 0.025)}px Inter, sans-serif`;
+  ctx.fillStyle = accent;
+  ctx.textAlign = 'left';
+  ctx.fillText(labelMap[template] || 'Behind the Bar', P, topY);
+
+  ctx.fillStyle = accent;
+  ctx.fillRect(P, topY + Math.round(W * 0.018), W * 0.12, Math.round(H * 0.003));
+
+  // Main title — headline scale applied
+  const titleFontSize = Math.round(W * 0.095 * hScale);
+  ctx.textAlign = 'left';
+  const titleY = topY + H * 0.12;
+  drawMultilineText(ctx, title.toUpperCase(), P, titleY, W - P * 2, titleFontSize, textColor, `300 ${titleFontSize}px "Bodoni Moda", Georgia, serif`, 1.1);
+
+  // Subtitle
+  const subtitleY = titleY + H * 0.13;
+  ctx.font = `300 ${Math.round(W * 0.032)}px "Cormorant Garamond", Georgia, serif`;
+  ctx.fillStyle = mutedColor;
+  ctx.fillText(subtitle, P, subtitleY);
+
+  // Divider
+  ctx.fillStyle = accent;
+  ctx.globalAlpha = 0.4;
+  ctx.fillRect(P, subtitleY + H * 0.03, W - P * 2, Math.round(H * 0.002));
+  ctx.globalAlpha = 1;
+
+  // Ingredients
+  if (ingredients.length > 0) {
+    const ingStartY = subtitleY + H * 0.07;
+    const ingLabel = template === 'mocktail' ? 'WHAT\'S IN IT' : 'KEY INGREDIENTS';
+
+    ctx.font = `600 ${Math.round(W * 0.022)}px Inter, sans-serif`;
+    ctx.fillStyle = accent;
+    ctx.fillText(ingLabel, P, ingStartY);
+
+    const cols = ingredients.length > 4 ? 2 : 1;
+    const colW = (W - P * 2) / cols;
+    const lineH = H * 0.052;
+
+    ingredients.forEach((ing, i) => {
+      const col = cols === 2 ? (i % 2) : 0;
+      const row = cols === 2 ? Math.floor(i / 2) : i;
+      const ix = P + col * colW;
+      const iy = ingStartY + H * 0.045 + row * lineH;
+
+      // Dot
+      ctx.beginPath();
+      ctx.arc(ix + W * 0.012, iy - W * 0.007, W * 0.007, 0, Math.PI * 2);
+      ctx.fillStyle = accent;
+      ctx.fill();
+
+      ctx.font = `400 ${Math.round(W * 0.033)}px "Cormorant Garamond", Georgia, serif`;
+      ctx.fillStyle = textColor;
+      ctx.fillText(ing, ix + W * 0.03, iy);
+    });
+  }
+
+  // Detail / CTA
+  const detailY = H - P * 1.8;
+  ctx.font = `500 ${Math.round(W * 0.026)}px Inter, sans-serif`;
+  ctx.fillStyle = mutedColor;
+  ctx.textAlign = 'left';
+  ctx.fillText(detail, P, detailY);
+}
+
+function renderCTALayout(ctx, W, H, title, subtitle, detail, textColor, mutedColor, accent, hScale) {
+  hScale = hScale || 1.0;
+  const P = W * 0.1;
+  const centerY = H * 0.44;
+
+  // Large decorative circle
+  ctx.save();
+  ctx.globalAlpha = 0.08;
+  ctx.beginPath();
+  ctx.arc(W / 2, H * 0.38, W * 0.42, 0, Math.PI * 2);
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = W * 0.04;
+  ctx.stroke();
+  ctx.restore();
+
+  // Kicker
+  ctx.font = `600 ${Math.round(W * 0.024)}px Inter, sans-serif`;
+  ctx.fillStyle = accent;
+  ctx.textAlign = 'center';
+  ctx.fillText('LAKE SALT BAR', W / 2, centerY - H * 0.18);
+
+  // Title — headline scale applied
+  const titleFontSize = Math.round(W * 0.1 * hScale);
+  ctx.font = `300 ${titleFontSize}px "Bodoni Moda", Georgia, serif`;
+  ctx.fillStyle = textColor;
+  drawCenteredMultiline(ctx, title, W / 2, centerY, W - P * 2, titleFontSize);
+
+  // Subtitle
+  ctx.font = `300 ${Math.round(W * 0.038)}px "Cormorant Garamond", Georgia, serif`;
+  ctx.fillStyle = mutedColor;
+  ctx.fillText(subtitle, W / 2, centerY + H * 0.12);
+
+  // CTA line
+  const ctaY = H * 0.72;
+  ctx.fillStyle = accent;
+  ctx.fillRect(W * 0.35, ctaY, W * 0.3, Math.round(H * 0.003));
+
+  ctx.font = `500 ${Math.round(W * 0.028)}px Inter, sans-serif`;
+  ctx.fillStyle = textColor;
+  ctx.fillText(detail, W / 2, ctaY + H * 0.06);
+}
+
+function renderEventLayout(ctx, W, H, title, subtitle, detail, textColor, mutedColor, accent, hScale) {
+  hScale = hScale || 1.0;
+  const P = W * 0.085;
+
+  ctx.font = `600 ${Math.round(W * 0.025)}px Inter, sans-serif`;
+  ctx.fillStyle = accent;
+  ctx.textAlign = 'left';
+  ctx.fillText('EVENT HIGHLIGHT', P, H * 0.13);
+
+  ctx.fillStyle = accent;
+  ctx.fillRect(P, H * 0.14 + W * 0.018, W * 0.14, H * 0.003);
+
+  // Big title — headline scale applied
+  const titleFontSize = Math.round(W * 0.09 * hScale);
+  drawMultilineText(ctx, title, P, H * 0.27, W - P * 2, titleFontSize, textColor, `400 ${titleFontSize}px "Bodoni Moda", Georgia, serif`, 1.15);
+
+  // Event name
+  ctx.font = `400 italic ${Math.round(W * 0.038)}px "Cormorant Garamond", Georgia, serif`;
+  ctx.fillStyle = accent;
+  ctx.textAlign = 'left';
+  ctx.fillText(subtitle, P, H * 0.52);
+
+  // Thin rule
+  ctx.fillStyle = accent;
+  ctx.globalAlpha = 0.3;
+  ctx.fillRect(P, H * 0.56, W - P * 2, H * 0.002);
+  ctx.globalAlpha = 1;
+
+  // Detail
+  ctx.font = `400 ${Math.round(W * 0.032)}px "Cormorant Garamond", Georgia, serif`;
+  ctx.fillStyle = mutedColor;
+  drawMultilineText(ctx, detail, P, H * 0.62, W - P * 2, Math.round(W * 0.032), mutedColor, `400 ${Math.round(W * 0.032)}px "Cormorant Garamond", Georgia, serif`, 1.5);
+}
+
+function drawLogo(ctx, W, H, img, logoKey) {
+  const size = logoKey === 'utah-white' ? W * 0.18 : W * 0.14;
+  const margin = W * 0.05;
+  const x = W - margin - size;
+  const y = H - margin - size * (logoKey === 'utah-white' ? 0.7 : 1);
+  ctx.globalAlpha = 0.85;
+  ctx.drawImage(img, x, y, size, size);
+  ctx.globalAlpha = 1;
+}
+
+// ── Text utilities ──
+function drawMultilineText(ctx, text, x, y, maxW, fontSize, color, fontStr, lineHeightMultiplier) {
+  ctx.font = fontStr;
+  ctx.fillStyle = color;
+  ctx.textAlign = 'left';
+  const lineH = fontSize * lineHeightMultiplier;
+  const words = text.split(' ');
+  let line = '';
+  let curY = y;
+  words.forEach((word, i) => {
+    const test = line + (line ? ' ' : '') + word;
+    if (ctx.measureText(test).width > maxW && line) {
+      ctx.fillText(line, x, curY);
+      line = word;
+      curY += lineH;
+    } else {
+      line = test;
+    }
+    if (i === words.length - 1) ctx.fillText(line, x, curY);
+  });
+}
+
+function drawCenteredMultiline(ctx, text, cx, y, maxW, fontSize) {
+  ctx.textAlign = 'center';
+  const lineH = fontSize * 1.1;
+  const words = text.split(' ');
+  let line = '';
+  let curY = y;
+  words.forEach((word, i) => {
+    const test = line + (line ? ' ' : '') + word;
+    if (ctx.measureText(test).width > maxW && line) {
+      ctx.fillText(line, cx, curY);
+      line = word;
+      curY += lineH;
+    } else {
+      line = test;
+    }
+    if (i === words.length - 1) ctx.fillText(line, cx, curY);
+  });
+}
+
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// ── Download ──
+function downloadPost() {
+  const link = document.createElement('a');
+  const ts = new Date().toISOString().slice(0, 10);
+  const name = (document.getElementById('inp-title').value || 'post').toLowerCase().replace(/\s+/g, '-');
+  link.download = `lakesalt-${name}-${ts}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+// ── Caption generator ──
+function generateCaption() {
+  const title = document.getElementById('inp-title').value || 'this drink';
+  const subtitle = document.getElementById('inp-subtitle').value || '';
+  const template = state.template;
+  const ingredientsRaw = document.getElementById('inp-ingredients').value || '';
+  const ingredients = ingredientsRaw.split('\n').filter(i => i.trim());
+
+  const captions = {
+    'drink-recipe': [
+      `Introducing the ${title} ✨\n\n${subtitle}.\n\n${ingredients.length > 0 ? 'What\'s in it:\n' + ingredients.map(i => `🍸 ${i}`).join('\n') + '\n\n' : ''}This is one of our most-requested cocktails at events. There's a reason people keep coming back for it.\n\n📲 Book us for your next event → link in bio\n\n#LakeSalt #LakeSaltBar #UtahBartender #MobileBartending #CraftCocktails #Mixology #BartenderLife`,
+      `POV: You hired Lake Salt for your event and the bar line never dies 🥂\n\nFeatured drink: ${title}\n${subtitle}.\n\n📲 lakesalt.us to book\n\n#LakeSaltBar #UtahBartender #${title.replace(/\s+/g,'')} #CraftCocktails #UtahEvents`
+    ],
+    'event-highlight': [
+      `${title} 🎉\n\n${subtitle}\n\nBehind every great event is a well-stocked bar. We're proud to bring elevated bartending to Utah's finest occasions.\n\n📲 Book Lake Salt for your next event → link in bio\n\n#LakeSalt #UtahBartender #EventHighlight #MobileBartending #UtahEvents`,
+    ],
+    'menu-spotlight': [
+      `Spotlight: ${title} 🍹\n\n${subtitle}\n\nEvery drink we serve is made with care — from the first pour to the garnish.\n\n${ingredients.length > 0 ? 'Made with: ' + ingredients.join(', ') + '\n\n' : ''}Ask about adding this to your custom menu.\n\n📲 Book us → link in bio\n\n#LakeSalt #${title.replace(/\s+/g,'')} #CraftCocktails #UtahBar #Mixology`
+    ],
+    'cta-booking': [
+      `Your next event deserves a bar that shows up. 🍸\n\nLake Salt is Utah's premier mobile bartending service. We bring premium bar service directly to your venue — corporate events, weddings, private parties.\n\nWhat's included:\n✅ TIPS-certified bartenders\n✅ Professional bar setup\n✅ Custom cocktail & mocktail menus\n✅ Dry hire available\n\n📲 Book now at lakesalt.us\n\n#LakeSalt #LakeSaltBar #UtahBartender #MobileBartending #BookNow #UtahWedding #UtahCorporate`
+    ],
+    'utah-local': [
+      `Utah events hit different when the bar is done right. 🏔️\n\nWe're Lake Salt — mobile bartending for the Wasatch Front and beyond. From Salt Lake City to Park City, we bring the craft to your event.\n\n📲 lakesalt.us\n\n#LakeSalt #UtahBartender #SaltLakeCity #ParkCity #UtahEvents #WasatchFront #SupportLocalUtah`
+    ],
+    'mocktail': [
+      `${title} — because zero proof doesn't mean zero fun. 🧊\n\n${subtitle}\n\n${ingredients.length > 0 ? 'Made with: ' + ingredients.join(', ') + '\n\n' : ''}We offer full mocktail menus at every event. Your sober guests deserve the same elevated experience.\n\n📲 Ask about our mocktail menu → link in bio\n\n#LakeSalt #MocktailBar #AlcoholFree #SoberCurious #${title.replace(/\s+/g,'')} #ZeroProof #UtahBartender`
+    ]
+  };
+
+  const options = captions[template] || captions['drink-recipe'];
+  const caption = options[Math.floor(Math.random() * options.length)];
+  document.getElementById('captionOutput').textContent = caption;
+  document.getElementById('caption-box').style.display = 'block';
+  document.getElementById('caption-box').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function copyCaption() {
+  const text = document.getElementById('captionOutput').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.copy-caption-btn');
+    const orig = btn.textContent;
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
+  });
+}
+
+// ── Init ──
+window.addEventListener('load', () => {
+  preloadLogos();
+  // Scale canvas for display
+  const scale = Math.min(540 / 1080, 700 / 1080);
+  canvas.style.width = Math.round(1080 * scale) + 'px';
+  canvas.style.height = Math.round(1080 * scale) + 'px';
+  renderPost();
+});
+</script>
+
+</body>
+</html>

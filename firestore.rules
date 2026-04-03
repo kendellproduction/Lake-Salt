@@ -2,20 +2,29 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper: is the requester an authenticated admin?
+    // ── Helper: is the requester a provisioned admin? ──
     function isAdmin() {
       return request.auth != null &&
              exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    // leads — public write (website form), admin read/update/delete
+    // ── leads — public create (website form), admin everything else ──
     match /leads/{id} {
-      allow create: if true;           // website contact form
+      allow create: if true;
       allow read, update, delete: if isAdmin();
     }
 
-    // All other collections — admin only
-    match /admins/{id}     { allow read, write: if isAdmin(); }
+    // ── admins — own-doc access for first-login + role checks ──
+    match /admins/{id} {
+      allow read:  if request.auth != null &&
+                      (request.auth.uid == id || isAdmin());
+      allow write: if isAdmin() ||
+                      (request.auth != null &&
+                       request.auth.uid == id &&
+                       request.auth.token.email == 'kendellproduction@gmail.com');
+    }
+
+    // ── Core business collections — admin only ──
     match /projects/{id}   { allow read, write: if isAdmin(); }
     match /tasks/{id}      { allow read, write: if isAdmin(); }
     match /bartenders/{id} { allow read, write: if isAdmin(); }
@@ -23,5 +32,8 @@ service cloud.firestore {
     match /events/{id}     { allow read, write: if isAdmin(); }
     match /expenses/{id}   { allow read, write: if isAdmin(); }
     match /inventory/{id}  { allow read, write: if isAdmin(); }
+
+    // ── Activity log — admin write + read ──
+    match /activity/{id}   { allow read, write: if isAdmin(); }
   }
 }

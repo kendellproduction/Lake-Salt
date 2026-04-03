@@ -8,7 +8,7 @@ const TASK_PRIORITIES = ['Low', 'Normal', 'High', 'Urgent'];
 let allProjects = {};
 let allTasks    = {};
 let activeProjectId = null;
-let projectsView = 'kanban'; // kanban | list | my-tasks
+let projectsView = 'kanban';
 
 async function renderProjects() {
   const c = document.getElementById('module-container');
@@ -27,17 +27,20 @@ async function renderProjects() {
     </div>
     <div id="projects-content">Loading…</div>`;
 
-  db.collection('projects').orderBy('createdAt','desc').onSnapshot(snap => {
+  // Push unsubs to cleanup array
+  const unsub1 = db.collection('projects').orderBy('createdAt','desc').onSnapshot(snap => {
     allProjects = {};
     snap.forEach(d => { allProjects[d.id] = { id: d.id, ...d.data() }; });
     loadProjectsView();
   });
+  _activeListeners.push(unsub1);
 
-  db.collection('tasks').onSnapshot(snap => {
+  const unsub2 = db.collection('tasks').onSnapshot(snap => {
     allTasks = {};
     snap.forEach(d => { allTasks[d.id] = { id: d.id, ...d.data() }; });
     loadProjectsView();
   });
+  _activeListeners.push(unsub2);
 }
 
 function setProjectsView(v) {
@@ -51,7 +54,6 @@ function loadProjectsView() {
   else renderMyTasks();
 }
 
-// ── Kanban: projects as columns, tasks inside ──
 function renderProjectKanban() {
   const projects = Object.values(allProjects).filter(p => p.status !== 'Archived');
   const el = document.getElementById('projects-content');
@@ -68,9 +70,6 @@ function renderProjectKanban() {
   el.innerHTML = `<div class="kanban-board">
     ${projects.map(p => {
       const tasks = Object.values(allTasks).filter(t => t.projectId === p.id);
-      const todo  = tasks.filter(t => t.status === 'To Do');
-      const doing = tasks.filter(t => t.status === 'In Progress');
-      const done  = tasks.filter(t => t.status === 'Done');
       return `
       <div class="kanban-col" style="min-width:260px">
         <div class="kanban-col-header" style="flex-direction:column;align-items:flex-start;gap:4px;cursor:pointer" onclick="openProjectModal('${p.id}')">
@@ -101,7 +100,6 @@ function taskCardHTML(t) {
   </div>`;
 }
 
-// ── List view ──
 function renderTaskList_all() {
   const tasks = Object.values(allTasks).sort((a,b) => {
     const p = { Urgent:4, High:3, Normal:2, Low:1 };
@@ -133,7 +131,6 @@ function renderTaskList_all() {
     </tbody></table></div></div>`;
 }
 
-// ── My Tasks view ──
 function renderMyTasks() {
   const myName = currentUser?.displayName || '';
   const tasks  = Object.values(allTasks).filter(t =>
@@ -164,7 +161,6 @@ async function quickCompleteTask(id, done) {
   await db.collection('tasks').doc(id).update({ status: done ? 'Done' : 'To Do', updatedAt: TS() });
 }
 
-// ── Task Modal ──
 function openTaskModal(id) {
   const t = allTasks[id];
   if (!t) return;
@@ -201,8 +197,9 @@ function openTaskModal(id) {
 }
 
 async function saveTask(id) {
+  const title = document.getElementById('task-title').value;
   await db.collection('tasks').doc(id).update({
-    title:    document.getElementById('task-title').value,
+    title,
     status:   document.getElementById('task-status').value,
     priority: document.getElementById('task-priority').value,
     assignee: document.getElementById('task-assignee').value,
@@ -210,18 +207,20 @@ async function saveTask(id) {
     notes:    document.getElementById('task-notes').value,
     updatedAt: TS()
   });
+  logActivity('updated', 'tasks', id, `Updated task: ${title}`);
   closeModal();
   showToast('Task saved', 'success');
 }
 
 async function deleteTask_project(id) {
   if (!confirmAction('Delete this task?')) return;
+  const t = allTasks[id];
   await db.collection('tasks').doc(id).delete();
+  logActivity('deleted', 'tasks', id, `Deleted task: ${t?.title||'Unknown'}`);
   closeModal();
   showToast('Task deleted', 'info');
 }
 
-// ── Add Task Modal ──
 function openAddTaskModal(projectId) {
   const projects = Object.values(allProjects);
   openModal('Add Task', `
@@ -262,12 +261,12 @@ async function saveNewTask(e) {
   data.notes     = '';
   data.createdAt = TS();
   data.updatedAt = TS();
-  await db.collection('tasks').add(data);
+  const docRef = await db.collection('tasks').add(data);
+  logActivity('created', 'tasks', docRef.id, `New task: ${data.title}`);
   closeModal();
   showToast('Task created!', 'success');
 }
 
-// ── Add Project Modal ──
 function openAddProjectModal() {
   openModal('Add Project', `
     <form onsubmit="saveNewProject(event)">
@@ -301,7 +300,8 @@ async function saveNewProject(e) {
   const data = Object.fromEntries(fd.entries());
   data.status    = 'Active';
   data.createdAt = TS();
-  await db.collection('projects').add(data);
+  const docRef = await db.collection('projects').add(data);
+  logActivity('created', 'projects', docRef.id, `New project: ${data.eventName}`);
   closeModal();
   showToast('Project created!', 'success');
 }
@@ -336,9 +336,11 @@ function openProjectModal(id) {
 
 async function deleteProject(id) {
   if (!confirmAction('Delete this project and all its tasks?')) return;
+  const p = allProjects[id];
   const tasks = Object.values(allTasks).filter(t => t.projectId === id);
   await Promise.all(tasks.map(t => db.collection('tasks').doc(t.id).delete()));
   await db.collection('projects').doc(id).delete();
+  logActivity('deleted', 'projects', id, `Deleted project: ${p?.eventName||'Unknown'} (${tasks.length} tasks)`);
   closeModal();
   showToast('Project deleted', 'info');
 }

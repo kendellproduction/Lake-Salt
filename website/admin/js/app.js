@@ -1,9 +1,15 @@
 /* ─── APP SHELL: ROUTING, NAV, TOAST, MODAL ─── */
 
+// ── Global listener cleanup ──
+// Every module that creates onSnapshot listeners should push
+// the unsubscribe function into this array. loadModule() clears them.
+const _activeListeners = [];
+function cleanupListeners() {
+  _activeListeners.forEach(unsub => { try { unsub(); } catch(e){} });
+  _activeListeners.length = 0;
+}
+
 // ── Module registry ──
-// Arrow functions are used so each render* reference is resolved lazily at
-// call time (not at parse time), avoiding ReferenceErrors when app.js loads
-// before the individual module scripts have run.
 const MODULES = {
   dashboard:  () => renderDashboard(),
   crm:        () => renderCRM(),
@@ -12,13 +18,19 @@ const MODULES = {
   analytics:  () => renderAnalytics(),
   expenses:   () => renderExpenses(),
   inventory:  () => renderInventory(),
-  funnel:     () => renderFunnel()
+  funnel:     () => renderFunnel(),
+  'event-day': () => renderEventDay(),
+  marketing:   () => renderMarketing(),
+  notes:       () => renderNotes()
 };
 
 // ── Load a module ──
 function loadModule(name) {
   const validModules = Object.keys(MODULES);
   if (!validModules.includes(name)) name = 'dashboard';
+
+  // Cleanup previous module's listeners
+  cleanupListeners();
 
   // Update nav active state
   document.querySelectorAll('.nav-item').forEach(a => {
@@ -34,7 +46,6 @@ function loadModule(name) {
 
   setTimeout(() => {
     if (MODULES[name]) MODULES[name]();
-    // Close mobile sidebar if open
     closeMobileSidebar();
   }, 50);
 }
@@ -163,6 +174,26 @@ function confirmAction(msg) {
   return window.confirm(msg);
 }
 
+// ══════════════════════════════════════
+// ACTIVITY LOG — writes to activity/ collection
+// ══════════════════════════════════════
+async function logActivity(action, collection, docId, summary, metadata = {}) {
+  try {
+    await db.collection('activity').add({
+      action,
+      collection,
+      docId:     docId || '',
+      summary,
+      userId:    currentUser?.uid || '',
+      userName:  currentUser?.displayName || 'Admin',
+      metadata,
+      createdAt: TS()
+    });
+  } catch (e) {
+    console.warn('Activity log failed:', e);
+  }
+}
+
 // ── Live badge: new leads count ──
 db.collection('leads').where('stage','==','New Lead').onSnapshot(snap => {
   const badge = document.getElementById('badge-crm');
@@ -185,7 +216,7 @@ db.collection('inventory').onSnapshot(snap => {
 });
 
 // ══════════════════════════════════════
-// DASHBOARD MODULE
+// DASHBOARD MODULE — with P&L card + activity feed
 // ══════════════════════════════════════
 async function renderDashboard() {
   const c = document.getElementById('module-container');
@@ -197,7 +228,7 @@ async function renderDashboard() {
       </div>
     </div>
     <div class="stat-grid" id="dash-stats">
-      ${[1,2,3,4].map(()=>`<div class="stat-card"><div class="skeleton skeleton-line w-1/4" style="height:11px;margin-bottom:10px;"></div><div class="skeleton skeleton-line w-1/2" style="height:28px;"></div></div>`).join('')}
+      ${[1,2,3,4,5].map(()=>`<div class="stat-card"><div class="skeleton skeleton-line w-1/4" style="height:11px;margin-bottom:10px;"></div><div class="skeleton skeleton-line w-1/2" style="height:28px;"></div></div>`).join('')}
     </div>
     <div class="dashboard-grid">
       <div class="card" style="grid-column:span 2 / span 2">
@@ -206,26 +237,46 @@ async function renderDashboard() {
       </div>
       <div class="card">
         <div class="card-header"><span class="card-title">Recent Activity</span></div>
-        <div id="dash-activity"><div class="text-muted" style="font-size:13px">No recent activity</div></div>
+        <div id="dash-activity" class="activity-list"><div class="text-muted" style="font-size:13px;padding:12px">Loading…</div></div>
       </div>
     </div>`;
 
   // Fetch stats in parallel
-  const [leadsSnap, eventsSnap, expensesSnap, bartSnap] = await Promise.all([
+  const [leadsSnap, eventsSnap, expensesSnap, paymentsSnap, bartSnap, activitySnap] = await Promise.all([
     db.collection('leads').get(),
     db.collection('events').get(),
     db.collection('expenses').get(),
-    db.collection('bartenders').where('status','==','Active').get()
+    db.collection('payments').get(),
+    db.collection('bartenders').where('status','==','Active').get(),
+    db.collection('activity').orderBy('createdAt','desc').limit(15).get()
   ]);
 
-  const revenue = eventsSnap.docs.reduce((s, d) => s + (d.data().revenue || 0), 0);
-  const expenses = expensesSnap.docs.reduce((s, d) => s + (d.data().amount || 0), 0);
+  const revenue   = eventsSnap.docs.reduce((s, d) => s + (d.data().revenue || 0), 0);
+  const totalExp  = expensesSnap.docs.reduce((s, d) => s + (d.data().amount || 0), 0);
+  const totalPay  = paymentsSnap.docs.reduce((s, d) => s + (d.data().amount || 0), 0);
+  const netProfit = revenue - totalExp - totalPay;
   const openLeads = leadsSnap.docs.filter(d => !['Completed','Lost'].includes(d.data().stage)).length;
 
+  // P&L trend arrow (compare this month vs last month)
+  const now = new Date();
+  const thisMonth = now.getMonth();
+  const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
+  const thisMonthRev = eventsSnap.docs.filter(d => {
+    const dt = d.data().date;
+    return dt && new Date(dt).getMonth() === thisMonth;
+  }).reduce((s,d) => s + (d.data().revenue||0), 0);
+  const lastMonthRev = eventsSnap.docs.filter(d => {
+    const dt = d.data().date;
+    return dt && new Date(dt).getMonth() === lastMonth;
+  }).reduce((s,d) => s + (d.data().revenue||0), 0);
+  const trendArrow = thisMonthRev >= lastMonthRev ? '↑' : '↓';
+  const trendColor = thisMonthRev >= lastMonthRev ? 'var(--green)' : 'var(--red)';
+
   document.getElementById('dash-stats').innerHTML = `
-    <div class="stat-card gold"><div class="stat-label">Revenue YTD</div><div class="stat-value">${fmtMoney(revenue)}</div></div>
+    <div class="stat-card gold"><div class="stat-label">Revenue</div><div class="stat-value">${fmtMoney(revenue)}</div><div class="stat-sub">${eventsSnap.size} events</div></div>
+    <div class="stat-card red"><div class="stat-label">Costs</div><div class="stat-value">${fmtMoney(totalExp + totalPay)}</div><div class="stat-sub">expenses + labor</div></div>
+    <div class="stat-card" style="border-left:3px solid ${netProfit>=0?'var(--green)':'var(--red)'}"><div class="stat-label">Net Profit</div><div class="stat-value" style="color:${netProfit>=0?'var(--green)':'var(--red)'}">${fmtMoney(netProfit)}</div><div class="stat-sub"><span style="color:${trendColor}">${trendArrow}</span> vs last month</div></div>
     <div class="stat-card teal"><div class="stat-label">Open Leads</div><div class="stat-value">${openLeads}</div></div>
-    <div class="stat-card green"><div class="stat-label">Events Completed</div><div class="stat-value">${eventsSnap.size}</div></div>
     <div class="stat-card"><div class="stat-label">Active Bartenders</div><div class="stat-value">${bartSnap.size}</div></div>`;
 
   // Recent leads
@@ -248,11 +299,67 @@ async function renderDashboard() {
       </tr>`;
     }).join('')}
     </tbody></table></div>` : `<div class="empty-state"><div class="empty-icon">🎯</div><div class="empty-title">No leads yet</div><div class="empty-sub">Form submissions will appear here</div></div>`;
+
+  // Activity feed
+  const activityEl = document.getElementById('dash-activity');
+  if (activitySnap.empty) {
+    activityEl.innerHTML = `<div class="text-muted" style="font-size:13px;padding:12px">No recent activity</div>`;
+  } else {
+    const actionIcons = {
+      created: '🟢', updated: '🔵', deleted: '🔴',
+      status_changed: '🟡', uploaded: '📎'
+    };
+    activityEl.innerHTML = activitySnap.docs.map(d => {
+      const a = d.data();
+      const icon = actionIcons[a.action] || '⚪';
+      const time = a.createdAt?.toDate ? a.createdAt.toDate().toLocaleString('en-US', {
+        month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+      }) : '';
+      return `<div class="activity-item">
+        <span class="activity-dot">${icon}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;line-height:1.4">${a.summary||a.action}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${a.userName||'Admin'} · ${time}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
 }
 
+// ══════════════════════════════════════
+// TOOL OVERLAY — opens brand guide, content creator,
+// content calendar inline (fullscreen iframe, no new tab)
+// ══════════════════════════════════════
+function openTool(url, title) {
+  const overlay = document.getElementById('tool-overlay');
+  const frame   = document.getElementById('tool-overlay-frame');
+  const label   = document.getElementById('tool-overlay-title');
+  if (!overlay || !frame) return;
+  if (label) label.textContent = title || '';
+  frame.src = url;
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeToolOverlay() {
+  const overlay = document.getElementById('tool-overlay');
+  const frame   = document.getElementById('tool-overlay-frame');
+  if (!overlay) return;
+  overlay.classList.remove('open');
+  document.body.style.overflow = '';
+  // Delay src clear so close animation isn't janky
+  setTimeout(() => { if (frame) frame.src = ''; }, 200);
+}
+
+// Close overlay on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const overlay = document.getElementById('tool-overlay');
+    if (overlay && overlay.classList.contains('open')) closeToolOverlay();
+  }
+});
+
 // ── Boot ──
-// Scripts are at bottom of <body>, so DOMContentLoaded may have already fired.
-// Use readyState check to guarantee initAuth() always runs.
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initAuth);
 } else {

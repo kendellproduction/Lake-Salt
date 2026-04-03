@@ -33,12 +33,13 @@ async function renderCRM() {
         </div>`).join('')}
     </div>`;
 
-  // Real-time listener
-  db.collection('leads').orderBy('createdAt','desc').onSnapshot(snap => {
+  // Real-time listener — push unsub to cleanup array
+  const unsub = db.collection('leads').orderBy('createdAt','desc').onSnapshot(snap => {
     crmLeads = {};
     snap.forEach(doc => { crmLeads[doc.id] = { id: doc.id, ...doc.data() }; });
     renderKanban();
   });
+  _activeListeners.push(unsub);
 }
 
 let crmLeads = {};
@@ -70,8 +71,9 @@ function renderKanban(filter = '') {
 function filterKanban() { renderKanban(); }
 
 function leadCardHTML(l) {
+  const priorityDot = l.priority === 'Urgent' ? '🔴' : l.priority === 'High' ? '🟠' : '';
   return `<div class="lead-card" onclick="openLeadModal('${l.id}')">
-    <div class="lead-card-name">${l.name || 'Unknown'}</div>
+    <div class="lead-card-name">${priorityDot} ${l.name || 'Unknown'}</div>
     <div class="lead-card-meta">
       ${l.email ? `<div class="lead-card-row">✉ ${l.email}</div>` : ''}
       ${l.eventType ? `<div class="lead-card-row">🎉 ${l.eventType}</div>` : ''}
@@ -80,7 +82,8 @@ function leadCardHTML(l) {
     </div>
     <div class="lead-card-tags">
       ${l.source ? `<span class="badge" style="background:rgba(201,168,76,0.1);color:var(--gold)">${l.source}</span>` : ''}
-      ${l.notes && l.notes.length ? `<span class="badge" style="background:rgba(26,158,143,0.1);color:var(--teal)">${l.notes.length} note${l.notes.length>1?'s':''}</span>` : ''}
+      ${l.budget ? `<span class="badge" style="background:rgba(26,158,143,0.1);color:var(--teal)">${fmtMoney(l.budget)}</span>` : ''}
+      ${l.notes && l.notes.length ? `<span class="badge" style="background:rgba(100,116,139,0.15);color:#8A9DB5">${l.notes.length} note${l.notes.length>1?'s':''}</span>` : ''}
     </div>
   </div>`;
 }
@@ -106,12 +109,15 @@ function openLeadModal(id) {
         <div class="lead-info-item"><span class="lead-info-label">Venue</span><span class="lead-info-value">${l.venue||'—'}</span></div>
         <div class="lead-info-item"><span class="lead-info-label">Budget</span><span class="lead-info-value">${l.budget ? fmtMoney(l.budget) : '—'}</span></div>
         <div class="lead-info-item"><span class="lead-info-label">Source</span><span class="lead-info-value">${l.source||'Website'}</span></div>
+        <div class="lead-info-item"><span class="lead-info-label">Priority</span><span class="lead-info-value"><span class="badge ${priorityBadgeClass(l.priority||'Normal')}">${l.priority||'Normal'}</span></span></div>
+        ${l.followUpDate ? `<div class="lead-info-item"><span class="lead-info-label">Follow-Up</span><span class="lead-info-value" style="color:var(--gold)">${l.followUpDate}</span></div>` : ''}
         ${l.message ? `<div class="lead-info-item"><span class="lead-info-label">Message</span><span class="lead-info-value">${l.message}</span></div>` : ''}
         <div class="divider"></div>
         <div class="form-section-title">Pipeline Stage</div>
         <select class="form-select" id="lead-stage-select" onchange="updateLeadStage('${id}',this.value)">
           ${CRM_STAGES.map(s => `<option ${l.stage===s?'selected':''}>${s}</option>`).join('')}
         </select>
+        ${l.stage === 'Lost' && l.lostReason ? `<div style="font-size:12px;color:var(--red);margin-top:6px">Reason: ${l.lostReason}</div>` : ''}
         <div class="mt-8" style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-ghost btn-sm" onclick="openEditLeadModal('${id}')">✏ Edit</button>
           <button class="btn btn-danger btn-sm" onclick="deleteLead('${id}')">🗑 Delete</button>
@@ -159,10 +165,18 @@ function renderTaskList(tasks, leadId) {
 
 // ── Lead actions ──
 async function updateLeadStage(id, stage) {
+  const l = crmLeads[id];
+  const oldStage = l?.stage || 'New Lead';
   await db.collection('leads').doc(id).update({ stage, updatedAt: TS() });
+
+  // Activity log
+  logActivity('status_changed', 'leads', id,
+    `Moved '${l?.name||'Lead'}' from ${oldStage} to ${stage}`,
+    { oldStage, newStage: stage }
+  );
+
   // Auto-create project when booked
   if (stage === 'Booked') {
-    const l = crmLeads[id];
     const existing = await db.collection('projects').where('leadId','==',id).get();
     if (existing.empty) {
       await db.collection('projects').add({
@@ -230,7 +244,9 @@ async function deleteTask(leadId, idx) {
 
 async function deleteLead(id) {
   if (!confirmAction('Delete this lead permanently?')) return;
+  const l = crmLeads[id];
   await db.collection('leads').doc(id).delete();
+  logActivity('deleted', 'leads', id, `Deleted lead '${l?.name||'Unknown'}'`);
   closeModal();
   showToast('Lead deleted', 'info');
 }
@@ -282,12 +298,20 @@ function leadFormHTML(l = {}) {
     <div class="form-row">
       <div class="form-group"><label class="form-label">Source</label>
         <select class="form-select" name="source">
-          ${['Website','Referral','Google','Instagram','Facebook','Other'].map(o => `<option ${l.source===o?'selected':''}>${o}</option>`).join('')}
+          ${['Website','Referral','Google','Instagram','Facebook','TikTok','Other'].map(o => `<option ${l.source===o?'selected':''}>${o}</option>`).join('')}
         </select></div>
+      <div class="form-group"><label class="form-label">Priority</label>
+        <select class="form-select" name="priority">
+          ${['Low','Normal','High','Urgent'].map(p => `<option ${(l.priority||'Normal')===p?'selected':''}>${p}</option>`).join('')}
+        </select></div>
+    </div>
+    <div class="form-row">
       <div class="form-group"><label class="form-label">Stage</label>
         <select class="form-select" name="stage">
           ${CRM_STAGES.map(s => `<option ${(l.stage||'New Lead')===s?'selected':''}>${s}</option>`).join('')}
         </select></div>
+      <div class="form-group"><label class="form-label">Follow-Up Date</label>
+        <input class="form-input" name="followUpDate" type="date" value="${l.followUpDate||''}"/></div>
     </div>
     <div class="form-group"><label class="form-label">Message / Notes</label>
       <textarea class="form-textarea" name="message" placeholder="Vision, theme, special requests…">${l.message||''}</textarea></div>
@@ -307,7 +331,8 @@ async function saveNewLead(e) {
   data.notes = [];
   data.tasks = [];
   if (!data.stage) data.stage = 'New Lead';
-  await db.collection('leads').add(data);
+  const docRef = await db.collection('leads').add(data);
+  logActivity('created', 'leads', docRef.id, `New lead: ${data.name} (${data.eventType||'Event'})`);
   closeModal();
   showToast('Lead added!', 'success');
 }
@@ -318,6 +343,7 @@ async function saveLeadEdit(e, id) {
   const data = Object.fromEntries(fd.entries());
   data.updatedAt = TS();
   await db.collection('leads').doc(id).update(data);
+  logActivity('updated', 'leads', id, `Updated lead: ${data.name}`);
   closeModal();
   showToast('Lead updated', 'success');
 }

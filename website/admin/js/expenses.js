@@ -15,16 +15,19 @@ async function renderExpenses() {
         <div class="page-title">Expenses</div>
         <div class="page-subtitle">Track costs, receipts, and profit impact</div>
       </div>
-      <button class="btn btn-primary" onclick="openAddExpenseModal()">+ Add Expense</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="exportExpensesCSV()" title="Export CSV">📥 Export</button>
+        <button class="btn btn-primary" onclick="openAddExpenseModal()">+ Add Expense</button>
+      </div>
     </div>
     <div class="stat-grid" id="expense-stats">
       ${[1,2,3,4].map(()=>`<div class="stat-card"><div class="skeleton skeleton-line w-1/4" style="height:11px;margin-bottom:10px;"></div><div class="skeleton skeleton-line w-1/2" style="height:28px;"></div></div>`).join('')}
     </div>
     <div class="card">
-      <div class="card-header">
+      <div class="card-header" style="flex-wrap:wrap;gap:8px">
         <span class="card-title">Expense Records</span>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <input class="filter-select" id="expense-search" placeholder="Search…" oninput="filterExpenses()" style="min-width:140px"/>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input class="filter-select" id="expense-search" placeholder="Search…" oninput="filterExpenses()" style="min-width:120px"/>
           <select class="filter-select" id="expense-cat" onchange="filterExpenses()">
             <option value="">All Categories</option>
             ${EXPENSE_CATEGORIES.map(c=>`<option value="${c}">${c}</option>`).join('')}
@@ -32,10 +35,19 @@ async function renderExpenses() {
           <select class="filter-select" id="expense-event" onchange="filterExpenses()">
             <option value="">All Events</option>
           </select>
-          <select class="filter-select" id="expense-month" onchange="filterExpenses()">
-            <option value="">All Months</option>
-            ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m,i)=>`<option value="${i}">${m}</option>`).join('')}
+          <select class="filter-select" id="expense-range" onchange="handleExpenseDateRange()">
+            <option value="">All Time</option>
+            <option value="this-month">This Month</option>
+            <option value="last-30">Last 30 Days</option>
+            <option value="this-quarter">This Quarter</option>
+            <option value="ytd">Year to Date</option>
+            <option value="custom">Custom Range</option>
           </select>
+          <div id="expense-custom-range" style="display:none;gap:6px;align-items:center">
+            <input class="form-input" type="date" id="expense-date-from" onchange="filterExpenses()" style="width:130px;padding:6px"/>
+            <span style="color:var(--text-muted);font-size:12px">to</span>
+            <input class="form-input" type="date" id="expense-date-to" onchange="filterExpenses()" style="width:130px;padding:6px"/>
+          </div>
         </div>
       </div>
       <div class="table-wrap" id="expense-table">Loading…</div>
@@ -60,38 +72,89 @@ async function renderExpenses() {
   });
 
   // Stats
+  const now = new Date();
   const ytdTotal   = window._allExpenses.reduce((s,e) => s + (e.amount||0), 0);
-  const thisMonth  = new Date().getMonth();
-  const mtdTotal   = window._allExpenses.filter(e => e.date && new Date(e.date).getMonth() === thisMonth)
+  const thisMonth  = now.getMonth();
+  const mtdTotal   = window._allExpenses.filter(e => e.date && new Date(e.date).getMonth() === thisMonth && new Date(e.date).getFullYear() === now.getFullYear())
                        .reduce((s,e) => s + (e.amount||0), 0);
   const byCat      = {};
   window._allExpenses.forEach(e => { const c = e.category||'Misc'; byCat[c] = (byCat[c]||0)+(e.amount||0); });
   const topCat     = Object.entries(byCat).sort((a,b)=>b[1]-a[1])[0];
-  const withReceipt = window._allExpenses.filter(e => e.receiptUrl).length;
+  const taxDeductTotal = window._allExpenses.filter(e => e.taxDeductible).reduce((s,e) => s + (e.amount||0), 0);
 
   document.getElementById('expense-stats').innerHTML = `
     <div class="stat-card red"><div class="stat-label">YTD Expenses</div><div class="stat-value">${fmtMoney(ytdTotal)}</div><div class="stat-sub">${window._allExpenses.length} entries</div></div>
     <div class="stat-card gold"><div class="stat-label">Month-to-Date</div><div class="stat-value">${fmtMoney(mtdTotal)}</div></div>
     <div class="stat-card teal"><div class="stat-label">Top Category</div><div class="stat-value">${topCat ? topCat[0] : '—'}</div><div class="stat-sub">${topCat ? fmtMoney(topCat[1]) : ''}</div></div>
-    <div class="stat-card"><div class="stat-label">Receipts Filed</div><div class="stat-value">${withReceipt}</div><div class="stat-sub">of ${window._allExpenses.length} total</div></div>`;
+    <div class="stat-card green"><div class="stat-label">Tax Deductible</div><div class="stat-value">${fmtMoney(taxDeductTotal)}</div><div class="stat-sub">${window._allExpenses.filter(e=>e.taxDeductible).length} items</div></div>`;
 
   filterExpenses();
 }
 
+function handleExpenseDateRange() {
+  const range = document.getElementById('expense-range')?.value;
+  const customEl = document.getElementById('expense-custom-range');
+  if (range === 'custom') {
+    customEl.style.display = 'flex';
+  } else {
+    customEl.style.display = 'none';
+    filterExpenses();
+  }
+}
+
+function getDateRange() {
+  const range = document.getElementById('expense-range')?.value;
+  if (!range) return { from: null, to: null };
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let from, to;
+
+  switch (range) {
+    case 'this-month':
+      from = new Date(now.getFullYear(), now.getMonth(), 1);
+      to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      break;
+    case 'last-30':
+      from = new Date(today.getTime() - 30 * 86400000);
+      to = today;
+      break;
+    case 'this-quarter':
+      const q = Math.floor(now.getMonth() / 3);
+      from = new Date(now.getFullYear(), q * 3, 1);
+      to = new Date(now.getFullYear(), (q + 1) * 3, 0);
+      break;
+    case 'ytd':
+      from = new Date(now.getFullYear(), 0, 1);
+      to = today;
+      break;
+    case 'custom':
+      const f = document.getElementById('expense-date-from')?.value;
+      const t = document.getElementById('expense-date-to')?.value;
+      from = f ? new Date(f) : null;
+      to = t ? new Date(t) : null;
+      break;
+    default:
+      return { from: null, to: null };
+  }
+  return { from, to };
+}
+
 function filterExpenses() {
   const expenses = window._allExpenses || [];
-  const events   = window._allExpenseEvents || [];
   const search   = (document.getElementById('expense-search')?.value || '').toLowerCase();
   const cat      = document.getElementById('expense-cat')?.value || '';
   const eventId  = document.getElementById('expense-event')?.value || '';
-  const month    = document.getElementById('expense-month')?.value;
+  const { from, to } = getDateRange();
 
   const filtered = expenses.filter(e => {
     if (cat && e.category !== cat) return false;
     if (eventId && e.eventId !== eventId) return false;
-    if (month !== '' && month !== undefined) {
-      const m = e.date ? new Date(e.date).getMonth() : -1;
-      if (m !== Number(month)) return false;
+    if (from || to) {
+      const d = e.date ? new Date(e.date) : null;
+      if (!d) return false;
+      if (from && d < from) return false;
+      if (to && d > new Date(to.getTime() + 86400000)) return false;
     }
     if (search) {
       const desc = (e.description||'').toLowerCase();
@@ -110,13 +173,18 @@ function filterExpenses() {
     return;
   }
 
+  const filteredTotal = filtered.reduce((s,e) => s + (e.amount||0), 0);
+
   tableEl.innerHTML = `
+    <div style="padding:8px 12px;font-size:12px;color:var(--text-muted);border-bottom:1px solid var(--navy-bd)">
+      Showing ${filtered.length} expenses · Total: <strong style="color:var(--gold)">${fmtMoney(filteredTotal)}</strong>
+    </div>
     <table><thead><tr>
       <th>Date</th><th>Description</th><th>Vendor</th><th>Category</th><th>Event</th><th>Amount</th><th>Receipt</th><th></th>
     </tr></thead><tbody>
     ${filtered.map(e => `<tr>
       <td>${e.date || '—'}</td>
-      <td><strong>${e.description||'—'}</strong></td>
+      <td><strong>${e.description||'—'}</strong>${e.taxDeductible ? ' <span style="color:var(--green);font-size:10px" title="Tax deductible">✓tax</span>' : ''}</td>
       <td class="text-muted">${e.vendor||'—'}</td>
       <td><span class="badge">${e.category||'Misc'}</span></td>
       <td class="text-muted">${eventMap[e.eventId]||'—'}</td>
@@ -125,6 +193,30 @@ function filterExpenses() {
       <td><button class="btn btn-ghost btn-sm" onclick="openExpenseModal('${e.id}')">Edit</button></td>
     </tr>`).join('')}
     </tbody></table>`;
+}
+
+// ── Export to CSV ──
+function exportExpensesCSV() {
+  const expenses = window._allExpenses || [];
+  if (!expenses.length) { showToast('No expenses to export', 'warning'); return; }
+  const eventMap = {};
+  (window._allExpenseEvents || []).forEach(e => { eventMap[e.id] = e.name || e.id; });
+
+  const rows = [['Date','Description','Vendor','Category','Event','Amount','Tax Deductible','Receipt']];
+  expenses.forEach(e => {
+    rows.push([
+      e.date||'', e.description||'', e.vendor||'', e.category||'',
+      eventMap[e.eventId]||'', e.amount||0, e.taxDeductible ? 'Yes' : 'No',
+      e.receiptUrl ? 'Yes' : 'No'
+    ]);
+  });
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `lake-salt-expenses-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  showToast('CSV downloaded!', 'success');
 }
 
 // ── Expense Modal ──
@@ -182,13 +274,26 @@ function expenseFormHTML(e = {}) {
           ${EXPENSE_CATEGORIES.map(c=>`<option ${e.category===c?'selected':''}>${c}</option>`).join('')}
         </select></div>
     </div>
-    <div class="form-group"><label class="form-label">Linked Event</label>
-      <select class="form-select" name="eventId">
-        <option value="">— None —</option>
-        ${events.map(ev=>`<option value="${ev.id}" ${e.eventId===ev.id?'selected':''}>${ev.name||ev.id}</option>`).join('')}
-      </select></div>
-    <div class="form-group"><label class="form-label">Receipt ${e.receiptUrl?'(replace)':''}</label>
-      <input class="form-input" id="receipt-input" type="file" accept="image/*,application/pdf" capture="environment"/>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Linked Event</label>
+        <select class="form-select" name="eventId">
+          <option value="">— None —</option>
+          ${events.map(ev=>`<option value="${ev.id}" ${e.eventId===ev.id?'selected':''}>${ev.name||ev.id}</option>`).join('')}
+        </select></div>
+      <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:8px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text-light)">
+          <input type="checkbox" name="taxDeductible" value="true" ${e.taxDeductible?'checked':''} style="accent-color:var(--teal);width:18px;height:18px"/>
+          Tax Deductible
+        </label>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Receipt ${e.receiptUrl?'(replace)':''}</label>
+      <label style="display:block;background:var(--navy-lt);border:2px dashed var(--navy-bd);border-radius:8px;padding:16px;text-align:center;cursor:pointer;transition:border-color 0.2s" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--navy-bd)'">
+        <div style="font-size:24px;margin-bottom:4px">📷</div>
+        <div style="font-size:13px;color:var(--teal)">Tap to take photo or choose file</div>
+        <input id="receipt-input" type="file" accept="image/*,application/pdf" capture="environment" style="display:none"/>
+      </label>
       ${e.receiptUrl ? `<a href="${e.receiptUrl}" target="_blank" style="font-size:12px;color:var(--teal);display:block;margin-top:4px">Current receipt ↗</a>` : ''}
       <div id="receipt-preview"></div>
     </div>
@@ -215,6 +320,7 @@ async function saveNewExpense(ev) {
   const file = document.getElementById('receipt-input')?.files[0];
 
   data.amount = Number(data.amount);
+  data.taxDeductible = data.taxDeductible === 'true';
   data.createdAt = TS();
   if (!data.eventId) delete data.eventId;
   if (!data.notes)   delete data.notes;
@@ -226,8 +332,10 @@ async function saveNewExpense(ev) {
     const docRef = await db.collection('expenses').add(data);
     if (file) {
       const url = await uploadReceiptFile(file, docRef.id);
-      await docRef.update({ receiptUrl: url });
+      await docRef.update({ receiptUrl: url, receiptName: file.name });
+      logActivity('uploaded', 'expenses', docRef.id, `Receipt uploaded: ${file.name}`);
     }
+    logActivity('created', 'expenses', docRef.id, `New expense: ${data.description} (${fmtMoney(data.amount)})`);
     closeModal();
     showToast('Expense added!', 'success');
     renderExpenses();
@@ -244,6 +352,7 @@ async function saveExpenseEdit(ev, id) {
   const file = document.getElementById('receipt-input')?.files[0];
 
   data.amount = Number(data.amount);
+  data.taxDeductible = data.taxDeductible === 'true';
   data.updatedAt = TS();
   if (!data.eventId) delete data.eventId;
 
@@ -254,8 +363,10 @@ async function saveExpenseEdit(ev, id) {
     if (file) {
       const url = await uploadReceiptFile(file, id);
       data.receiptUrl = url;
+      data.receiptName = file.name;
     }
     await db.collection('expenses').doc(id).update(data);
+    logActivity('updated', 'expenses', id, `Updated expense: ${data.description}`);
     closeModal();
     showToast('Expense updated', 'success');
     renderExpenses();
@@ -267,7 +378,9 @@ async function saveExpenseEdit(ev, id) {
 
 async function deleteExpense(id) {
   if (!confirmAction('Delete this expense?')) return;
+  const exp = (window._allExpenses||[]).find(e => e.id === id);
   await db.collection('expenses').doc(id).delete();
+  logActivity('deleted', 'expenses', id, `Deleted expense: ${exp?.description||'Unknown'}`);
   closeModal();
   showToast('Expense deleted', 'info');
   renderExpenses();

@@ -5,6 +5,10 @@
 let analyticsCharts = {};
 
 async function renderAnalytics() {
+  // Destroy old charts first
+  Object.values(analyticsCharts).forEach(ch => { try { ch.destroy(); } catch(e){} });
+  analyticsCharts = {};
+
   const c = document.getElementById('module-container');
   c.innerHTML = `
     <div class="page-header">
@@ -12,7 +16,16 @@ async function renderAnalytics() {
         <div class="page-title">Analytics</div>
         <div class="page-subtitle">Revenue, margins, and event performance</div>
       </div>
-      <button class="btn btn-primary" onclick="openAddEventModal()">+ Log Event</button>
+      <div style="display:flex;gap:8px">
+        <select class="filter-select" id="analytics-range" onchange="renderAnalytics()">
+          <option value="ytd">Year to Date</option>
+          <option value="this-month">This Month</option>
+          <option value="this-quarter">This Quarter</option>
+          <option value="last-year">Last Year</option>
+          <option value="all">All Time</option>
+        </select>
+        <button class="btn btn-primary" onclick="openAddEventModal()">+ Log Event</button>
+      </div>
     </div>
     <div class="stat-grid" id="analytics-stats">
       ${[1,2,3,4].map(()=>`<div class="stat-card"><div class="skeleton skeleton-line w-1/4" style="height:11px;margin-bottom:10px;"></div><div class="skeleton skeleton-line w-1/2" style="height:28px;"></div></div>`).join('')}
@@ -30,18 +43,9 @@ async function renderAnalytics() {
     <div class="card">
       <div class="card-header">
         <span class="card-title">Event Records</span>
-        <div style="display:flex;gap:8px">
-          <select class="filter-select" id="analytics-year" onchange="renderAnalytics()">
-            ${[2026,2025,2024].map(y=>`<option value="${y}">${y}</option>`).join('')}
-          </select>
-        </div>
       </div>
       <div class="table-wrap" id="events-table">Loading…</div>
     </div>`;
-
-  // Destroy old charts
-  Object.values(analyticsCharts).forEach(ch => ch.destroy());
-  analyticsCharts = {};
 
   // Fetch data
   const [eventsSnap, expensesSnap, paymentsSnap] = await Promise.all([
@@ -50,26 +54,68 @@ async function renderAnalytics() {
     db.collection('payments').get()
   ]);
 
-  const events   = eventsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-  const expenses = expensesSnap.docs.map(d => d.data());
-  const payments = paymentsSnap.docs.map(d => d.data());
+  const allEvents   = eventsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const allExpenses = expensesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const allPayments = paymentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  // Apply date range filter
+  const range = document.getElementById('analytics-range')?.value || 'ytd';
+  const now = new Date();
+  let dateFrom = null, dateTo = null;
+  switch(range) {
+    case 'this-month':
+      dateFrom = new Date(now.getFullYear(), now.getMonth(), 1);
+      dateTo   = new Date(now.getFullYear(), now.getMonth()+1, 0);
+      break;
+    case 'this-quarter':
+      const q = Math.floor(now.getMonth()/3);
+      dateFrom = new Date(now.getFullYear(), q*3, 1);
+      dateTo   = new Date(now.getFullYear(), (q+1)*3, 0);
+      break;
+    case 'ytd':
+      dateFrom = new Date(now.getFullYear(), 0, 1);
+      dateTo   = now;
+      break;
+    case 'last-year':
+      dateFrom = new Date(now.getFullYear()-1, 0, 1);
+      dateTo   = new Date(now.getFullYear()-1, 11, 31);
+      break;
+    default: break; // all time
+  }
+
+  function inRange(dateStr) {
+    if (!dateFrom && !dateTo) return true;
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    if (dateFrom && d < dateFrom) return false;
+    if (dateTo && d > new Date(dateTo.getTime() + 86400000)) return false;
+    return true;
+  }
+
+  const events   = allEvents.filter(e => inRange(e.date));
+  const expenses = allExpenses.filter(e => inRange(e.date));
+  const payments = allPayments.filter(p => inRange(p.date));
 
   // ── Aggregate stats ──
   const revenue    = events.reduce((s,e) => s + (e.revenue||0), 0);
   const totalExp   = expenses.reduce((s,e) => s + (e.amount||0), 0);
+  const totalPay   = payments.reduce((s,p) => s + (p.amount||0), 0);
+  const netProfit  = revenue - totalExp - totalPay;
   const margins    = events.filter(e => e.revenue > 0).map(e => {
-    const eventExp = expenses.filter(ex=>ex.eventId===e.id).reduce((s,ex)=>s+(ex.amount||0),0);
-    const barCosts = payments.filter(p=>p.eventId===e.id).reduce((s,p)=>s+(p.amount||0),0);
+    const eventExp = allExpenses.filter(ex=>ex.eventId===e.id).reduce((s,ex)=>s+(ex.amount||0),0);
+    const barCosts = allPayments.filter(p=>p.eventId===e.id).reduce((s,p)=>s+(p.amount||0),0);
     const net = e.revenue - eventExp - barCosts;
     return e.revenue > 0 ? (net / e.revenue) * 100 : 0;
   });
   const avgMargin  = margins.length ? margins.reduce((s,m)=>s+m,0)/margins.length : 0;
-  const avgRevGuest = events.filter(e=>e.guestCount>0).reduce((s,e)=>s+(e.revenue/(e.guestCount||1)),0) / (events.filter(e=>e.guestCount>0).length||1);
+  const avgRevGuest = events.filter(e=>e.guestCount>0).length > 0
+    ? events.filter(e=>e.guestCount>0).reduce((s,e)=>s+(e.revenue/(e.guestCount||1)),0) / events.filter(e=>e.guestCount>0).length
+    : 0;
 
   document.getElementById('analytics-stats').innerHTML = `
-    <div class="stat-card gold"><div class="stat-label">Revenue YTD</div><div class="stat-value">${fmtMoney(revenue)}</div><div class="stat-sub">${events.length} events</div></div>
-    <div class="stat-card red"><div class="stat-label">Expenses YTD</div><div class="stat-value">${fmtMoney(totalExp)}</div></div>
-    <div class="stat-card teal"><div class="stat-label">Avg Margin</div><div class="stat-value">${avgMargin.toFixed(0)}%</div></div>
+    <div class="stat-card gold"><div class="stat-label">Revenue</div><div class="stat-value">${fmtMoney(revenue)}</div><div class="stat-sub">${events.length} events</div></div>
+    <div class="stat-card red"><div class="stat-label">Total Costs</div><div class="stat-value">${fmtMoney(totalExp + totalPay)}</div><div class="stat-sub">expenses + labor</div></div>
+    <div class="stat-card" style="border-left:3px solid ${netProfit>=0?'var(--green)':'var(--red)'}"><div class="stat-label">Net Profit</div><div class="stat-value" style="color:${netProfit>=0?'var(--green)':'var(--red)'}">${fmtMoney(netProfit)}</div><div class="stat-sub">${avgMargin.toFixed(0)}% avg margin</div></div>
     <div class="stat-card green"><div class="stat-label">Avg Rev / Guest</div><div class="stat-value">${fmtMoney(avgRevGuest)}</div></div>`;
 
   // ── Revenue by month chart ──
@@ -114,7 +160,7 @@ async function renderAnalytics() {
     typeCounts[t] = (typeCounts[t]||0) + 1;
   });
   const typesCtx = document.getElementById('chart-types')?.getContext('2d');
-  if (typesCtx) {
+  if (typesCtx && Object.keys(typeCounts).length) {
     analyticsCharts.types = new Chart(typesCtx, {
       type: 'doughnut',
       data: {
@@ -134,8 +180,8 @@ async function renderAnalytics() {
       <th>Event</th><th>Date</th><th>Type</th><th>Revenue</th><th>Net</th><th>Margin</th><th>Guests</th><th>Rating</th><th></th>
     </tr></thead><tbody>
     ${events.map(e => {
-      const eventExp   = expenses.filter(ex=>ex.eventId===e.id).reduce((s,ex)=>s+(ex.amount||0),0);
-      const barCosts   = payments.filter(p=>p.eventId===e.id).reduce((s,p)=>s+(p.amount||0),0);
+      const eventExp   = allExpenses.filter(ex=>ex.eventId===e.id).reduce((s,ex)=>s+(ex.amount||0),0);
+      const barCosts   = allPayments.filter(p=>p.eventId===e.id).reduce((s,p)=>s+(p.amount||0),0);
       const totalCosts = eventExp + barCosts + (e.supplyCosts||0);
       const net        = (e.revenue||0) - totalCosts;
       const margin     = e.revenue > 0 ? ((net/e.revenue)*100).toFixed(0) : 0;
@@ -153,7 +199,7 @@ async function renderAnalytics() {
     }).join('')}
     </tbody></table>` :
     `<div class="empty-state"><div class="empty-icon">💰</div>
-    <div class="empty-title">No events yet</div>
+    <div class="empty-title">No events in this period</div>
     <div class="empty-sub">Log completed events to track revenue and profitability</div>
     <button class="btn btn-primary" onclick="openAddEventModal()">+ Log Event</button></div>`;
 
@@ -235,7 +281,8 @@ async function saveNewEvent(e) {
   if (data.guestCount)  data.guestCount  = Number(data.guestCount);
   if (data.rating)      data.rating      = Number(data.rating);
   data.createdAt = TS();
-  await db.collection('events').add(data);
+  const docRef = await db.collection('events').add(data);
+  logActivity('created', 'events', docRef.id, `Logged event: ${data.name} (${fmtMoney(data.revenue)})`);
   closeModal();
   showToast('Event logged!', 'success');
   renderAnalytics();
@@ -251,6 +298,7 @@ async function saveEventEdit(e, id) {
   if (data.rating)      data.rating      = Number(data.rating);
   data.updatedAt = TS();
   await db.collection('events').doc(id).update(data);
+  logActivity('updated', 'events', id, `Updated event: ${data.name}`);
   closeModal();
   showToast('Event updated', 'success');
   renderAnalytics();
@@ -259,6 +307,7 @@ async function saveEventEdit(e, id) {
 async function deleteEvent(id) {
   if (!confirmAction('Delete this event record?')) return;
   await db.collection('events').doc(id).delete();
+  logActivity('deleted', 'events', id, 'Deleted event record');
   closeModal();
   showToast('Event deleted', 'info');
   renderAnalytics();

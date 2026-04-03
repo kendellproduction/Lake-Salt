@@ -18,6 +18,13 @@
   <meta property="og:image" content="https://lakesalt.us/og-image.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
 
+  <!-- Favicons -->
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+
   <!-- Local Business Structured Data (GEO) -->
   <script type="application/ld+json">
   {
@@ -42,7 +49,7 @@
     "aggregateRating": {
       "@type": "AggregateRating",
       "ratingValue": "5.0",
-      "reviewCount": "87"
+      "reviewCount": "11"
     },
     "sameAs": [
       "https://www.instagram.com/lakesaltbar",
@@ -382,6 +389,144 @@
     .ob-next-btn:hover { background: var(--champagne-lt); transform: translateY(-1px); }
     .ob-finish { background: linear-gradient(135deg, var(--champagne), #e8c87a); }
 
+    /* ── Chip groups (categorized chips) ── */
+    .ob-chip-groups { margin-bottom: 1.2rem; }
+    .ob-chip-group { margin-bottom: 0.9rem; }
+    .ob-chip-group-label {
+      font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase;
+      color: rgba(255,255,255,0.22); margin-bottom: 0.45rem;
+      padding-left: 0.15rem; text-align: left;
+    }
+    .ob-chip-row { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+
+    /* ── Inline calendar ── */
+    .ob-cal {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: var(--r-md);
+      padding: 0.9rem 0.85rem 0.75rem;
+      margin-bottom: 0.9rem;
+      user-select: none;
+      max-width: 300px;
+      margin-left: auto; margin-right: auto;
+    }
+    .ob-cal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 0.6rem;
+    }
+    .ob-cal-nav {
+      background: none; border: none;
+      color: rgba(255,255,255,0.4); font-size: 1.1rem; line-height: 1;
+      cursor: pointer; padding: 0.15rem 0.4rem;
+      border-radius: 5px; transition: color 0.2s, background 0.2s;
+      font-family: var(--font-body);
+    }
+    .ob-cal-nav:hover { color: var(--champagne); background: rgba(201,169,110,0.08); }
+    .ob-cal-title {
+      font-family: var(--font-display); color: var(--white);
+      font-size: 0.9rem; font-weight: 400;
+    }
+    .ob-cal-grid {
+      display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px;
+    }
+    .ob-cal-dow {
+      text-align: center; font-size: 0.52rem;
+      color: rgba(255,255,255,0.25); letter-spacing: 0.05em;
+      padding-bottom: 0.4rem; text-transform: uppercase;
+    }
+    .ob-cal-day {
+      aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+      border-radius: 5px; font-size: 0.72rem;
+      color: rgba(255,255,255,0.55); transition: all 0.15s;
+      border: 1px solid transparent; background: none;
+      font-family: var(--font-body); cursor: pointer;
+      width: 100%;
+    }
+    .ob-cal-day:hover:not(:disabled) { background: rgba(255,255,255,0.07); color: var(--white); }
+    .ob-cal-day.today { border-color: rgba(201,169,110,0.4); color: var(--champagne); }
+    .ob-cal-day.selected {
+      background: rgba(201,169,110,0.2) !important;
+      border-color: var(--champagne) !important;
+      color: var(--champagne) !important; font-weight: 700;
+    }
+    .ob-cal-day.past { color: rgba(255,255,255,0.15); cursor: default; }
+    .ob-cal-day.empty { cursor: default; pointer-events: none; }
+    .ob-cal-label {
+      text-align: center; margin-top: 0.5rem;
+      font-size: 0.68rem; color: var(--champagne);
+      letter-spacing: 0.04em; min-height: 1em;
+      transition: opacity 0.2s;
+    }
+
+    /* ── Time picker ── */
+    .ob-time-wrap {
+      max-width: 300px; margin: 0 auto 1.2rem;
+      display: flex; align-items: center; gap: 0.5rem;
+      justify-content: center;
+    }
+    .ob-time-label {
+      font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: rgba(255,255,255,0.3); font-family: var(--font-body);
+    }
+    .ob-time-select {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 6px; color: var(--white);
+      font-family: var(--font-body); font-size: 0.82rem;
+      padding: 0.45rem 0.6rem; cursor: pointer;
+      appearance: none; -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,0.3)'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.5rem center;
+      padding-right: 1.6rem;
+      transition: border-color 0.2s;
+    }
+    .ob-time-select:hover, .ob-time-select:focus {
+      border-color: rgba(201,169,110,0.4); outline: none;
+    }
+    .ob-time-select option { background: #0a1020; color: var(--white); }
+    .ob-skip-step {
+      background: none; border: none;
+      color: rgba(255,255,255,0.28); font-family: var(--font-body);
+      font-size: 0.8rem; cursor: pointer; padding: 0.5rem;
+      transition: color 0.2s;
+    }
+    .ob-skip-step:hover { color: rgba(255,255,255,0.55); }
+
+    /* ── Go to Site buttons ── */
+    .ob-goto-site-lg {
+      display: inline-block;
+      margin-top: 1.2rem;
+      padding: 0.75rem 2.2rem;
+      border: 1px solid rgba(201,169,110,0.35);
+      border-radius: 100px;
+      background: rgba(201,169,110,0.08);
+      color: rgba(201,169,110,0.7);
+      font-family: var(--font-body);
+      font-size: 0.92rem;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+    .ob-goto-site-lg:hover {
+      background: rgba(201,169,110,0.15);
+      border-color: rgba(201,169,110,0.55);
+      color: var(--champagne);
+    }
+    .ob-goto-site-sm {
+      background: none; border: none;
+      color: rgba(201,169,110,0.35);
+      font-family: var(--font-body);
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      padding: 0.4rem 0.6rem;
+      transition: color 0.2s;
+    }
+    .ob-goto-site-sm:hover {
+      color: rgba(201,169,110,0.65);
+    }
+
     /* Quote nudge bar */
     .quote-bar {
       position: fixed; bottom: 0; left: 0; right: 0;
@@ -487,6 +632,18 @@
       box-shadow: var(--shadow-gold);
     }
     .nav-cta::after { display: none !important; }
+    .nav-new-quote {
+      display: none; /* shown via JS for returning users */
+      align-items: center;
+      background: transparent;
+      border: 1px solid rgba(201,169,110,0.45);
+      color: var(--champagne);
+      font-family: var(--font-body); font-size: 0.78rem; font-weight: 500;
+      padding: 0.45rem 0.9rem; border-radius: 999px; cursor: pointer;
+      letter-spacing: 0.03em; transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .nav-new-quote:hover { background: rgba(201,169,110,0.12); border-color: var(--champagne); }
 
     /* ─────────────────────────────────────────
        HERO
@@ -1941,7 +2098,15 @@
       .onboarding-q { font-size: clamp(1.6rem, 8vw, 2.4rem); }
       #onboarding::after { display: none; }
       .ob-chips { gap: 0.5rem; }
-      .ob-chip { font-size: 0.8rem; padding: 0.52rem 0.9rem; }
+      .ob-chip { font-size: 0.78rem; padding: 0.48rem 0.85rem; }
+      .ob-chip-group-label { font-size: 0.58rem; }
+      .ob-chip-groups { margin-bottom: 0.9rem; }
+      .ob-chip-group { margin-bottom: 0.7rem; }
+      .ob-cal { padding: 0.75rem 0.6rem 0.65rem; max-width: 280px; }
+      .ob-cal-day { font-size: 0.68rem; border-radius: 4px; }
+      .ob-cal-title { font-size: 0.85rem; }
+      .ob-time-wrap { max-width: 280px; }
+      .ob-time-select { font-size: 0.78rem; padding: 0.4rem 0.5rem; }
       .ob-nav { margin-top: 0.75rem; }
       .quote-bar {
         flex-direction: column; align-items: flex-start;
@@ -2044,25 +2209,87 @@
           <div class="card-desc">Birthdays, private parties<br/>&amp; everything else</div>
         </button>
       </div>
-      <button class="onboarding-skip" onclick="obSkipAll()">skip &rarr;</button>
+      <button class="onboarding-skip" onclick="obNext()">skip this step &rarr;</button>
+      <button class="ob-goto-site-lg" onclick="obSkipAll()">Go to Site &rarr;</button>
     </div><!-- /ob-p1 -->
 
     <!-- Step 2: Drinks -->
     <div class="ob-panel" id="ob-p2">
       <h2 class="onboarding-q">What's on the<br/><em>menu?</em></h2>
-      <p class="onboarding-sub">Pick a style — the more specific, the better</p>
-      <div class="ob-chips" id="ob-drinks">
-        <button class="ob-chip" data-val="cocktails" onclick="obToggleChip(this,'drinks')">🍸 Cocktails</button>
-        <button class="ob-chip" data-val="mocktails" onclick="obToggleChip(this,'drinks')">🍹 Mocktails</button>
-        <button class="ob-chip" data-val="beer" onclick="obToggleChip(this,'drinks')">🍺 Beer</button>
-        <button class="ob-chip" data-val="wine" onclick="obToggleChip(this,'drinks')">🍷 Wine</button>
-        <button class="ob-chip" data-val="open_bar" onclick="obToggleChip(this,'drinks',true)">🎉 Open Bar</button>
+      <p class="onboarding-sub">Pick everything you'd like — mix and match</p>
+      <div class="ob-chip-groups" id="ob-drinks">
+
+        <div class="ob-chip-group">
+          <div class="ob-chip-group-label">Bar Package</div>
+          <div class="ob-chip-row">
+            <button class="ob-chip" data-val="open_bar" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🎉 Full Open Bar</button>
+            <button class="ob-chip" data-val="beer_wine_only" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🍷 Beer &amp; Wine Only</button>
+            <button class="ob-chip" data-val="dry_bar" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">✨ Dry Bar (No Alcohol)</button>
+          </div>
+        </div>
+
+        <div class="ob-chip-group">
+          <div class="ob-chip-group-label">Cocktails</div>
+          <div class="ob-chip-row">
+            <button class="ob-chip" data-val="margaritas" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🍹 Margaritas</button>
+            <button class="ob-chip" data-val="mojitos" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🌿 Mojitos</button>
+            <button class="ob-chip" data-val="moscow_mules" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🫚 Moscow Mules</button>
+            <button class="ob-chip" data-val="old_fashioned" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🥃 Old Fashioneds</button>
+            <button class="ob-chip" data-val="gin_tonic" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🍸 Gin &amp; Tonics</button>
+            <button class="ob-chip" data-val="espresso_martini" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">☕ Espresso Martinis</button>
+            <button class="ob-chip" data-val="aperol_spritz" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🍊 Aperol Spritz</button>
+            <button class="ob-chip" data-val="cosmopolitan" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🌸 Cosmos</button>
+            <button class="ob-chip" data-val="whiskey_sour" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🍋 Whiskey Sours</button>
+            <button class="ob-chip" data-val="paloma" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🌅 Palomas</button>
+            <button class="ob-chip" data-val="daiquiri" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🍓 Daiquiris</button>
+            <button class="ob-chip" data-val="mule_bar" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🌶️ Spicy Mules</button>
+          </div>
+        </div>
+
+        <div class="ob-chip-group">
+          <div class="ob-chip-group-label">Beer &amp; Cider</div>
+          <div class="ob-chip-row">
+            <button class="ob-chip" data-val="craft_beer" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🍺 Craft Beer</button>
+            <button class="ob-chip" data-val="domestic_beer" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🍻 Domestic Beer</button>
+            <button class="ob-chip" data-val="hard_seltzer" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">💧 Hard Seltzer</button>
+            <button class="ob-chip" data-val="cider" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🍏 Cider</button>
+          </div>
+        </div>
+
+        <div class="ob-chip-group">
+          <div class="ob-chip-group-label">Wine &amp; Bubbles</div>
+          <div class="ob-chip-row">
+            <button class="ob-chip" data-val="red_wine" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🍷 Red Wine</button>
+            <button class="ob-chip" data-val="white_wine" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🥂 White Wine</button>
+            <button class="ob-chip" data-val="rose" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🌹 Rosé</button>
+            <button class="ob-chip" data-val="champagne" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🍾 Champagne</button>
+            <button class="ob-chip" data-val="mimosas" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🍊 Mimosas</button>
+            <button class="ob-chip" data-val="sangria" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🫙 Sangria</button>
+            <button class="ob-chip" data-val="prosecco" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">✨ Prosecco Bar</button>
+          </div>
+        </div>
+
+        <div class="ob-chip-group">
+          <div class="ob-chip-group-label">Non-Alcoholic</div>
+          <div class="ob-chip-row">
+            <button class="ob-chip" data-val="mocktails" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🍹 Mocktails</button>
+            <button class="ob-chip" data-val="lemonade" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🍋 Fresh Lemonade</button>
+            <button class="ob-chip" data-val="iced_tea" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🧊 Iced Tea</button>
+            <button class="ob-chip" data-val="sparkling_water" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">💦 Sparkling Water</button>
+            <button class="ob-chip" data-val="juice_bar" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🥤 Juice Bar</button>
+          </div>
+        </div>
+
       </div>
-      <input class="ob-input" id="ob-drink-detail" type="text" placeholder="Specific drinks? e.g. margaritas, sangria, moscow mules" />
+      <input class="ob-input" id="ob-drink-detail" type="text" placeholder="Anything specific? e.g. cucumber gin & tonic, smoky mezcal..." />
       <div class="ob-nav">
         <button class="ob-back" onclick="obGoTo(1)">← Back</button>
-        <button class="ob-next-btn" onclick="obNext()">Next →</button>
+        <div style="display:flex;align-items:center;gap:0.6rem;">
+          <button class="ob-skip-step" onclick="obNext()">Skip</button>
+          <button class="ob-next-btn" onclick="obNext()">Next →</button>
+        </div>
       </div>
+      <button class="ob-goto-site-sm" onclick="obSkipAll()">Go to Site &rarr;</button>
     </div><!-- /ob-p2 -->
 
     <!-- Step 3: Venue -->
@@ -2077,19 +2304,67 @@
       <input class="ob-input" id="ob-venue-text" type="text" placeholder="Venue name or city (optional)" />
       <div class="ob-nav">
         <button class="ob-back" onclick="obGoTo(2)">← Back</button>
-        <button class="ob-next-btn" onclick="obNext()">Next →</button>
+        <div style="display:flex;align-items:center;gap:0.6rem;">
+          <button class="ob-skip-step" onclick="obNext()">Skip</button>
+          <button class="ob-next-btn" onclick="obNext()">Next →</button>
+        </div>
       </div>
+      <button class="ob-goto-site-sm" onclick="obSkipAll()">Go to Site &rarr;</button>
     </div><!-- /ob-p3 -->
 
     <!-- Step 4: Date -->
     <div class="ob-panel" id="ob-p4">
       <h2 class="onboarding-q">When's the<br/><em>event?</em></h2>
-      <p class="onboarding-sub">Approximate is fine</p>
-      <input class="ob-input ob-input-lg" id="ob-date" type="text" placeholder="e.g. June 14, 2026 or next summer" />
+      <p class="onboarding-sub">Pick a date — or skip if you're still planning</p>
+      <div class="ob-cal" id="ob-cal">
+        <div class="ob-cal-header">
+          <button class="ob-cal-nav" onclick="obCalPrev()" aria-label="Previous month">&#8249;</button>
+          <span class="ob-cal-title" id="ob-cal-title"></span>
+          <button class="ob-cal-nav" onclick="obCalNext()" aria-label="Next month">&#8250;</button>
+        </div>
+        <div class="ob-cal-grid" id="ob-cal-grid"></div>
+        <div class="ob-cal-label" id="ob-cal-label"></div>
+      </div>
+      <div class="ob-time-wrap">
+        <span class="ob-time-label">Start time</span>
+        <select class="ob-time-select" id="ob-time" onchange="obTimeSelect(this.value)">
+          <option value="">— Select —</option>
+          <option value="10:00 AM">10:00 AM</option>
+          <option value="10:30 AM">10:30 AM</option>
+          <option value="11:00 AM">11:00 AM</option>
+          <option value="11:30 AM">11:30 AM</option>
+          <option value="12:00 PM">12:00 PM</option>
+          <option value="12:30 PM">12:30 PM</option>
+          <option value="1:00 PM">1:00 PM</option>
+          <option value="1:30 PM">1:30 PM</option>
+          <option value="2:00 PM">2:00 PM</option>
+          <option value="2:30 PM">2:30 PM</option>
+          <option value="3:00 PM">3:00 PM</option>
+          <option value="3:30 PM">3:30 PM</option>
+          <option value="4:00 PM">4:00 PM</option>
+          <option value="4:30 PM">4:30 PM</option>
+          <option value="5:00 PM">5:00 PM</option>
+          <option value="5:30 PM">5:30 PM</option>
+          <option value="6:00 PM">6:00 PM</option>
+          <option value="6:30 PM">6:30 PM</option>
+          <option value="7:00 PM">7:00 PM</option>
+          <option value="7:30 PM">7:30 PM</option>
+          <option value="8:00 PM">8:00 PM</option>
+          <option value="8:30 PM">8:30 PM</option>
+          <option value="9:00 PM">9:00 PM</option>
+          <option value="9:30 PM">9:30 PM</option>
+          <option value="10:00 PM">10:00 PM</option>
+        </select>
+      </div>
+      <input type="hidden" id="ob-date" />
       <div class="ob-nav">
         <button class="ob-back" onclick="obGoTo(3)">← Back</button>
-        <button class="ob-next-btn" onclick="obNext()">Next →</button>
+        <div style="display:flex;align-items:center;gap:0.6rem;">
+          <button class="ob-skip-step" onclick="obNext()">Skip</button>
+          <button class="ob-next-btn" onclick="obNext()">Next →</button>
+        </div>
       </div>
+      <button class="ob-goto-site-sm" onclick="obSkipAll()">Go to Site &rarr;</button>
     </div><!-- /ob-p4 -->
 
     <!-- Step 5: Guest count -->
@@ -2104,8 +2379,12 @@
       <input class="ob-input" id="ob-guest-num" type="number" placeholder="Or enter a number" min="1" />
       <div class="ob-nav">
         <button class="ob-back" onclick="obGoTo(4)">← Back</button>
-        <button class="ob-next-btn ob-finish" onclick="obFinish()">Build My Quote →</button>
+        <div style="display:flex;align-items:center;gap:0.6rem;">
+          <button class="ob-skip-step" onclick="obSkipAll()">Skip</button>
+          <button class="ob-next-btn ob-finish" onclick="obFinish()">Continue to Website →</button>
+        </div>
       </div>
+      <button class="ob-goto-site-sm" onclick="obSkipAll()">Go to Site &rarr;</button>
     </div><!-- /ob-p5 -->
 
   </div><!-- /onboarding-inner -->
@@ -2137,6 +2416,7 @@
       <button class="nav-mode-btn" id="nmb-corporate" onclick="switchMode('corporate')">Corporate</button>
       <button class="nav-mode-btn" id="nmb-all" onclick="switchMode('all')">All</button>
     </div>
+    <button id="nav-new-quote" class="nav-new-quote" onclick="restartQuiz()">New Quote ✦</button>
     <a href="#contact" class="nav-cta">Book Now</a>
     <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Menu">
       <span></span><span></span><span></span>
@@ -2225,7 +2505,11 @@
         Your wedding day deserves more than a bar — it deserves an experience built around
         you. Lake Salt crafts bespoke cocktail programs tailored to your love story: from
         a his-and-hers signature drink to champagne toasts and custom-printed menus that
-        match your aesthetic. We handle every detail so you can be present in every moment.
+        match your aesthetic. We plan every detail with you ahead of time so that on your
+        big day, you don't have to think about a thing — just enjoy it. You purchase the
+        alcohol, and we handle absolutely everything else: setup, mixers, garnishes, ice,
+        glassware, service, and breakdown. We take the stress off your shoulders so you can
+        be present in every moment.
       </p>
       <div class="wf-pillars">
         <div class="wf-pillar">
@@ -2578,7 +2862,7 @@
   <div class="section-inner">
     <div class="section-header">
       <span class="eyebrow">From Our Clients</span>
-      <h2 class="section-title">Real <em>Google Reviews</em></h2>
+      <h2 class="section-title"><em>Google Reviews</em></h2>
       <p class="t-header-meta">Live from our Google Business profile · Updates automatically</p>
     </div>
     <!-- Reviews injected here by JS — shows loading state initially -->
@@ -2791,10 +3075,17 @@
           <input type="text" name="venue" class="form-input" placeholder="Venue name or city" />
         </div>
         <div class="form-group">
+          <label class="form-label">Bar Catering Budget <span style="font-weight:400;opacity:0.5;">(optional)</span></label>
+          <input type="text" name="budget" class="form-input" placeholder="e.g. $1,500 — helps us tailor the best plan for you" />
+        </div>
+        <div class="form-group">
           <label class="form-label">Tell Us About Your Event</label>
           <textarea name="message" class="form-textarea" placeholder="Vision, theme, special requests, questions..."></textarea>
         </div>
         <input type="hidden" name="email" id="form-email-hidden" />
+        <input type="hidden" name="event_time" id="form-event-time" />
+        <input type="hidden" name="drinks" id="form-drinks" />
+        <input type="hidden" name="drink_detail" id="form-drink-detail" />
         <button type="submit" class="form-submit">Send My Inquiry →</button>
       </form>
     </div>
@@ -2891,14 +3182,29 @@ const GOOGLE_PLACE_ID = 'YOUR_PLACE_ID_HERE';  // ← replace with your Place ID
 
 /* ─── GOOGLE REVIEWS ENGINE ─── */
 const FALLBACK_REVIEWS = [
-  { author_name: 'Ashley & Marcus R.', rating: 5, relative_time_description: 'a month ago',
-    text: 'Lake Salt made our wedding reception so special. They created two signature cocktails that perfectly matched our colors and personalities. Guests are still talking about the drinks months later.',
+  { author_name: 'Nomad 1', rating: 5, relative_time_description: '6 months ago',
+    text: 'They did a phenomenal job at the Oktoberfest themed corporate event we attended. They even dressed up for it!',
     profile_photo_url: null },
-  { author_name: 'Dana K., Events Lead', rating: 5, relative_time_description: '2 months ago',
-    text: 'Professional, fun, and their creative drinks were the hit of our entire company party. The team arrived early, set up beautifully, and made our Adobe team feel like they were at a five-star event.',
+  { author_name: 'Torey Ellis', rating: 5, relative_time_description: '6 months ago',
+    text: 'Did a phenomenal job at my corporate event! Would highly recommend!',
     profile_photo_url: null },
-  { author_name: 'Sarah & Daniel K.', rating: 5, relative_time_description: '3 months ago',
-    text: 'From our first call to the final toast, Kendell and his team were incredible. Our outdoor Provo Canyon wedding was seamless — no stress, just perfect pours and happy guests all night long.',
+  { author_name: 'Kai', rating: 5, relative_time_description: '6 months ago',
+    text: 'Loved the Cherry Fiz! Seriously so good. Quick, and friendly bartenders! Had a great time.',
+    profile_photo_url: null },
+  { author_name: 'Anna Sroka', rating: 5, relative_time_description: '6 months ago',
+    text: 'I highly recommend Lake Salt Bartending. Their drinks menu and service are amazing',
+    profile_photo_url: null },
+  { author_name: 'Oz Morris', rating: 5, relative_time_description: '6 months ago',
+    text: 'Great drinks! Mocktails too!',
+    profile_photo_url: null },
+  { author_name: 'Krystal Herzog', rating: 5, relative_time_description: '6 months ago',
+    text: 'Very good Cherry Fizz! Great customer service!',
+    profile_photo_url: null },
+  { author_name: 'Catherine Cravotta', rating: 5, relative_time_description: '6 months ago',
+    text: 'Great drinks and friendly service!',
+    profile_photo_url: null },
+  { author_name: 'Melanie Mayen', rating: 5, relative_time_description: '6 months ago',
+    text: 'Great quality! So much detail!',
     profile_photo_url: null },
 ];
 
@@ -3120,8 +3426,8 @@ let obData = { eventType: 'all', drinks: [], drinkDetail: '', venue: null, venue
 
 function obSelect(key, value) { obData[key] = value; }
 
-function obToggleChip(el, key, singleSelect) {
-  const container = el.parentElement;
+function obToggleChip(el, key, singleSelect, containerId) {
+  const container = containerId ? document.getElementById(containerId) : el.parentElement;
   if (singleSelect) {
     container.querySelectorAll('.ob-chip').forEach(c => c.classList.remove('selected'));
     el.classList.add('selected');
@@ -3130,6 +3436,93 @@ function obToggleChip(el, key, singleSelect) {
     el.classList.toggle('selected');
     obData[key] = Array.from(container.querySelectorAll('.ob-chip.selected')).map(c => c.dataset.val);
   }
+}
+
+/* ── Inline Calendar ── */
+let obCalViewDate = new Date();
+let obCalSelectedDate = null;
+const OB_CAL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const OB_CAL_DOWS   = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+
+function obCalRender() {
+  const titleEl = document.getElementById('ob-cal-title');
+  const gridEl  = document.getElementById('ob-cal-grid');
+  const labelEl = document.getElementById('ob-cal-label');
+  if (!titleEl || !gridEl) return;
+
+  const year  = obCalViewDate.getFullYear();
+  const month = obCalViewDate.getMonth();
+  titleEl.textContent = `${OB_CAL_MONTHS[month]} ${year}`;
+
+  gridEl.innerHTML = '';
+
+  // Day-of-week headers
+  OB_CAL_DOWS.forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'ob-cal-dow';
+    el.textContent = d;
+    gridEl.appendChild(el);
+  });
+
+  const today     = new Date(); today.setHours(0,0,0,0);
+  const firstDay  = new Date(year, month, 1).getDay();
+  const daysInMo  = new Date(year, month + 1, 0).getDate();
+
+  // Leading empty cells
+  for (let i = 0; i < firstDay; i++) {
+    const el = document.createElement('button');
+    el.className = 'ob-cal-day empty';
+    el.disabled = true;
+    gridEl.appendChild(el);
+  }
+
+  // Day cells
+  for (let d = 1; d <= daysInMo; d++) {
+    const el   = document.createElement('button');
+    el.className = 'ob-cal-day';
+    el.textContent = d;
+    const cellDate = new Date(year, month, d);
+    if (cellDate < today) {
+      el.classList.add('past');
+      el.disabled = true;
+    } else {
+      if (cellDate.getTime() === today.getTime()) el.classList.add('today');
+      if (obCalSelectedDate && cellDate.toDateString() === obCalSelectedDate.toDateString()) el.classList.add('selected');
+      el.addEventListener('click', () => obCalSelect(year, month, d));
+    }
+    gridEl.appendChild(el);
+  }
+
+  if (labelEl) {
+    let lbl = obCalSelectedDate
+      ? '✦ ' + OB_CAL_MONTHS[obCalSelectedDate.getMonth()] + ' ' + obCalSelectedDate.getDate() + ', ' + obCalSelectedDate.getFullYear()
+      : '';
+    if (lbl && obData.time) lbl += ' at ' + obData.time;
+    labelEl.textContent = lbl;
+  }
+}
+
+function obCalSelect(year, month, day) {
+  obCalSelectedDate = new Date(year, month, day);
+  const label = `${OB_CAL_MONTHS[month]} ${day}, ${year}`;
+  obData.date = label;
+  const hiddenEl = document.getElementById('ob-date');
+  if (hiddenEl) hiddenEl.value = obCalSelectedDate.toISOString().split('T')[0];
+  obCalRender();
+}
+
+function obCalPrev() {
+  obCalViewDate = new Date(obCalViewDate.getFullYear(), obCalViewDate.getMonth() - 1, 1);
+  obCalRender();
+}
+function obCalNext() {
+  obCalViewDate = new Date(obCalViewDate.getFullYear(), obCalViewDate.getMonth() + 1, 1);
+  obCalRender();
+}
+
+function obTimeSelect(val) {
+  obData.time = val;
+  obCalRender(); // refresh label to show time
 }
 
 function obGoTo(step) {
@@ -3143,6 +3536,10 @@ function obGoTo(step) {
     dot.classList.toggle('active', i + 1 === obStep);
     dot.classList.toggle('done',   i + 1 < obStep);
   });
+  if (step === 4) {
+    obCalViewDate = new Date();
+    obCalRender();
+  }
 }
 
 function obNext() {
@@ -3150,7 +3547,7 @@ function obNext() {
 }
 
 function obSkipAll() {
-  chooseMode(obData.eventType || 'all');
+  chooseMode('wedding');
 }
 
 function obFinish() {
@@ -3160,7 +3557,8 @@ function obFinish() {
   const guestNumEl    = document.getElementById('ob-guest-num');
   if (drinkDetailEl) obData.drinkDetail = drinkDetailEl.value.trim();
   if (venueTextEl)   obData.venueText   = venueTextEl.value.trim();
-  if (dateEl)        obData.date        = dateEl.value.trim();
+  // obData.date is set directly by the calendar picker (obCalSelect)
+  if (dateEl && dateEl.value && !obData.date) obData.date = dateEl.value.trim();
   if (guestNumEl)    obData.guestNum    = guestNumEl.value.trim();
   localStorage.setItem('ls-quote-data', JSON.stringify(obData));
   chooseMode(obData.eventType || 'all');
@@ -3209,18 +3607,58 @@ function prefillForm() {
     }
   }
 
+  // Time
+  const timeHidden = document.getElementById('form-event-time');
+  if (timeHidden && d.time) timeHidden.value = d.time;
+
+  // Drinks
+  const drinksHidden = document.getElementById('form-drinks');
+  if (drinksHidden && d.drinks && d.drinks.length) {
+    const dl = { cocktails: 'Cocktails', mocktails: 'Mocktails', beer: 'Beer', wine: 'Wine', open_bar: 'Open Bar',
+                 lemonade: 'Fresh Lemonade', iced_tea: 'Iced Tea', sparkling_water: 'Sparkling Water', juice_bar: 'Juice Bar' };
+    drinksHidden.value = d.drinks.map(k => dl[k] || k).join(', ');
+  }
+
+  // Drink detail
+  const drinkDetailHidden = document.getElementById('form-drink-detail');
+  if (drinkDetailHidden && d.drinkDetail) drinkDetailHidden.value = d.drinkDetail;
+
   // Message — drinks summary + specific requests + date if not parseable
   const msgArea = document.querySelector('textarea[name="message"]');
   if (msgArea) {
     const parts = [];
     if (d.drinks && d.drinks.length) {
-      const dl = { cocktails: 'Cocktails', mocktails: 'Mocktails', beer: 'Beer', wine: 'Wine', open_bar: 'Open Bar' };
+      const dl = { cocktails: 'Cocktails', mocktails: 'Mocktails', beer: 'Beer', wine: 'Wine', open_bar: 'Open Bar',
+                   lemonade: 'Fresh Lemonade', iced_tea: 'Iced Tea', sparkling_water: 'Sparkling Water', juice_bar: 'Juice Bar' };
       parts.push('Drinks: ' + d.drinks.map(k => dl[k] || k).join(', '));
     }
     if (d.drinkDetail) parts.push('Specific drinks: ' + d.drinkDetail);
     if (d.date && isNaN(new Date(d.date))) parts.push('Event date: ' + d.date);
     if (parts.length) msgArea.value = parts.join('\n');
   }
+}
+
+/* ─── RESTART QUIZ (for returning visitors) ─── */
+function restartQuiz() {
+  localStorage.removeItem('ls-submitted');
+  localStorage.removeItem('ls-mode');
+  localStorage.removeItem('ls-quote-data');
+
+  // Hide the "New Quote" nav button again
+  const nqBtn = document.getElementById('nav-new-quote');
+  if (nqBtn) nqBtn.style.display = 'none';
+
+  // Reset quiz state
+  obData = { eventType: 'all', drinks: [], drinkDetail: '', venue: null, venueText: '', date: '', guestRange: null, guestNum: '' };
+  obStep = 1;
+  obGoTo(1);
+
+  // Show quiz overlay
+  const ob = document.getElementById('onboarding');
+  ob.classList.remove('hidden');
+  document.body.classList.add('modal-open');
+  requestAnimationFrame(() => ob.classList.add('visible'));
+  initOnboardingParticles();
 }
 
 /* ─── ONBOARDING CHOOSE ─── */
@@ -3237,17 +3675,37 @@ function chooseMode(mode) {
   setTimeout(() => ScrollTrigger.refresh(), 300);
 }
 
-// Always show onboarding quiz on every fresh page load
 window.addEventListener('DOMContentLoaded', () => {
-  const ob = document.getElementById('onboarding');
+  const ob            = document.getElementById('onboarding');
+  const hasSubmitted  = localStorage.getItem('ls-submitted') === 'true';
+  const hasQuizData   = !!localStorage.getItem('ls-quote-data');
+  const savedMode     = localStorage.getItem('ls-mode') || 'all';
 
-  // Clear any previously saved mode so the quiz always appears
-  localStorage.removeItem('ls-mode');
+  if (hasSubmitted || hasQuizData) {
+    // Returning visitor who already completed the quiz or submitted —
+    // skip the quiz, restore their saved mode, and surface the "New Quote" button.
+    ob.classList.remove('visible');
+    document.body.classList.remove('modal-open');
+    applyMode(savedMode, false);
+    setTimeout(initHeroAnimations, 200);
+    setTimeout(() => ScrollTrigger.refresh(), 300);
+    const nqBtn = document.getElementById('nav-new-quote');
+    if (nqBtn) nqBtn.style.display = 'inline-flex';
 
-  ob.classList.add('visible');
-  initOnboardingParticles();
+    // If they completed the quiz but haven't submitted the form yet,
+    // re-hydrate obData and prefill the contact form for them.
+    if (!hasSubmitted && hasQuizData) {
+      try { obData = JSON.parse(localStorage.getItem('ls-quote-data')); } catch(e) {}
+      setTimeout(prefillForm, 450);
+      setTimeout(() => { document.getElementById('quote-bar').classList.add('show'); }, 1400);
+    }
+  } else {
+    // First visit — show the quiz fresh.
+    localStorage.removeItem('ls-mode');
+    ob.classList.add('visible');
+    initOnboardingParticles();
+  }
 
-  // Load real Google Reviews (auto-updates every page visit)
   loadGoogleReviews();
 });
 
@@ -3609,9 +4067,13 @@ function handleSubmit(e) {
     phone:      form.querySelector('[name="phone"]')?.value || '',
     eventType:  form.querySelector('[name="event_type"]')?.value || '',
     eventDate:  form.querySelector('[name="event_date"]')?.value || '',
+    eventTime:  form.querySelector('[name="event_time"]')?.value || '',
     guestCount: form.querySelector('[name="guest_count"]')?.value || '',
     venue:      form.querySelector('[name="venue"]')?.value || '',
+    drinks:     form.querySelector('[name="drinks"]')?.value || '',
+    drinkDetail:form.querySelector('[name="drink_detail"]')?.value || '',
     message:    form.querySelector('[name="message"]')?.value || '',
+    budget:     form.querySelector('[name="budget"]')?.value || '',
     stage:      'New Lead',
     source:     'Website Form',
     createdAt:  firebase.firestore.FieldValue.serverTimestamp()
@@ -3624,6 +4086,8 @@ function handleSubmit(e) {
 
   emailjs.sendForm('service_rbzoxto', 'template_fch6b4c', form)
     .then(() => {
+      // Mark this visitor as having submitted — quiz will be skipped on return
+      localStorage.setItem('ls-submitted', 'true');
       btn.textContent = '✓ Sent! We\'ll be in touch soon.';
       btn.style.background = '#22c55e';
       form.reset();

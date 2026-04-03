@@ -1,0 +1,1559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lake Salt - Social Media Content Calendar & Playbook</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --navy: #0C1526;
+            --gold: #C9A96E;
+            --ivory: #FAF8F4;
+            --teal: #1A9E8F;
+            --dark-navy: #091119;
+            --light-gray: #f5f3f0;
+            --text-dark: #2a2a2a;
+            --text-light: #666;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--ivory) 0%, #f0ebe5 100%);
+            color: var(--text-dark);
+            line-height: 1.6;
+        }
+
+        /* Top Navigation */
+        nav {
+            position: sticky;
+            top: 0;
+            background: var(--navy);
+            padding: 1rem 2rem;
+            display: flex;
+            gap: 2rem;
+            overflow-x: auto;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        nav a {
+            color: var(--ivory);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        nav a:hover {
+            background: var(--gold);
+            color: var(--navy);
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--navy) 0%, #1a2335 100%);
+            color: var(--ivory);
+            padding: 4rem 2rem;
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            letter-spacing: -1px;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.95;
+            margin-bottom: 1.5rem;
+        }
+
+        .header-meta {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+            font-size: 0.95rem;
+            opacity: 0.85;
+        }
+
+        .header-meta span {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* Sections */
+        section {
+            margin-bottom: 4rem;
+        }
+
+        section h2 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2.5rem;
+            color: var(--navy);
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 3px solid var(--gold);
+            display: inline-block;
+        }
+
+        /* Content Pillars */
+        .pillars-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .pillar {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+            border-top: 4px solid var(--gold);
+        }
+
+        .pillar:nth-child(2) { border-top-color: #E85D75; }
+        .pillar:nth-child(3) { border-top-color: #F39C12; }
+        .pillar:nth-child(4) { border-top-color: var(--teal); }
+        .pillar:nth-child(5) { border-top-color: #9B59B6; }
+
+        .pillar:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        }
+
+        .pillar-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .pillar h3 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.6rem;
+            color: var(--navy);
+            margin-bottom: 0.5rem;
+        }
+
+        .pillar p {
+            color: var(--text-light);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* Calendar Section */
+        .calendar-container {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            margin-bottom: 2rem;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .calendar-header h3 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.8rem;
+            color: var(--navy);
+        }
+
+        .calendar-nav {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .calendar-nav button {
+            background: var(--navy);
+            color: var(--ivory);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .calendar-nav button:hover {
+            background: var(--gold);
+            color: var(--navy);
+        }
+
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 0.5rem;
+        }
+
+        .calendar-day-header {
+            background: var(--navy);
+            color: var(--ivory);
+            padding: 1rem;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            border-radius: 4px;
+        }
+
+        .calendar-day {
+            background: var(--light-gray);
+            padding: 1rem;
+            border-radius: 4px;
+            min-height: 150px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .calendar-day:hover {
+            background: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .calendar-day.other-month {
+            opacity: 0.3;
+        }
+
+        .calendar-day.today {
+            border-left-color: var(--gold);
+            background: #fffaf5;
+        }
+
+        .calendar-day-number {
+            font-weight: 600;
+            color: var(--navy);
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .post-item {
+            font-size: 0.8rem;
+            padding: 0.35rem;
+            margin: 0.3rem 0;
+            border-radius: 3px;
+            padding-left: 0.5rem;
+            border-left: 2px solid;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .post-item:hover {
+            transform: translateX(2px);
+            opacity: 0.9;
+        }
+
+        .post-behind-bar { background: #E8F4FF; border-left-color: #0066CC; color: #003366; }
+        .post-event { background: #FFE8F0; border-left-color: #CC0066; color: #660033; }
+        .post-menu { background: #FFF5E8; border-left-color: #CC8800; color: #664400; }
+        .post-local { background: #E8F5F0; border-left-color: #00AA88; color: #003333; }
+        .post-booking { background: #F5E8FF; border-left-color: #8800CC; color: #440066; }
+
+        .post-platforms {
+            display: flex;
+            gap: 0.3rem;
+            margin-top: 0.3rem;
+            font-size: 0.7rem;
+        }
+
+        .platform-badge {
+            background: var(--navy);
+            color: var(--ivory);
+            padding: 0.15rem 0.35rem;
+            border-radius: 2px;
+            font-weight: 600;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background-color: var(--ivory);
+            margin: 5% auto;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-close {
+            color: var(--navy);
+            float: right;
+            font-size: 2rem;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .modal-close:hover {
+            color: var(--gold);
+        }
+
+        .modal h3 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.8rem;
+            color: var(--navy);
+            margin-bottom: 1rem;
+            margin-top: 1rem;
+        }
+
+        .modal-meta {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            font-size: 0.9rem;
+        }
+
+        .modal-meta span {
+            background: var(--light-gray);
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+        }
+
+        /* Caption Templates */
+        .templates-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .template {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-left: 4px solid var(--gold);
+        }
+
+        .template h3 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.3rem;
+            color: var(--navy);
+            margin-bottom: 1rem;
+        }
+
+        .template-content {
+            background: var(--light-gray);
+            padding: 1.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            line-height: 1.8;
+            font-family: 'Courier New', monospace;
+            color: var(--text-dark);
+            margin-bottom: 1rem;
+            overflow-x: auto;
+        }
+
+        .template-content strong {
+            color: var(--navy);
+        }
+
+        .copy-btn {
+            background: var(--navy);
+            color: var(--ivory);
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .copy-btn:hover {
+            background: var(--gold);
+            color: var(--navy);
+        }
+
+        .copy-btn.copied {
+            background: var(--teal);
+        }
+
+        /* Hashtag Groups */
+        .hashtag-groups {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .hashtag-group {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .hashtag-group h3 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.3rem;
+            color: var(--navy);
+            margin-bottom: 1rem;
+        }
+
+        .hashtag-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .hashtag {
+            background: var(--light-gray);
+            color: var(--navy);
+            padding: 0.5rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            user-select: all;
+            cursor: pointer;
+        }
+
+        .hashtag:hover {
+            background: var(--gold);
+            color: var(--navy);
+        }
+
+        .copy-hashtags-btn {
+            background: var(--navy);
+            color: var(--ivory);
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            width: 100%;
+        }
+
+        .copy-hashtags-btn:hover {
+            background: var(--gold);
+            color: var(--navy);
+        }
+
+        /* Ideas Bank */
+        .ideas-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .idea-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+            border-top: 4px solid var(--gold);
+        }
+
+        .idea-card:nth-child(3n+1) { border-top-color: #0066CC; }
+        .idea-card:nth-child(3n+2) { border-top-color: #CC0066; }
+        .idea-card:nth-child(3n) { border-top-color: var(--teal); }
+
+        .idea-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        }
+
+        .idea-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.2rem;
+            color: var(--navy);
+            margin-bottom: 0.6rem;
+            font-weight: 600;
+        }
+
+        .idea-meta {
+            display: flex;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+            font-size: 0.8rem;
+        }
+
+        .idea-tag {
+            background: var(--light-gray);
+            color: var(--text-dark);
+            padding: 0.3rem 0.7rem;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+
+        .idea-tag.platform-ig { background: #FFF0F5; color: #C2185B; }
+        .idea-tag.platform-tiktok { background: #F0F0F0; color: #000; }
+        .idea-tag.platform-fb { background: #E3F2FD; color: #1976D2; }
+
+        .idea-type {
+            background: var(--navy);
+            color: var(--ivory);
+            padding: 0.3rem 0.7rem;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+
+        .idea-type.reel { background: #FF6B6B; }
+        .idea-type.carousel { background: #4ECDC4; }
+        .idea-type.static { background: #95E1D3; }
+        .idea-type.story { background: #FFE66D; color: #333; }
+        .idea-type.video { background: #A8E6CF; }
+
+        .idea-difficulty {
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .idea-difficulty.easy { color: #27AE60; }
+        .idea-difficulty.medium { color: #E67E22; }
+        .idea-difficulty.hard { color: #E74C3C; }
+
+        .idea-description {
+            color: var(--text-light);
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        /* Video Guide */
+        .video-guide {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            margin-bottom: 3rem;
+        }
+
+        .guide-section {
+            margin-bottom: 2rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--light-gray);
+        }
+
+        .guide-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .guide-section h3 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.4rem;
+            color: var(--navy);
+            margin-bottom: 1rem;
+        }
+
+        .guide-subsection {
+            margin-bottom: 1.5rem;
+        }
+
+        .guide-subsection h4 {
+            color: var(--navy);
+            font-weight: 600;
+            margin-bottom: 0.6rem;
+            font-size: 1rem;
+        }
+
+        .guide-list {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .guide-list li {
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+            color: var(--text-light);
+        }
+
+        .guide-list li:before {
+            content: "▸";
+            color: var(--gold);
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+
+        .script-template {
+            background: var(--light-gray);
+            padding: 1.5rem;
+            border-radius: 4px;
+            border-left: 4px solid var(--gold);
+            font-size: 0.9rem;
+            line-height: 1.8;
+            font-family: 'Courier New', monospace;
+            margin: 1rem 0;
+        }
+
+        .script-template strong {
+            color: var(--navy);
+        }
+
+        /* Footer */
+        footer {
+            background: var(--navy);
+            color: var(--ivory);
+            padding: 2rem;
+            text-align: center;
+            margin-top: 4rem;
+        }
+
+        footer p {
+            opacity: 0.9;
+            font-size: 0.95rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2.2rem;
+            }
+
+            section h2 {
+                font-size: 1.8rem;
+            }
+
+            .pillars-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .calendar {
+                grid-template-columns: repeat(7, 1fr);
+                gap: 0.25rem;
+            }
+
+            .calendar-day {
+                min-height: 120px;
+                padding: 0.6rem;
+            }
+
+            .post-item {
+                font-size: 0.7rem;
+                padding: 0.2rem;
+            }
+
+            .ideas-container {
+                grid-template-columns: 1fr;
+            }
+
+            nav {
+                padding: 0.8rem 1rem;
+                gap: 0.8rem;
+            }
+
+            nav a {
+                font-size: 0.85rem;
+                padding: 0.4rem 0.8rem;
+            }
+        }
+
+        /* Print Styles */
+        @media print {
+            body {
+                background: white;
+            }
+
+            nav {
+                display: none;
+            }
+
+            section {
+                page-break-inside: avoid;
+            }
+        }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, var(--navy) 0%, #1a2335 100%);
+            color: var(--ivory);
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 0.3rem;
+            color: var(--gold);
+        }
+
+        .stat-label {
+            font-size: 0.95rem;
+            opacity: 0.9;
+        }
+
+        .action-cta {
+            background: linear-gradient(135deg, var(--gold) 0%, #d4b896 100%);
+            color: var(--navy);
+            padding: 2rem;
+            border-radius: 8px;
+            text-align: center;
+            margin: 3rem 0;
+            box-shadow: 0 4px 12px rgba(201, 169, 110, 0.3);
+        }
+
+        .action-cta h3 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.8rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .action-cta p {
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+            opacity: 0.95;
+        }
+
+        .action-cta a {
+            display: inline-block;
+            background: var(--navy);
+            color: var(--ivory);
+            padding: 0.8rem 2rem;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .action-cta a:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav>
+        <a href="#pillars">Content Pillars</a>
+        <a href="#calendar">March Calendar</a>
+        <a href="#templates">Caption Templates</a>
+        <a href="#hashtags">Hashtag Strategy</a>
+        <a href="#ideas">Content Ideas</a>
+        <a href="#video">Video Guide</a>
+    </nav>
+
+    <!-- Header -->
+    <div class="header">
+        <h1>Lake Salt</h1>
+        <p>Social Media Content Calendar & Strategy Playbook</p>
+        <div class="header-meta">
+            <span>📍 Utah's Premier Mobile Bartending & Mocktail Service</span>
+            <span>🌐 lakesalt.us • @lakesaltbar</span>
+            <span>📅 March 2026 Strategy</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Quick Stats -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-number">5</div>
+                <div class="stat-label">Content Pillars</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">8-10</div>
+                <div class="stat-label">Posts per Month</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">3</div>
+                <div class="stat-label">Main Platforms</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">6+</div>
+                <div class="stat-label">Caption Templates</div>
+            </div>
+        </div>
+
+        <!-- Content Pillars Section -->
+        <section id="pillars">
+            <h2>Content Pillar Strategy</h2>
+            <p style="color: var(--text-light); margin-bottom: 2rem; font-size: 1.05rem;">Our content strategy revolves around five core pillars that drive engagement and bookings. Each pillar serves a distinct purpose in the customer journey while maintaining brand consistency.</p>
+
+            <div class="pillars-grid">
+                <div class="pillar">
+                    <div class="pillar-icon">🍸</div>
+                    <h3>Behind the Bar</h3>
+                    <p><strong>Your hero content.</strong> Drink-making videos, recipe reveals, and bartender tips. Shot from overhead or close-up POV with hands-only framing. Voiceover explains ingredients and technique. This is your most engaging content—focus here to build audience.</p>
+                </div>
+
+                <div class="pillar">
+                    <div class="pillar-icon">🎉</div>
+                    <h3>Event Highlights</h3>
+                    <p>Before/after setup photos, corporate event recaps, client testimonials, and event day moments. Shows the energy and professionalism of your service. Builds social proof and demonstrates real-world execution. Great for converting interested leads.</p>
+                </div>
+
+                <div class="pillar">
+                    <div class="pillar-icon">📋</div>
+                    <h3>Menu Spotlights</h3>
+                    <p>Showcase signature cocktails and mocktails. Recipe cards, ingredient breakdowns, seasonal menu features. Perfect for static posts and carousel content. Emphasize mocktails as a key differentiator. Use Canva designs for polished graphics.</p>
+                </div>
+
+                <div class="pillar">
+                    <div class="pillar-icon">🏔️</div>
+                    <h3>Utah Local</h3>
+                    <p>Utah-specific content, venue partnerships, local event tie-ins, and seasonal celebrations. Tap into Utah pride and Wasatch Front community. Seasonal content (spring weddings, ski season entertaining, holiday parties). Builds local relevance and SEO.</p>
+                </div>
+
+                <div class="pillar">
+                    <div class="pillar-icon">📲</div>
+                    <h3>Book With Us</h3>
+                    <p>Direct CTAs for booking, pricing teasers, process explainers, FAQ content, and social proof. These drive conversions. Include link-in-bio buttons, booking process visuals, and frequently answered questions. Balance with other content (aim for 20% of posts).</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Calendar Section -->
+        <section id="calendar">
+            <h2>March 2026 Content Calendar</h2>
+
+            <div class="action-cta">
+                <h3>📅 Strategic Posting Schedule</h3>
+                <p>Pre-planned posts spread across Tuesday/Thursday and Monday/Wednesday patterns. Click any day to see post details.</p>
+            </div>
+
+            <div class="calendar-container">
+                <div class="calendar-header">
+                    <h3>March 2026</h3>
+                    <div class="calendar-nav">
+                        <button onclick="previousMonth()">← Previous</button>
+                        <button onclick="nextMonth()">Next →</button>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.9rem;">
+                    <span><span class="post-item post-behind-bar" style="margin: 0; width: 30px;"></span> Behind the Bar</span>
+                    <span><span class="post-item post-event" style="margin: 0; width: 30px;"></span> Event Highlights</span>
+                    <span><span class="post-item post-menu" style="margin: 0; width: 30px;"></span> Menu Spotlights</span>
+                    <span><span class="post-item post-local" style="margin: 0; width: 30px;"></span> Utah Local</span>
+                    <span><span class="post-item post-booking" style="margin: 0; width: 30px;"></span> Book With Us</span>
+                </div>
+
+                <div class="calendar" id="calendar-grid">
+                    <!-- Generated by JavaScript -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Caption Templates -->
+        <section id="templates">
+            <h2>Post Caption Templates</h2>
+            <p style="color: var(--text-light); margin-bottom: 2rem; font-size: 1.05rem;">Ready-to-use frameworks with fill-in-the-blank structure. Copy, customize, and schedule. Each template is optimized for engagement on your platforms.</p>
+
+            <div class="templates-grid">
+                <div class="template">
+                    <h3>🍸 Recipe Post</h3>
+                    <div class="template-content">
+[Drink Name] 🍸
+[Hook: 1-2 sentence about the drink]
+
+Here's how we make it:
+• [Ingredient 1]
+• [Ingredient 2]
+• [Ingredient 3]
+• [Ingredient 4]
+
+[Garnish detail]
+
+Want this at your next event? Link in bio 👆
+.
+.
+#LakeSalt #UtahBartender #MobileBartending #[DrinkName] #UtahEvents
+                    </div>
+                    <button class="copy-btn" onclick="copyTemplate(this)">Copy Template</button>
+                </div>
+
+                <div class="template">
+                    <h3>🎉 Event Recap</h3>
+                    <div class="template-content">
+Another one for the books ✨
+[Event type] in [area] — pure vibes
+
+What made it special:
+[Key detail about the event]
+[What the client loved]
+[Signature drink highlight]
+
+Ready to elevate YOUR next event? DM us or tap the link in bio 🥂
+.
+.
+#LakeSaltBar #UtahWedding #CorporateEvents #MobileBartender #WasatchFront
+                    </div>
+                    <button class="copy-btn" onclick="copyTemplate(this)">Copy Template</button>
+                </div>
+
+                <div class="template">
+                    <h3>📲 Booking CTA</h3>
+                    <div class="template-content">
+Thinking about booking for your [event type]? 🤔
+
+Here's what we bring:
+✓ Full bar setup
+✓ Professional bartenders
+✓ Craft cocktails & mocktails
+✓ No alcohol needed (you provide)
+✓ Based in SLC, serving all of Utah
+
+Let's make your event unforgettable 🥂
+Link in bio to start planning
+.
+.
+#LakeSalt #MobileBartender #UtahBartending #EventPlanning #DrinkService
+                    </div>
+                    <button class="copy-btn" onclick="copyTemplate(this)">Copy Template</button>
+                </div>
+
+                <div class="template">
+                    <h3>🌿 Mocktail Feature</h3>
+                    <div class="template-content">
+Alcohol-free, flavor-FULL ✨
+
+Our Virgin [Mocktail Name]
+[1-2 sentence description]
+
+Perfect for:
+→ Designated drivers
+→ Those taking a break
+→ Anyone who wants a delicious drink
+
+Your guests deserve amazing options. We serve both cocktails AND mocktails.
+Book us 👆
+.
+.
+#MocktailBar #AlcoholFree #SoberCurious #LakeSalt #UtahBartender
+                    </div>
+                    <button class="copy-btn" onclick="copyTemplate(this)">Copy Template</button>
+                </div>
+
+                <div class="template">
+                    <h3>🎬 Behind the Scenes</h3>
+                    <div class="template-content">
+A peek into what we do 👀
+
+[Description of what's happening]
+[What makes Lake Salt different]
+[Bartender insight or tip]
+
+This is just a fraction of our setup. From [initial setup] to [finished bar], we handle it all.
+
+See us in action at your next event 🥂
+Link in bio
+.
+.
+#BehindTheScenes #MobileBartending #LakeSalt #UtahEvents #BartenderLife
+                    </div>
+                    <button class="copy-btn" onclick="copyTemplate(this)">Copy Template</button>
+                </div>
+
+                <div class="template">
+                    <h3>⭐ Testimonial & Social Proof</h3>
+                    <div class="template-content">
+"[Client quote about their experience]"
+— [Client name], [Event type/Company]
+
+This is why we do what we do ❤️
+
+Your event deserves the Lake Salt experience:
+• Professional bartenders
+• Craft cocktails & mocktails
+• Seamless setup & service
+• Guests talking about it for years
+
+DM us or tap bio to book 🥂
+.
+.
+#LakeSalt #Testimonial #EventPros #UtahBartender #LakeSaltBar
+                    </div>
+                    <button class="copy-btn" onclick="copyTemplate(this)">Copy Template</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Hashtag Strategy -->
+        <section id="hashtags">
+            <h2>Hashtag Strategy</h2>
+            <p style="color: var(--text-light); margin-bottom: 2rem; font-size: 1.05rem;">Use these copy-paste hashtag groups to maximize reach. Mix 5-8 from your core set with 3-5 from relevant secondary groups. Keep the total under 30 hashtags on Instagram.</p>
+
+            <div class="hashtag-groups">
+                <div class="hashtag-group">
+                    <h3>Core Brand</h3>
+                    <div class="hashtag-list">
+                        <span class="hashtag">#LakeSalt</span>
+                        <span class="hashtag">#LakeSaltBar</span>
+                        <span class="hashtag">#UtahBartender</span>
+                        <span class="hashtag">#MobileBartending</span>
+                    </div>
+                    <button class="copy-hashtags-btn" onclick="copyHashtagGroup(this)">Copy Group</button>
+                </div>
+
+                <div class="hashtag-group">
+                    <h3>Wedding & Events</h3>
+                    <div class="hashtag-list">
+                        <span class="hashtag">#UtahWedding</span>
+                        <span class="hashtag">#WeddingBartender</span>
+                        <span class="hashtag">#UtahBride</span>
+                        <span class="hashtag">#SaltLakeCityWedding</span>
+                        <span class="hashtag">#ParkCityWedding</span>
+                        <span class="hashtag">#WeddingPlanning</span>
+                    </div>
+                    <button class="copy-hashtags-btn" onclick="copyHashtagGroup(this)">Copy Group</button>
+                </div>
+
+                <div class="hashtag-group">
+                    <h3>Corporate & Business</h3>
+                    <div class="hashtag-list">
+                        <span class="hashtag">#CorporateEvents</span>
+                        <span class="hashtag">#UtahCorporate</span>
+                        <span class="hashtag">#CompanyParty</span>
+                        <span class="hashtag">#TeamBuilding</span>
+                        <span class="hashtag">#EventPlanning</span>
+                        <span class="hashtag">#BusinessEvent</span>
+                    </div>
+                    <button class="copy-hashtags-btn" onclick="copyHashtagGroup(this)">Copy Group</button>
+                </div>
+
+                <div class="hashtag-group">
+                    <h3>Cocktails & Mixology</h3>
+                    <div class="hashtag-list">
+                        <span class="hashtag">#CraftCocktails</span>
+                        <span class="hashtag">#Mixology</span>
+                        <span class="hashtag">#DrinkOfTheDay</span>
+                        <span class="hashtag">#CocktailRecipe</span>
+                        <span class="hashtag">#BartenderLife</span>
+                        <span class="hashtag">#CocktailLovers</span>
+                    </div>
+                    <button class="copy-hashtags-btn" onclick="copyHashtagGroup(this)">Copy Group</button>
+                </div>
+
+                <div class="hashtag-group">
+                    <h3>Mocktails & Wellness</h3>
+                    <div class="hashtag-list">
+                        <span class="hashtag">#MocktailBar</span>
+                        <span class="hashtag">#AlcoholFree</span>
+                        <span class="hashtag">#SoberCurious</span>
+                        <span class="hashtag">#MocktailRecipe</span>
+                        <span class="hashtag">#DrinkDifferent</span>
+                        <span class="hashtag">#WellnessFirst</span>
+                    </div>
+                    <button class="copy-hashtags-btn" onclick="copyHashtagGroup(this)">Copy Group</button>
+                </div>
+
+                <div class="hashtag-group">
+                    <h3>Local Utah</h3>
+                    <div class="hashtag-list">
+                        <span class="hashtag">#UtahEvents</span>
+                        <span class="hashtag">#SaltLakeCity</span>
+                        <span class="hashtag">#ParkCity</span>
+                        <span class="hashtag">#WasatchFront</span>
+                        <span class="hashtag">#UtahLife</span>
+                        <span class="hashtag">#SupportLocalUtah</span>
+                        <span class="hashtag">#ProvoEvents</span>
+                        <span class="hashtag">#OgdenEvents</span>
+                    </div>
+                    <button class="copy-hashtags-btn" onclick="copyHashtagGroup(this)">Copy Group</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Content Ideas Bank -->
+        <section id="ideas">
+            <h2>Content Ideas Bank</h2>
+            <p style="color: var(--text-light); margin-bottom: 2rem; font-size: 1.05rem;">30+ content ideas organized by pillar. Pick 1-2 per week and rotate through content types. All are achievable with your current resources.</p>
+
+            <div class="ideas-container" id="ideasContainer">
+                <!-- Generated by JavaScript -->
+            </div>
+        </section>
+
+        <!-- Video Content Guide -->
+        <section id="video">
+            <h2>Drink-Making Video Guide</h2>
+            <p style="color: var(--text-light); margin-bottom: 2rem; font-size: 1.05rem;">Your hero content. Hands-only drink videos with voiceover are your most engaging posts. Here's how to create them like a pro.</p>
+
+            <div class="video-guide">
+                <div class="guide-section">
+                    <h3>📱 Platform Specs & Video Length</h3>
+                    <div class="guide-subsection">
+                        <h4>TikTok (Your growth engine)</h4>
+                        <ul class="guide-list">
+                            <li><strong>Ideal Length:</strong> 15-30 seconds (hook fast, show the payoff)</li>
+                            <li><strong>Resolution:</strong> 1080x1920 (vertical)</li>
+                            <li><strong>Format:</strong> Use trending sounds + text overlays for captions</li>
+                            <li><strong>Hook:</strong> First 3 seconds are CRITICAL—show the finished drink or an eye-catching pour</li>
+                        </ul>
+                    </div>
+
+                    <div class="guide-subsection">
+                        <h4>Instagram Reels</h4>
+                        <ul class="guide-list">
+                            <li><strong>Ideal Length:</strong> 30-60 seconds (longer format allows more detail)</li>
+                            <li><strong>Resolution:</strong> 1080x1920 (vertical) or 1080x1350 (square)</li>
+                            <li><strong>Format:</strong> Original audio (builds brand recognition) + captions</li>
+                            <li><strong>Pacing:</strong> Slower, more sophisticated than TikTok. Show technique.</li>
+                        </ul>
+                    </div>
+
+                    <div class="guide-subsection">
+                        <h4>Facebook</h4>
+                        <ul class="guide-list">
+                            <li><strong>Ideal Length:</strong> 20-45 seconds (shorter attention span)</li>
+                            <li><strong>Format:</strong> Auto-play with captions (most watch without sound)</li>
+                            <li><strong>Hook:</strong> Text overlay explaining the drink in first 2 seconds</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="guide-section">
+                    <h3>🎥 Shooting Setup & Angles</h3>
+                    <div class="guide-subsection">
+                        <h4>Overhead Shot (Flat Lay)</h4>
+                        <ul class="guide-list">
+                            <li><strong>Setup:</strong> Mount phone on tripod or prop it at 45° angle pointing down</li>
+                            <li><strong>Lighting:</strong> Natural window light is perfect. Avoid harsh shadows.</li>
+                            <li><strong>What to show:</strong> Pouring, stirring, shaking, adding garnish. The whole process head-on.</li>
+                            <li><strong>Best for:</strong> Showing technique, layering, garnishing details</li>
+                        </ul>
+                    </div>
+
+                    <div class="guide-subsection">
+                        <h4>Side Angle (45°)</h4>
+                        <ul class="guide-list">
+                            <li><strong>Setup:</strong> Phone at eye level, angled at 45° to the bar</li>
+                            <li><strong>Why it works:</strong> You see both the bartender's hands and the glass/bottle in profile</li>
+                            <li><strong>Best for:</strong> Dramatic pours, shaking, drink transformations</li>
+                        </ul>
+                    </div>
+
+                    <div class="guide-subsection">
+                        <h4>Close-Up (Macro)</h4>
+                        <ul class="guide-list">
+                            <li><strong>Setup:</strong> Phone 6-12 inches from the action. Focus on drink only.</li>
+                            <li><strong>What to show:</strong> Liquid colors mixing, ice clinking, garnish placement, final presentation</li>
+                            <li><strong>Best for:</strong> Visual appeal, showing quality ingredients, satisfying transitions</li>
+                        </ul>
+                    </div>
+
+                    <div class="guide-subsection">
+                        <h4>Pro Tip: Shoot Multiple Angles</h4>
+                        <p style="padding: 1rem; background: var(--light-gray); border-left: 3px solid var(--gold); margin: 1rem 0;">Make one drink 3-4 times from different angles. Edit together the best shots for maximum production value without extra work.</p>
+                    </div>
+                </div>
+
+                <div class="guide-section">
+                    <h3>🎙️ Voiceover Script Framework</h3>
+                    <p style="margin-bottom: 1rem; color: var(--text-light);">Use this simple structure. Each section should be 5-10 seconds of audio. Speak clearly, naturally, with energy.</p>
+
+                    <div class="script-template">
+<strong>[0-3 sec] HOOK / INTRO</strong>
+"This is our [Drink Name]. [1-2 sentence about what makes it special]"
+
+<strong>[3-8 sec] INGREDIENTS</strong>
+"We start with [base spirit], add [mixer], a touch of [liqueur/modifier]..."
+
+<strong>[8-15 sec] TECHNIQUE</strong>
+"Shake it up... add ice... beautiful color... [describe what they're seeing]..."
+
+<strong>[15-18 sec] GARNISH</strong>
+"Top it with [garnish]. That's the final touch that makes it special."
+
+<strong>[18-22 sec] CTA</strong>
+"Want this at your next event? Book us on lakesalt.us or check the link in our bio. Lake Salt—Utah's mobile bar."
+                    </div>
+
+                    <div class="guide-subsection">
+                        <h4>Voice Tips</h4>
+                        <ul class="guide-list">
+                            <li>Speak slowly and clearly—your audience is watching, not just listening</li>
+                            <li>Use conversational tone, not robotic</li>
+                            <li>Emphasize key ingredients and steps</li>
+                            <li>End with confidence: "Book us at lakesalt.us" (not a question)</li>
+                            <li>Optional: Add background music under voiceover, but keep VO audible</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="guide-section">
+                    <h3>🎵 Audio & Music Strategy</h3>
+                    <div class="guide-subsection">
+                        <h4>TikTok & Reels: Trending Sounds</h4>
+                        <ul class="guide-list">
+                            <li>Use 2-4 trending sounds per month—algorithm LOVES this</li>
+                            <li>Search sounds related to: "bartender," "satisfying," "mixing," "drinks"</li>
+                            <li>Layer your voiceover ON TOP of trending audio (don't mute it)</li>
+                            <li>Time your key moments (pour, clink, garnish) to beat drops</li>
+                        </ul>
+                    </div>
+
+                    <div class="guide-subsection">
+                        <h4>Original Audio (Brand Building)</h4>
+                        <ul class="guide-list">
+                            <li>Record your voiceover without music first</li>
+                            <li>Use original audio occasionally—when algorithm picks it up, it becomes YOUR branded audio</li>
+                            <li>This is how you build a signature Lake Salt sound</li>
+                        </ul>
+                    </div>
+
+                    <div class="guide-subsection">
+                        <h4>Music Library Suggestions</h4>
+                        <ul class="guide-list">
+                            <li><strong>Upbeat/Fun:</strong> "Chill Vibes," "Lo-Fi Hip Hop," "Indie Pop"</li>
+                            <li><strong>Sophisticated:</strong> "Jazz," "Lounge," "Ambient"</li>
+                            <li><strong>Energetic:</strong> "Electronic," "Synthwave," "Disco"</li>
+                            <li><strong>Tools:</strong> YouTube Audio Library (free), Epidemic Sound, Artlist</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="guide-section">
+                    <h3>✂️ Editing & Publishing</h3>
+                    <div class="guide-subsection">
+                        <h4>Simple Editing (You can do this)</h4>
+                        <ul class="guide-list">
+                            <li><strong>Cuts:</strong> Trim boring moments. Keep it punchy.</li>
+                            <li><strong>Speed Ramp:</strong> Slow down on garnish, speed up the pouring—creates visual interest</li>
+                            <li><strong>Text Overlay:</strong> Add ingredient names as they appear (e.g., "+vodka" when you add vodka)</li>
+                            <li><strong>Final Sip/Reveal:</strong> End with 2-3 seconds of the finished drink. HOLD ON IT.</li>
+                        </ul>
+                    </div>
+
+                    <div class="guide-subsection">
+                        <h4>Editing Tools</h4>
+                        <ul class="guide-list">
+                            <li><strong>Easy (phone):</strong> CapCut (free, powerful, best for TikTok/Reels)</li>
+                            <li><strong>Medium (desktop):</strong> DaVinci Resolve (free), Adobe Premiere Elements (paid)</li>
+                            <li><strong>Quick:</strong> Use CapCut to trim + add captions + post directly</li>
+                        </ul>
+                    </div>
+
+                    <div class="guide-subsection">
+                        <h4>Publishing Strategy</h4>
+                        <ul class="guide-list">
+                            <li><strong>TikTok First:</strong> Post here first for algorithmic advantage</li>
+                            <li><strong>Then Reels:</strong> Cross-post to Instagram (within 24 hours)</li>
+                            <li><strong>Then Facebook:</strong> Share to your Facebook page with a caption</li>
+                            <li><strong>Timing:</strong> Post Tuesday/Thursday 6-9 PM or Wednesday 6 PM (peak Utah engagement)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="guide-section">
+                    <h3>🚀 Making Videos That Convert</h3>
+                    <div class="guide-subsection">
+                        <h4>Engagement Drivers</h4>
+                        <ul class="guide-list">
+                            <li><strong>Satisfying action:</strong> Smooth pours, ice clinking, garnish placement</li>
+                            <li><strong>Color contrast:</strong> Show when ingredients mix and change color</li>
+                            <li><strong>Before/After:</strong> Empty glass → full glass with garnish</li>
+                            <li><strong>Storytelling:</strong> "This is for a client who wanted something special..."</li>
+                        </ul>
+                    </div>
+
+                    <div class="guide-subsection">
+                        <h4>Posting Checklist</h4>
+                        <ul class="guide-list">
+                            <li>☑ Hook in first 3 seconds</li>
+                            <li>☑ Clear voiceover describing what you're doing</li>
+                            <li>☑ Text captions for key steps (ingredient names, techniques)</li>
+                            <li>☑ 2-3 camera angles mixed (overhead → side → close-up)</li>
+                            <li>☑ Trending sound or original audio with VO layered over</li>
+                            <li>☑ Strong CTA: "Book us at lakesalt.us or link in bio"</li>
+                            <li>☑ Relevant hashtags from your strategy</li>
+                            <li>☑ Pinned comment with booking link or recipe in comments</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="action-cta">
+            <h3>Ready to Execute?</h3>
+            <p>Start with ONE drink video this week. Pick the easiest signature drink, shoot it 3 times from different angles, edit it in CapCut, and post to TikTok. This single video is your testing ground.</p>
+            <a href="https://www.lakesalt.us" target="_blank">Visit Lake Salt Website</a>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>Lake Salt Social Media Strategy Playbook | March 2026</p>
+        <p style="margin-top: 0.5rem; font-size: 0.9rem; opacity: 0.8;">📍 Salt Lake City, Utah | 🌐 lakesalt.us | 📱 @lakesaltbar</p>
+        <p style="margin-top: 1rem; font-size: 0.85rem; opacity: 0.7;">This playbook is a living document. Update monthly with new ideas, performance data, and seasonal content themes.</p>
+    </footer>
+
+    <script>
+        // Calendar Data
+        const contentCalendarPosts = {
+            1: { title: "Espresso Martini Recipe", pillar: "behind-bar", platforms: ["IG", "TK"], type: "Reel", description: "Hands-only POV making the drink, voiceover describing ingredients" },
+            4: { title: "Corporate Event Setup Timelapse", pillar: "event", platforms: ["IG", "FB"], type: "Reel", description: "Before/after transformation of venue with full bar setup" },
+            6: { title: "Mocktail Monday: Virgin Mojito", pillar: "menu", platforms: ["IG", "TK"], type: "Carousel", description: "Recipe card graphic + ingredient breakdown" },
+            8: { title: "Utah Spring Wedding Season", pillar: "local", platforms: ["IG", "FB"], type: "Static", description: "Why book a mobile bar for weddings—seasonal tie-in" },
+            11: { title: "Bar Kit Behind the Scenes", pillar: "behind-bar", platforms: ["IG", "TK"], type: "Reel", description: "What's inside our mobile bar setup and why it matters" },
+            13: { title: "Client Testimonial + Photos", pillar: "event", platforms: ["IG", "FB"], type: "Carousel", description: "Real event photos with 2-3 word testimonial quote" },
+            15: { title: "TikTok Trend: What I Do", pillar: "behind-bar", platforms: ["TK"], type: "Reel", description: "'What I do for a living' trend—mobile bartender edition" },
+            18: { title: "Signature Cocktail: Old Fashioned", pillar: "menu", platforms: ["IG", "TK"], type: "Reel", description: "Classic drink, modern technique, voiceover on trending sound" },
+            20: { title: "Park City Spring Events", pillar: "local", platforms: ["IG", "FB"], type: "Static", description: "Local event photography + booking CTA" },
+            22: { title: "Mocktail Bar Difference", pillar: "menu", platforms: ["IG", "TK"], type: "Carousel", description: "Show side-by-side: cocktails + mocktails you offer" },
+            25: { title: "Event Day Video Clip", pillar: "event", platforms: ["IG", "TK"], type: "Reel", description: "Short 30-second clip from recent event showing energy" },
+            27: { title: "FAQ: Booking Process", pillar: "booking", platforms: ["IG", "FB"], type: "Static", description: "Carousel explaining how to book, pricing structure, timeline" },
+            29: { title: "Pisco Sour Recipe Reveal", pillar: "behind-bar", platforms: ["IG", "TK"], type: "Reel", description: "Elevated drink, technical pouring, beautiful presentation" },
+        };
+
+        function generateCalendar() {
+            const year = 2026;
+            const month = 2; // March (0-indexed)
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const daysInMonth = lastDay.getDate();
+            const startingDayOfWeek = firstDay.getDay();
+
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+
+            // Day headers
+            const dayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            dayHeaders.forEach(day => {
+                const header = document.createElement('div');
+                header.className = 'calendar-day-header';
+                header.textContent = day;
+                grid.appendChild(header);
+            });
+
+            // Previous month days
+            for (let i = 0; i < startingDayOfWeek; i++) {
+                const emptyDay = document.createElement('div');
+                emptyDay.className = 'calendar-day other-month';
+                grid.appendChild(emptyDay);
+            }
+
+            // Current month days
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'calendar-day';
+                if (day === 8) dayDiv.classList.add('today');
+
+                const dayNumber = document.createElement('div');
+                dayNumber.className = 'calendar-day-number';
+                dayNumber.textContent = day;
+                dayDiv.appendChild(dayNumber);
+
+                if (contentCalendarPosts[day]) {
+                    const post = contentCalendarPosts[day];
+                    const postEl = document.createElement('div');
+                    postEl.className = `post-item post-${post.pillar}`;
+                    postEl.innerHTML = `<strong>${post.title}</strong><br>`;
+
+                    const platformsDiv = document.createElement('div');
+                    platformsDiv.className = 'post-platforms';
+                    post.platforms.forEach(p => {
+                        const badge = document.createElement('span');
+                        badge.className = 'platform-badge';
+                        badge.textContent = p;
+                        platformsDiv.appendChild(badge);
+                    });
+                    postEl.appendChild(platformsDiv);
+                    postEl.onclick = (e) => showPostModal(day, post);
+                    dayDiv.appendChild(postEl);
+                }
+
+                grid.appendChild(dayDiv);
+            }
+        }
+
+        function showPostModal(day, post) {
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.id = 'postModal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <span class="modal-close" onclick="this.closest('.modal').remove()">&times;</span>
+                    <h3>${post.title}</h3>
+                    <div class="modal-meta">
+                        <span>📅 March ${day}</span>
+                        <span>📱 ${post.platforms.join(', ')}</span>
+                        <span>${post.type}</span>
+                    </div>
+                    <h4 style="font-weight: 600; margin-bottom: 0.5rem;">Description</h4>
+                    <p style="color: var(--text-light); line-height: 1.6; margin-bottom: 1.5rem;">${post.description}</p>
+                    <h4 style="font-weight: 600; margin-bottom: 0.5rem;">Content Pillar</h4>
+                    <p style="color: var(--text-light);">${post.pillar.charAt(0).toUpperCase() + post.pillar.slice(1)}</p>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            modal.style.display = 'block';
+            modal.onclick = (e) => {
+                if (e.target === modal) modal.remove();
+            };
+        }
+
+        // Ideas Bank
+        const contentIdeas = [
+            { title: "Espresso Martini Tutorial", platform: "IG/TK", type: "Reel", description: "Speed-ramp technique: slow on ingredients, fast on shake", pillar: "Behind the Bar", difficulty: "Easy" },
+            { title: "Margarita Flavor Variations", platform: "IG", type: "Carousel", description: "Show 3-4 versions (classic, strawberry, jalapeño, spicy)", pillar: "Menu Spotlights", difficulty: "Easy" },
+            { title: "Hands-Only Cocktail Shaking", platform: "TK", type: "Reel", description: "ASMR-style close-up of ice rattling, technique details", pillar: "Behind the Bar", difficulty: "Easy" },
+            { title: "Corporate Event Before/After", platform: "IG/FB", type: "Carousel", description: "5-8 photos showing transformation and guest reactions", pillar: "Event Highlights", difficulty: "Medium" },
+            { title: "What's in Our Bar Kit", platform: "IG/TK", type: "Reel", description: "Tour of tools, bottles, ice setup, & bar basics explained", pillar: "Behind the Bar", difficulty: "Medium" },
+            { title: "Mocktail Monday Series", platform: "IG/TK", type: "Static/Carousel", description: "Weekly mocktail feature card (Canva design)", pillar: "Menu Spotlights", difficulty: "Easy" },
+            { title: "Utah Wedding Market Guide", platform: "IG/FB", type: "Static", description: "Infographic: Why choose mobile bar for Utah weddings", pillar: "Utah Local", difficulty: "Medium" },
+            { title: "Bartender Q&A TikTok", platform: "TK", type: "Reel", description: "Answer common questions: most ordered drink, hardest cocktail, etc.", pillar: "Behind the Bar", difficulty: "Easy" },
+            { title: "Sangria Recipe (Seasonal)", platform: "IG/TK", type: "Reel", description: "Hands-on prep: cutting fruit, pouring wine, showing final result", pillar: "Menu Spotlights", difficulty: "Medium" },
+            { title: "Spring Event Decoration Ideas", platform: "IG/FB", type: "Carousel", description: "Show how Lake Salt bars look in spring venues (color, setup)", pillar: "Event Highlights", difficulty: "Medium" },
+            { title: "Skiing Season Bar Setup", platform: "IG", type: "Carousel", description: "Park City apres-ski bar setup + mountain views", pillar: "Utah Local", difficulty: "Hard" },
+            { title: "Dry Hire Explainer", platform: "IG/FB", type: "Static", description: "Simple graphic explaining what 'dry hire' means + benefits", pillar: "Book With Us", difficulty: "Easy" },
+            { title: "Client Testimonial Video", platform: "IG/TK/FB", type: "Reel", description: "30-sec clip of client speaking (or quote + event photos)", pillar: "Event Highlights", difficulty: "Medium" },
+            { title: "Bitters & Modifiers Breakdown", platform: "IG/TK", type: "Carousel", description: "Educational: how bitters/syrups/liqueurs change a drink", pillar: "Behind the Bar", difficulty: "Medium" },
+            { title: "Book With Us CTA Carousel", platform: "IG/FB", type: "Carousel", description: "Slide 1: Hook, Slides 2-4: Services, Slide 5: Booking button", pillar: "Book With Us", difficulty: "Easy" },
+            { title: "Prom/Graduation Event Hook", platform: "IG", type: "Static", description: "Teen-focused mocktail bar option messaging", pillar: "Utah Local", difficulty: "Easy" },
+            { title: "Cocktail Syrups DIY Guide", platform: "TK", type: "Reel", description: "Show making homemade syrup, texture, taste", pillar: "Behind the Bar", difficulty: "Medium" },
+            { title: "SLC Venue Partnerships", platform: "IG/FB", type: "Static", description: "Feature 1-2 partner venues, photos of bars setup there", pillar: "Utah Local", difficulty: "Medium" },
+            { title: "Pricing & Packages Overview", platform: "IG/FB", type: "Static", description: "Simple breakdown: 2-hour, 4-hour, full day rates", pillar: "Book With Us", difficulty: "Easy" },
+            { title: "Trend: 'Drink Of The Day'", platform: "IG/TK", type: "Static", description: "Daily single-drink feature (different each day)", pillar: "Menu Spotlights", difficulty: "Easy" },
+            { title: "Event Timeline Explainer", platform: "IG/FB", type: "Carousel", description: "Steps from inquiry to event day (booking process)", pillar: "Book With Us", difficulty: "Easy" },
+            { title: "Wasatch Front Venue Spotlight", platform: "IG/FB", type: "Carousel", description: "Feature a local venue + examples of bars Lake Salt brought there", pillar: "Utah Local", difficulty: "Medium" },
+            { title: "Seasonal Drink Variations", platform: "IG/TK", type: "Carousel", description: "Show same drink in 4 seasons (ingredients change)", pillar: "Menu Spotlights", difficulty: "Medium" },
+            { title: "FAQ: Alcohol Provided?", platform: "IG/FB", type: "Static", description: "Explain dry hire model, why it saves money", pillar: "Book With Us", difficulty: "Easy" },
+            { title: "Bartender Life Day-In-Life", platform: "TK", type: "Reel", description: "Time-lapse of prep, setup, service, breakdown", pillar: "Event Highlights", difficulty: "Hard" },
+            { title: "Mocktail for Non-Drinkers", platform: "IG/TK", type: "Reel", description: "Highlight why mocktails are just as special", pillar: "Menu Spotlights", difficulty: "Easy" },
+            { title: "Provo & Lehi Events Messaging", platform: "IG/FB", type: "Static", description: "Localized content for expanding service areas", pillar: "Utah Local", difficulty: "Easy" },
+            { title: "DIY vs. Hire Decision Guide", platform: "IG/FB", type: "Carousel", description: "Why hiring Lake Salt > DIY bar (saves stress, better result)", pillar: "Book With Us", difficulty: "Medium" },
+            { title: "Garnish Artistry Focus", platform: "IG/TK", type: "Reel", description: "Close-up, slow-motion of complex garnish placement", pillar: "Behind the Bar", difficulty: "Medium" },
+            { title: "Success Stories Compilation", platform: "IG/FB", type: "Carousel", description: "2-3 event photos + 1-sentence story about each", pillar: "Event Highlights", difficulty: "Medium" },
+        ];
+
+        function generateIdeas() {
+            const container = document.getElementById('ideasContainer');
+            contentIdeas.forEach((idea, index) => {
+                const card = document.createElement('div');
+                card.className = 'idea-card';
+
+                let platformTags = '';
+                idea.platform.split('/').forEach(p => {
+                    const platformMap = { 'IG': 'Instagram', 'TK': 'TikTok', 'FB': 'Facebook' };
+                    platformTags += `<span class="idea-tag platform-${p.toLowerCase()}">${platformMap[p]}</span>`;
+                });
+
+                let typeClass = 'type-' + idea.type.toLowerCase().replace(' ', '-');
+                const typeLabel = `<span class="idea-tag idea-type ${idea.type.toLowerCase()}">${idea.type}</span>`;
+
+                const difficultyClass = 'difficulty-' + idea.difficulty.toLowerCase();
+                const difficultyLabel = `<span class="idea-difficulty ${difficultyClass}">${idea.difficulty}</span>`;
+
+                card.innerHTML = `
+                    <div class="idea-title">${idea.title}</div>
+                    <div class="idea-meta">
+                        ${platformTags}
+                        ${typeLabel}
+                    </div>
+                    <div class="idea-difficulty ${difficultyClass}">Difficulty: ${idea.difficulty}</div>
+                    <div class="idea-description">${idea.description}</div>
+                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--light-gray); font-size: 0.85rem; color: var(--text-light); font-weight: 500;">📊 ${idea.pillar}</div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function copyTemplate(button) {
+            const content = button.previousElementSibling.textContent;
+            navigator.clipboard.writeText(content);
+
+            const originalText = button.textContent;
+            button.textContent = '✓ Copied!';
+            button.classList.add('copied');
+
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.classList.remove('copied');
+            }, 2000);
+        }
+
+        function copyHashtagGroup(button) {
+            const hashtags = button.previousElementSibling.textContent;
+            navigator.clipboard.writeText(hashtags);
+
+            const originalText = button.textContent;
+            button.textContent = '✓ Copied!';
+            button.classList.add('copied');
+
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.classList.remove('copied');
+            }, 2000);
+        }
+
+        function previousMonth() {
+            alert('Previous month navigation would update calendar. For this playbook, focus on March 2026.');
+        }
+
+        function nextMonth() {
+            alert('Next month navigation would update calendar. For this playbook, focus on March 2026.');
+        }
+
+        // Initialize
+        window.addEventListener('DOMContentLoaded', () => {
+            generateCalendar();
+            generateIdeas();
+        });
+    </script>
+</body>
+</html>

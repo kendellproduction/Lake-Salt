@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <radialGradient id="bg" cx="40%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#1C1408"/>
+      <stop offset="100%" stop-color="#06080F"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#DFC08A"/>
+      <stop offset="50%" stop-color="#C9A96E"/>
+      <stop offset="100%" stop-color="#A8864D"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="100" height="100" rx="18" ry="18" fill="url(#bg)"/>
+
+  <!-- Subtle inner glow -->
+  <rect width="100" height="100" rx="18" ry="18" fill="none" stroke="rgba(201,169,110,0.12)" stroke-width="1.5"/>
+
+  <!-- L glyph - elegant serif construction -->
+  <!-- Vertical stem -->
+  <rect x="24" y="22" width="6" height="46" rx="1" fill="url(#gold)"/>
+  <!-- Serif top of L -->
+  <rect x="21" y="22" width="12" height="2.5" rx="1" fill="url(#gold)"/>
+  <!-- Foot of L -->
+  <rect x="24" y="63.5" width="24" height="4.5" rx="1" fill="url(#gold)"/>
+  <!-- Serif on foot right -->
+  <rect x="45" y="63.5" width="3" height="2.5" rx="0.5" fill="url(#gold)"/>
+
+  <!-- S glyph - geometric elegant construction -->
+  <!-- Top arc of S -->
+  <path d="M 57 33 Q 57 24 67 24 Q 77 24 77 31 Q 77 38 67 40 Q 57 42 57 49 Q 57 57 68 57 Q 76 57 77 52"
+        fill="none" stroke="url(#gold)" stroke-width="5.5" stroke-linecap="round"/>
+  <!-- Serif caps -->
+  <rect x="59" y="22.5" width="16" height="2.5" rx="1" fill="url(#gold)"/>
+  <rect x="60" y="55.5" width="16" height="2.5" rx="1" fill="url(#gold)"/>
+
+  <!-- Thin horizontal rule below — brand accent line -->
+  <line x1="28" y1="78" x2="72" y2="78" stroke="rgba(201,169,110,0.35)" stroke-width="0.75"/>
+</svg>

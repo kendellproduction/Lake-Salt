@@ -48,31 +48,48 @@
     </div>
 
     <nav class="sidebar-nav">
+      <!-- Operations -->
+      <div class="nav-section-label">Operations</div>
       <a class="nav-item" data-module="dashboard" href="#dashboard">
-        <span class="nav-icon">📊</span><span class="nav-label">Dashboard</span>
+        <span class="nav-icon">⬡</span><span class="nav-label">Dashboard</span>
       </a>
       <a class="nav-item" data-module="crm" href="#crm">
-        <span class="nav-icon">🎯</span><span class="nav-label">CRM &amp; Leads</span>
+        <span class="nav-icon">◈</span><span class="nav-label">CRM &amp; Leads</span>
         <span class="nav-badge" id="badge-crm" style="display:none"></span>
       </a>
       <a class="nav-item" data-module="projects" href="#projects">
-        <span class="nav-icon">📋</span><span class="nav-label">Projects</span>
+        <span class="nav-icon">◫</span><span class="nav-label">Projects</span>
+      </a>
+      <a class="nav-item" data-module="event-day" href="#event-day">
+        <span class="nav-icon">◷</span><span class="nav-label">Event Day</span>
       </a>
       <a class="nav-item" data-module="bartenders" href="#bartenders">
-        <span class="nav-icon">🍸</span><span class="nav-label">Bartenders</span>
+        <span class="nav-icon">◑</span><span class="nav-label">Bartenders</span>
       </a>
+
+      <!-- Finance -->
+      <div class="nav-section-label">Finance</div>
       <a class="nav-item" data-module="analytics" href="#analytics">
-        <span class="nav-icon">💰</span><span class="nav-label">Analytics</span>
+        <span class="nav-icon">◱</span><span class="nav-label">Analytics</span>
       </a>
       <a class="nav-item" data-module="expenses" href="#expenses">
-        <span class="nav-icon">🧾</span><span class="nav-label">Expenses</span>
-      </a>
-      <a class="nav-item" data-module="inventory" href="#inventory">
-        <span class="nav-icon">📦</span><span class="nav-label">Inventory</span>
-        <span class="nav-badge danger" id="badge-inventory" style="display:none"></span>
+        <span class="nav-icon">◳</span><span class="nav-label">Expenses</span>
       </a>
       <a class="nav-item" data-module="funnel" href="#funnel">
-        <span class="nav-icon">📈</span><span class="nav-label">Funnel</span>
+        <span class="nav-icon">◬</span><span class="nav-label">Funnel</span>
+      </a>
+
+      <!-- Inventory & Content -->
+      <div class="nav-section-label">Content</div>
+      <a class="nav-item" data-module="inventory" href="#inventory">
+        <span class="nav-icon">◰</span><span class="nav-label">Inventory</span>
+        <span class="nav-badge danger" id="badge-inventory" style="display:none"></span>
+      </a>
+      <a class="nav-item" data-module="marketing" href="#marketing">
+        <span class="nav-icon">◧</span><span class="nav-label">Marketing</span>
+      </a>
+      <a class="nav-item" data-module="notes" href="#notes">
+        <span class="nav-icon">◪</span><span class="nav-label">Team Notes</span>
       </a>
     </nav>
 
@@ -92,6 +109,18 @@
       <!-- Modules render here -->
     </div>
   </main>
+</div>
+
+<!-- ─── TOOL OVERLAY (iframe fullscreen panel) ─── -->
+<div id="tool-overlay" style="display:none">
+  <div class="tool-overlay-bar">
+    <div class="tool-overlay-title-wrap">
+      <button class="tool-overlay-back" onclick="closeToolOverlay()">← Back to Admin</button>
+      <span id="tool-overlay-title" class="tool-overlay-title"></span>
+    </div>
+    <button class="tool-overlay-close" onclick="closeToolOverlay()">✕</button>
+  </div>
+  <iframe id="tool-overlay-frame" src="" frameborder="0" allowfullscreen></iframe>
 </div>
 
 <!-- ─── MODAL LAYER ─── -->
@@ -131,6 +160,9 @@
 <script src="js/expenses.js"></script>
 <script src="js/inventory.js"></script>
 <script src="js/funnel.js"></script>
+<script src="js/event-day.js"></script>
+<script src="js/marketing.js"></script>
+<script src="js/notes.js"></script>
 
 </body>
 </html>

@@ -2,7 +2,13 @@
    MODULE 7 — FUNNEL & CONVERSION METRICS
 ══════════════════════════════════════ */
 
+let funnelCharts = {};
+
 async function renderFunnel() {
+  // Destroy old charts to prevent memory leaks
+  Object.values(funnelCharts).forEach(ch => { try { ch.destroy(); } catch(e){} });
+  funnelCharts = {};
+
   const c = document.getElementById('module-container');
   c.innerHTML = `
     <div class="page-header">
@@ -36,8 +42,7 @@ async function renderFunnel() {
     </div>
     <div class="card">
       <div class="card-header">
-        <span class="card-title">Traffic Sources</span>
-        <span class="text-muted" style="font-size:12px">Connect GA4 to enable live data</span>
+        <span class="card-title">Lead Sources</span>
       </div>
       <div id="traffic-sources"></div>
     </div>`;
@@ -112,7 +117,7 @@ async function renderFunnel() {
   });
   const typesCtx = document.getElementById('chart-lead-types')?.getContext('2d');
   if (typesCtx && Object.keys(typeCounts).length) {
-    new Chart(typesCtx, {
+    funnelCharts.types = new Chart(typesCtx, {
       type: 'doughnut',
       data: {
         labels: Object.keys(typeCounts),
@@ -140,7 +145,7 @@ async function renderFunnel() {
   });
   const volCtx = document.getElementById('chart-lead-volume')?.getContext('2d');
   if (volCtx) {
-    new Chart(volCtx, {
+    funnelCharts.volume = new Chart(volCtx, {
       type: 'bar',
       data: {
         labels: months,
@@ -192,31 +197,34 @@ async function renderFunnel() {
       </div>`;
   }).join('');
 
-  // ── Traffic sources (static placeholder with GA4 instructions) ──
+  // ── Lead source breakdown (from actual lead data) ──
+  const sourceCounts = {};
+  const sourceRevenue = {};
+  leads.forEach(l => {
+    const src = l.source || 'Website';
+    sourceCounts[src] = (sourceCounts[src]||0) + 1;
+    if (l.stage === 'Booked' || l.stage === 'Completed') {
+      sourceRevenue[src] = (sourceRevenue[src]||0) + (l.budget||0);
+    }
+  });
+
+  const sourceIcons = { Website: '🔗', Referral: '🤝', Google: '🔍', Instagram: '📱', Facebook: '👥', TikTok: '🎵', Other: '📋' };
+
   document.getElementById('traffic-sources').innerHTML = `
-    <div style="padding:20px 0">
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:20px">
-        ${[
-          { src: 'Direct', icon: '🔗', note: 'Bookmarked / typed' },
-          { src: 'Organic Search', icon: '🔍', note: 'Google / Bing SEO' },
-          { src: 'Social', icon: '📱', note: 'Instagram / TikTok' },
-          { src: 'Referral', icon: '🤝', note: 'Word-of-mouth links' }
-        ].map(s => `
-          <div class="stat-card" style="text-align:center;padding:16px">
-            <div style="font-size:24px;margin-bottom:6px">${s.icon}</div>
-            <div style="font-size:13px;font-weight:600;margin-bottom:2px">${s.src}</div>
-            <div style="font-size:11px;color:#64748b">${s.note}</div>
-            <div style="font-size:11px;color:var(--teal);margin-top:8px">Connect GA4 →</div>
-          </div>`).join('')}
-      </div>
-      <div style="background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);border-radius:8px;padding:16px">
-        <div style="font-size:13px;font-weight:600;color:var(--gold);margin-bottom:8px">🔌 Connect Google Analytics 4</div>
-        <div style="font-size:12px;color:#8A9DB5;line-height:1.6">
-          To enable live traffic source data, add your GA4 Measurement ID to <code style="color:var(--teal)">firebase-init.js</code> and
-          configure the GA4 Data API. Your measurement ID is <code style="color:var(--teal)">G-LSQL7V93XB</code> — already included in your Firebase config.
-          <br/><br/>
-          Enable the GA4 Data API in Google Cloud Console → APIs & Services → Enable APIs, then use a service account with the Analytics Viewer role.
-        </div>
+    <div style="padding:16px 0">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px">
+        ${Object.entries(sourceCounts).sort((a,b)=>b[1]-a[1]).map(([src, count]) => {
+          const pct = total > 0 ? ((count/total)*100).toFixed(0) : 0;
+          const rev = sourceRevenue[src] || 0;
+          return `
+          <div class="stat-card" style="text-align:center;padding:14px">
+            <div style="font-size:22px;margin-bottom:4px">${sourceIcons[src]||'📋'}</div>
+            <div style="font-size:13px;font-weight:600;margin-bottom:2px">${src}</div>
+            <div style="font-size:20px;font-weight:700;color:var(--gold)">${count}</div>
+            <div style="font-size:11px;color:#64748b">${pct}% of leads</div>
+            ${rev > 0 ? `<div style="font-size:11px;color:var(--green);margin-top:4px">${fmtMoney(rev)} pipeline</div>` : ''}
+          </div>`;
+        }).join('')}
       </div>
     </div>`;
 }
