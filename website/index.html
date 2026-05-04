@@ -460,9 +460,10 @@
 
     /* ── Time picker ── */
     .ob-time-wrap {
-      max-width: 300px; margin: 0 auto 1.2rem;
+      margin: 0 auto 1.2rem;
       display: flex; align-items: center; gap: 0.5rem;
       justify-content: center;
+      flex: 1;
     }
     .ob-time-label {
       font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
@@ -2435,28 +2436,28 @@
       <button class="ob-goto-site-sm" onclick="obSkipAll()">Go to Site &rarr;</button>
     </div><!-- /ob-p5 -->
 
-    <!-- Step 6: Contact Info -->
+    <!-- Step 6: Budget -->
     <div class="ob-panel" id="ob-p6">
-      <h2 class="onboarding-q">Let's get in<br/><em>touch.</em></h2>
-      <p class="onboarding-sub">We'll reach out with your custom quote</p>
-      <input class="ob-input" id="ob-name" type="text" placeholder="Your full name" required />
-      <input class="ob-input" id="ob-email" type="email" placeholder="Your email address" required />
-      <input class="ob-input" id="ob-phone" type="tel" placeholder="Phone number (optional)" />
+      <h2 class="onboarding-q">What's your<br/><em>budget?</em></h2>
+      <p class="onboarding-sub">Help us understand your investment range</p>
+      <input class="ob-input" id="ob-budget" type="text" placeholder="e.g., $500, $2000–3000, flexible, etc." />
       <div class="ob-nav">
         <button class="ob-back" onclick="obGoTo(5)">← Back</button>
         <div style="display:flex;align-items:center;gap:0.6rem;">
-          <button class="ob-skip-step" onclick="obSkipAll()">Skip & Use Form</button>
+          <button class="ob-skip-step" onclick="obNext()">Skip</button>
           <button class="ob-next-btn" onclick="obNext()">Next →</button>
         </div>
       </div>
       <button class="ob-goto-site-sm" onclick="obSkipAll()">Go to Site &rarr;</button>
     </div><!-- /ob-p6 -->
 
-    <!-- Step 7: Budget & Details -->
+    <!-- Step 7: Contact Info & Details -->
     <div class="ob-panel" id="ob-p7">
-      <h2 class="onboarding-q">Anything<br/><em>else?</em></h2>
-      <p class="onboarding-sub">Budget and special requests (both optional)</p>
-      <input class="ob-input" id="ob-budget" type="text" placeholder="If you have a tight budget, let us know — we'll work within it" />
+      <h2 class="onboarding-q">Let's get in<br/><em>touch.</em></h2>
+      <p class="onboarding-sub">We'll reach out with your custom quote</p>
+      <input class="ob-input" id="ob-name" type="text" placeholder="Your full name" required />
+      <input class="ob-input" id="ob-email" type="email" placeholder="Your email address" required />
+      <input class="ob-input" id="ob-phone" type="tel" placeholder="Phone number (optional)" />
       <textarea class="ob-input" id="ob-message" placeholder="Vision, theme, special requests, questions..." style="height:5rem;resize:none;"></textarea>
       <div class="ob-nav">
         <button class="ob-back" onclick="obGoTo(6)">← Back</button>
