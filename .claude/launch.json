@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Lake Salt Website",
+      "runtimeExecutable": "/Users/kendellandrews/.nvm/versions/node/v20.19.2/bin/node",
+      "runtimeArgs": ["-e", "require('http').createServer((q,r)=>{let f=require('path').join('website',q.url==='/'?'index.html':q.url);require('fs').readFile(f,(e,d)=>{if(e){r.writeHead(404);r.end('Not found')}else{const m={'html':'text/html','css':'text/css','js':'application/javascript','json':'application/json','png':'image/png','jpg':'image/jpeg','jpeg':'image/jpeg','svg':'image/svg+xml','ico':'image/x-icon','webp':'image/webp'};r.writeHead(200,{'Content-Type':m[f.split('.').pop()]||'application/octet-stream'});r.end(d)}})}).listen(8080,()=>console.log('http://localhost:8080'))"],
+      "port": 8080
+    },
+    {
+      "name": "Old Site (Vite React)",
+      "runtimeExecutable": "/Users/kendellandrews/.nvm/versions/node/v20.19.2/bin/npx",
+      "runtimeArgs": ["vite", "--port", "5173"],
+      "port": 5173,
+      "cwd": "old-site"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Preview__preview_start",
+      "Bash(/opt/homebrew/bin/npx --version)",
+      "Bash(/usr/local/bin/npx --version)",
+      "Read(//Users/kendellandrews/n/bin/**)",
+      "Read(//Users/kendellandrews/.nvm/versions/node/**)",
+      "Bash(/Users/kendellandrews/.nvm/versions/node/v20.19.2/bin/npx firebase:*)",
+      "Bash(export PATH=\"/Users/kendellandrews/.nvm/versions/node/v20.19.2/bin:$PATH\")",
+      "Bash(npx firebase:*)"
+    ]
+  }
+}

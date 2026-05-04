@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Lake Salt — Wedding Expo Prep Playbook (May 9, 2026)</title>
+<style>
+  :root {
+    --salt: #f7f5f0;
+    --ink: #1a2332;
+    --slate: #2e3e55;
+    --accent: #b08d57;
+    --accent-dark: #8a6d42;
+    --mint: #4a7c74;
+    --danger: #b6403b;
+    --line: #dcd6c8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--salt);
+    color: var(--ink);
+    line-height: 1.55;
+  }
+  header {
+    background: linear-gradient(135deg, var(--slate), var(--ink));
+    color: var(--salt);
+    padding: 48px 40px 36px;
+    border-bottom: 4px solid var(--accent);
+  }
+  header .eyebrow {
+    font-size: 13px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  header h1 {
+    margin: 0 0 6px;
+    font-size: 34px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+  header .sub {
+    font-size: 16px;
+    opacity: 0.85;
+  }
+  header .meta {
+    margin-top: 18px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    font-size: 14px;
+  }
+  header .meta div strong { display: block; color: var(--accent); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; }
+  main { max-width: 1080px; margin: 0 auto; padding: 32px 40px 80px; }
+  h2 {
+    font-size: 22px;
+    margin: 36px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--accent);
+    color: var(--slate);
+  }
+  h3 { font-size: 16px; margin: 20px 0 8px; color: var(--ink); }
+  .card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin: 12px 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 780px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  .kv { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: 15px; }
+  .kv:last-child { border-bottom: none; }
+  .kv span:first-child { color: var(--slate); font-weight: 500; }
+  .kv span:last-child { text-align: right; font-weight: 600; }
+  ul { padding-left: 22px; margin: 8px 0; }
+  li { margin: 4px 0; }
+  .pill {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-right: 6px;
+  }
+  .pill.now { background: var(--danger); color: #fff; }
+  .pill.soon { background: var(--accent); color: #fff; }
+  .pill.day { background: var(--mint); color: #fff; }
+  .pill.done { background: #d5e3d9; color: #2e5539; }
+  .checklist { list-style: none; padding: 0; }
+  .checklist li { padding: 8px 0 8px 30px; position: relative; border-bottom: 1px solid var(--line); }
+  .checklist li:before {
+    content: "☐";
+    position: absolute;
+    left: 0;
+    top: 7px;
+    font-size: 18px;
+    color: var(--accent);
+  }
+  .checklist li:last-child { border-bottom: none; }
+  .timeline { border-left: 3px solid var(--accent); padding-left: 18px; margin: 10px 0 10px 8px; }
+  .timeline .step { margin-bottom: 16px; position: relative; }
+  .timeline .step:before {
+    content: "●";
+    position: absolute;
+    left: -27px;
+    top: 0;
+    color: var(--accent);
+    background: var(--salt);
+    font-size: 14px;
+  }
+  .timeline .time { font-weight: 700; color: var(--slate); font-size: 14px; }
+  .warn {
+    background: #fff4e6;
+    border-left: 4px solid var(--accent);
+    padding: 12px 16px;
+    border-radius: 4px;
+    margin: 10px 0;
+    font-size: 14px;
+  }
+  .danger {
+    background: #fde9e8;
+    border-left: 4px solid var(--danger);
+    padding: 12px 16px;
+    border-radius: 4px;
+    margin: 10px 0;
+    font-size: 14px;
+  }
+  .tip {
+    background: #eaf3f0;
+    border-left: 4px solid var(--mint);
+    padding: 12px 16px;
+    border-radius: 4px;
+    margin: 10px 0;
+    font-size: 14px;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { background: var(--slate); color: var(--salt); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; }
+  .vendor-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 14px; }
+  @media (max-width: 780px) { .vendor-grid { grid-template-columns: 1fr; } }
+  .toc { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 16px 24px; margin: 20px 0; }
+  .toc a { color: var(--slate); text-decoration: none; display: inline-block; margin: 4px 12px 4px 0; font-size: 14px; }
+  .toc a:hover { color: var(--accent); }
+  footer { text-align: center; padding: 30px; color: var(--slate); font-size: 12px; border-top: 1px solid var(--line); }
+  .big-num { font-size: 42px; font-weight: 700; color: var(--accent); line-height: 1; }
+  .big-num small { display: block; font-size: 12px; color: var(--slate); font-weight: 500; letter-spacing: 2px; text-transform: uppercase; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Lake Salt Bartending — Sponsor Playbook</div>
+  <h1>Salt Lake City Bridal &amp; Wedding Expo</h1>
+  <div class="sub">Your full prep, design, day-of, and networking playbook — everything from the ACS emails and exhibitor kit in one place.</div>
+  <div class="meta">
+    <div><strong>Date</strong>Saturday, May 9, 2026</div>
+    <div><strong>Hours</strong>12:30 pm – 5:00 pm</div>
+    <div><strong>Venue</strong>Salt Palace Convention Center — Hall 1</div>
+    <div><strong>Address</strong>100 S. West Temple, SLC, UT 84101</div>
+    <div><strong>Days Out</strong>26 days</div>
+  </div>
+</header>
+
+<main>
+
+<div class="toc">
+  <strong>Jump to:</strong>
+  <a href="#snapshot">Snapshot</a>
+  <a href="#deadlines">Deadlines</a>
+  <a href="#booth">Booth &amp; Design (Corner)</a>
+  <a href="#electrical">Electrical &amp; Services</a>
+  <a href="#sampling">Sampling Rules</a>
+  <a href="#prep">Pre-Event Prep</a>
+  <a href="#dayof">Day-of Timeline</a>
+  <a href="#checklist">Packing Checklist</a>
+  <a href="#networking">Vendors to Meet</a>
+  <a href="#competitors">Competitive Analysis (Expo + Local)</a>
+  <a href="#leads">Lead Capture</a>
+  <a href="#followup">Follow-up</a>
+  <a href="#contacts">Contacts</a>
+</div>
+
+<section id="snapshot">
+<h2>Snapshot — What's True</h2>
+<div class="grid-3">
+  <div class="card"><div class="big-num">26<small>Days Until Show</small></div></div>
+  <div class="card"><div class="big-num">4.5<small>Hours of Show Floor</small></div></div>
+  <div class="card"><div class="big-num">120+<small>Exhibitors on the Floor</small></div></div>
+</div>
+
+<div class="card">
+  <div class="kv"><span>Show name</span><span>Salt Lake City Bridal &amp; Wedding Expo (BSL S26)</span></div>
+  <div class="kv"><span>Organizer</span><span>American Consumer Shows (ACS)</span></div>
+  <div class="kv"><span>Your role</span><span>Exhibitor + Food Sampling Sponsor</span></div>
+  <div class="kv"><span>Contracted as</span><span>Lake Salt Bartending</span></div>
+  <div class="kv"><span>Contact on file</span><span>Kendle Andrews — contact@lakesalt.us</span></div>
+  <div class="kv"><span>Payment status</span><span>Confirmed — card retry cleared (Mar 9)</span></div>
+  <div class="kv"><span>Signed contracts</span><span>Contract · Sampling Promo · Multi-Payment Form ✓</span></div>
+  <div class="kv"><span>Booth number</span><span>Emailed ~2 weeks out (watch subject: "Salt Lake City Bridal &amp; Wedding Expo: Booth Number")</span></div>
+</div>
+</section>
+
+<section id="deadlines">
+<h2>Deadlines &amp; Action Items</h2>
+
+<div class="danger">
+  <strong>Do these this week.</strong> Service-provider and electrical deadlines kill vendors every expo. Order early = cheaper rates + guaranteed delivery.
+</div>
+
+<div class="card">
+<h3><span class="pill now">This Week</span> Critical now</h3>
+<ul class="checklist">
+  <li>Download the full Exhibitor Kit from BridalShowsUT.com → "I Am An Exhibitor" → Download Exhibitor Forms (Exhibitor Kit, Service Provider Forms, Electrical Order Form, 123 Guide)</li>
+  <li>Submit company logo (230×130 px, .jpg/.png) to <em>BridalOpportunities@acsshows.com</em>, subject: <code>BSL S26 - Lake Salt Bartending - Logo</code>. Logo link URL must be lakesalt.us — no social handles allowed.</li>
+  <li>Confirm your sampling form + health permit are on file with ACS (you submitted in January — verify it's logged)</li>
+  <li>Order electrical if you need power for blenders, lights, signage (early-bird pricing!)</li>
+  <li>Order any furniture/decorator services through the service provider (skirted table is usually included — confirm in kit)</li>
+  <li>Reply to the Dec 5 welcome email with sampling details if not yet confirmed: <em>what you're sampling, how distributed, pre-packaged or made onsite</em></li>
+</ul>
+</div>
+
+<div class="card">
+<h3><span class="pill soon">2 Weeks Out (~Apr 25)</span> Booth number window opens</h3>
+<ul class="checklist">
+  <li>Watch inbox for subject "Salt Lake City Bridal &amp; Wedding Expo: Booth Number"</li>
+  <li>Confirm exact move-in window and assigned time slot (from Exhibitor Kit)</li>
+  <li>Finalize booth layout mockup against assigned booth location (corner vs inline changes design)</li>
+  <li>Print all signage, menus, QR code cards — local same-day print is a backup, not a plan</li>
+  <li>Train anyone helping at the booth on the pitch, QR flow, and pricing</li>
+</ul>
+</div>
+
+<div class="card">
+<h3><span class="pill soon">1 Week Out</span> Load the truck mentally</h3>
+<ul class="checklist">
+  <li>Buy all sampling ingredients + backups (buy 1.5x what you think — never run out)</li>
+  <li>Stage all bar gear, signage, linens, QR cards at the shop in labeled bins</li>
+  <li>Test your lead capture flow end-to-end (QR → form → Lake Salt CRM)</li>
+  <li>Charge every device: iPad/phone for leads, Square/payment reader, speakers (wait — music is banned, skip)</li>
+  <li>Confirm parking/load-in with anyone driving separately</li>
+  <li>Post a "see you at the expo" teaser on Instagram and email past inquiries about free passes</li>
+</ul>
+</div>
+</section>
+
+<section id="booth">
+<h2>Booth &amp; Design</h2>
+
+<div class="warn">
+  <strong>Your booth: CORNER UNIT (10×10).</strong> Corners have one back wall (8' pipe &amp; drape) and <em>only one 3' side rail</em> — the other side is open aisle. Two sides of exposure instead of one. Includes a skirted 6' table + 2 chairs + booth ID sign. Electrical and Wi-Fi are <em>not</em> included. Design for the two-aisle approach.
+</div>
+
+<div class="danger">
+  <strong>Corner-booth design mandate:</strong> You cannot use a standard one-sided booth layout. Both open sides need their own "front." Think of it as an L-shaped pop-up bar, not a single counter. Foot traffic hits you from two directions — if only one side is merchandised, you look closed from the other approach.
+</div>
+
+<div class="card">
+<h3>Corner Booth — The L-Shape Layout</h3>
+<p>The winning corner configuration for a hospitality/bar brand:</p>
+<table>
+  <tr><th>Element</th><th>Placement</th><th>Purpose</th></tr>
+  <tr><td><strong>L-shaped bar</strong></td><td>Runs the full 10' back wall AND wraps 5–6' down one side rail</td><td>Two service-facing sides instead of one. Guests from either aisle walk up to a bar, not a side wall.</td></tr>
+  <tr><td><strong>Main branded banner (8')</strong></td><td>Centered on back wall — visible from the main aisle</td><td>Primary brand impression for people approaching head-on</td></tr>
+  <tr><td><strong>Second banner (retractable 6–7')</strong></td><td>Mounted on the 3' side rail (the closed side), angled toward the open corner</td><td>Captures the perpendicular aisle — secondary brand hit</td></tr>
+  <tr><td><strong>Hero moment</strong></td><td>The open corner itself — place your best visual prop here (branded ice bucket, florals, vintage shaker display, a neon sign)</td><td>The corner is the most-seen spot in the booth. Make it a photo op.</td></tr>
+  <tr><td><strong>Greeter zone</strong></td><td>Just inside the open side, not behind the bar</td><td>One person out front to greet — can pull people in from either aisle</td></tr>
+  <tr><td><strong>QR / lead capture station</strong></td><td>Corner of the bar where two aisles intersect</td><td>Maximum visibility, people already stopping there</td></tr>
+  <tr><td><strong>Menu/tasting cards</strong></td><td>Duplicated — one stack on each bar side</td><td>Don't force guests around the bar to grab a card</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>Corner Booth Floor Plan (ASCII mockup)</h3>
+<pre style="background:#f5f1eb;padding:16px;border-radius:8px;font-family:Menlo,monospace;line-height:1.3;font-size:13px;">
+        BACK WALL (8' drape + main banner)
+        ┌──────────────────────────────────┐
+        │░░░░░░░░░░ LAKE SALT ░░░░░░░░░░░░░│
+        │                                  │
+  SIDE  │  [Ingredient bins / ice / prep]  │
+  RAIL  │                                  │
+ (3'    │ ┌──────────────────────────┐     │
+ drape) │ │  BAR TOP (back side)     │     │
+  ═══   │ └──────────────────────────┘     │
+  ║ 2nd │      ↑ Bartender zone            │
+  ║ ban │ ┌──────────────────────────┐     │
+  ║ ner │ │  BAR TOP (front side)    │     │
+  ═══   │ └──────────────────────────┘     │
+        │                                  │
+        │   Menu   [sig cocktail]  Menu    │
+        │   cards   display        cards   │
+        │                                  │
+        │  GREETER    QR    HERO PROP /    │
+        │   zone   station   florals       │
+        └──────────────────────────────────┘
+                   OPEN AISLE (front) →→→
+        ← OPEN AISLE (side) ←←
+</pre>
+<p><em>Tweak as needed to match your actual 10×10 dimensions — the key is: L-shape bar, two banners, two aisle-facing fronts, centralized QR at the corner.</em></p>
+</div>
+
+<div class="card">
+<h3>Corner Booth — Pros to exploit, pitfalls to avoid</h3>
+<div class="grid-2">
+<div>
+<strong style="color:#2f7d3b;">✅ Corner advantages</strong>
+<ul>
+  <li>~2x traffic flow compared to mid-row booths</li>
+  <li>People pause at corners — natural photo-taking / gather spot</li>
+  <li>Less claustrophobic — guests don't feel cornered when they approach</li>
+  <li>You can do a true "pop-up bar" feel because you have real dimension</li>
+  <li>Better Instagram backdrops — content creation wins</li>
+</ul>
+</div>
+<div>
+<strong style="color:#c94a3a;">⚠️ Corner pitfalls</strong>
+<ul>
+  <li>Easy to have a "dead side" if design is lazy — always check from both aisles</li>
+  <li>Wind/traffic draft can knock over light props — weight everything down</li>
+  <li>Twice the sight-line = twice the mess visibility — hide prep/trash rigorously</li>
+  <li>Greeter has to pivot to face two directions — brief your staff explicitly</li>
+  <li>More surface area to fill — budget accordingly on props/florals</li>
+</ul>
+</div>
+</div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <h3>The Lake Salt Look</h3>
+    <p>You're selling <em>experience</em>, not product. The booth has to feel like a pop-up bar, not a table with flyers.</p>
+    <ul>
+      <li>Bring a full bar front — even a 4–5 ft bar façade with your logo reads as "this is what you get"</li>
+      <li>Back wall: tall branded banner (8' retractable) with your logo + one hero tagline + one call-to-action</li>
+      <li>Warm lighting (battery LEDs under the bar lip) — trade show fluorescents wash everything out</li>
+      <li>Live garnish display — citrus wheels, rosemary, edible flowers on a tray = photo bait</li>
+      <li>One signature cocktail in a branded glass, visible, pre-made, being handed to a human at all times</li>
+      <li>Neutral/earthy palette matches your brand — keep whites crisp, add salt texture props</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>What to AVOID</h3>
+    <ul>
+      <li><strong>No music or speakers in the booth.</strong> ACS rule. Promotional silent videos OK.</li>
+      <li>No crowded booth — a wall of staff kills approachability. Max 2 people behind the bar, one greeter out front.</li>
+      <li>No price lists front and center. Price is a second-conversation topic.</li>
+      <li>No chairs facing outward — creates a barrier. Keep the bar open.</li>
+      <li>No business-card bowls as your only capture method (see Lead Capture section)</li>
+      <li>No generic "free consultation" CTAs — everyone says that</li>
+    </ul>
+  </div>
+</div>
+
+</section>
+
+<section id="electrical">
+<h2>Electrical &amp; Services — Do You Need Them?</h2>
+
+<div class="warn">
+  <strong>Electrical is <em>not</em> included with your booth.</strong> If you plug anything in and haven't ordered it, you'll be shut off at setup. Decide now, order via the exhibitor kit — <strong>early-bird pricing is usually 30–40% cheaper than show-site rates.</strong>
+</div>
+
+<div class="card">
+<h3>The decision framework — do you need power?</h3>
+<table>
+  <tr><th>Item you might run</th><th>Power needed?</th><th>Battery-powered alternative?</th><th>Lake Salt call</th></tr>
+  <tr><td>LED under-bar / back-wall lighting</td><td>Optional 5A/120V (~$100–150 early)</td><td>Yes — USB/battery LED strips are $20, last 8+ hours</td><td>🔋 Battery — cleaner, no cord management, looks the same</td></tr>
+  <tr><td>Mini fridge / ice keeper</td><td>Yes — 5A/120V needed</td><td>No — but insulated coolers + ice replenish works fine for a 4.5hr show</td><td>❌ Skip the fridge. Coolers + pre-chilled product + one ice run.</td></tr>
+  <tr><td>Blender for frozen drinks</td><td>Yes — 10–15A/120V</td><td>Battery blenders exist but are underpowered for a full day</td><td>❌ No blenders. Sampling = pre-built cocktails/mocktails in shot glasses. No need.</td></tr>
+  <tr><td>Projector / TV screen</td><td>Yes — 5A/120V</td><td>iPad on a stand works, charged beforehand</td><td>🔋 iPad on a stand looping a reel = 80% of the impact, zero power cost</td></tr>
+  <tr><td>Phone / tablet charging for staff</td><td>Useful but not required</td><td>Yes — 2× 20,000mAh portable batteries</td><td>🔋 Battery packs</td></tr>
+  <tr><td>POS / Square for upsell booking deposits</td><td>iPad runs on battery</td><td>Yes</td><td>🔋 Battery + hotspot</td></tr>
+  <tr><td>Kombucha/mocktail keg / draft system</td><td>Yes — if anything is pressurized or chilled</td><td>Bottled service works for sampling</td><td>❌ Bottled/pre-poured for expo sampling. Save the keg setup for real events.</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>My recommendation: skip electrical entirely</h3>
+<p>For a 4.5-hour sampling expo, you can run a <em>fully battery-powered</em> booth with zero sacrifice in visual impact. Saves ~$100–250 in services, eliminates a failure point (outlets not working, cords tripping guests, etc.), and simplifies setup/teardown.</p>
+<p><strong>But only skip if:</strong></p>
+<ul>
+  <li>Everything you're plugging in has a charged battery or USB-power alternative tested at home</li>
+  <li>Your ice plan doesn't require a fridge (pre-chilled + insulated coolers + 1pm ice run)</li>
+  <li>You're not doing live blending, hot items, or kegged service (which you shouldn't be — it's sampling)</li>
+</ul>
+<p><strong>Order electrical IF:</strong></p>
+<ul>
+  <li>You decide on a large backlit sign or illuminated display</li>
+  <li>You want a small fridge for non-alcoholic sample drinks you want cold all day</li>
+  <li>Your branded bar façade has built-in lighting that can't run on battery</li>
+</ul>
+</div>
+
+<div class="card">
+<h3>Other service-provider orders to consider (from the Exhibitor Kit)</h3>
+<table>
+  <tr><th>Service</th><th>Lake Salt need?</th><th>Notes</th></tr>
+  <tr><td>Additional table (6')</td><td>Maybe</td><td>You get 1 included. For a corner booth with L-shape, a second small table for menu/lead capture station could be worth it. Or bring your own.</td></tr>
+  <tr><td>Extra chairs</td><td>No</td><td>You get 2. Don't need more — standing booths convert better than seated.</td></tr>
+  <tr><td>Booth carpet / flooring upgrade</td><td>Strong recommend</td><td>Bare concrete kills the "premium" feel. Even a $60 area rug from Home Depot elevates the whole booth. Order vs BYO both work.</td></tr>
+  <tr><td>Pipe &amp; drape upgrade / color</td><td>Low priority</td><td>Standard drape is neutral. Your banners cover it anyway.</td></tr>
+  <tr><td>Trash can</td><td>BYO or order</td><td>A small branded bin behind the bar. Small detail, matters.</td></tr>
+  <tr><td>Internet / Wi-Fi</td><td>No — use phone hotspot</td><td>Salt Palace convention Wi-Fi runs $50–200+/show and is unreliable. Your phone hotspot + a backup battery is cheaper and more reliable.</td></tr>
+  <tr><td>Material handling / drayage</td><td>Depends on load-in</td><td>If you're hand-carrying everything through the front door, skip. If you're freighting anything big in advance, this is required.</td></tr>
+</table>
+</div>
+
+<div class="tip">
+  <strong>Action this week:</strong> open the exhibitor kit, note every deadline for service-provider orders (usually 2–3 weeks before show = <strong>Mon Apr 20</strong> for meaningful discounts), and decide yes/no on each line item. Write your decisions in the Deadlines section above.
+</div>
+</section>
+
+<section id="sampling">
+<h2>Sampling Rules (Do Not Break These)</h2>
+<div class="danger">
+  <strong>Sampling form + health permit must be on file.</strong> Exhibitors who don't have paperwork filed with ACS may be shut down on-site. You submitted in January — verify the ACS confirmation is in your inbox before the show.
+</div>
+<div class="card">
+  <ul>
+    <li>Samples must match what you told ACS: <em>what, how distributed, pre-packaged vs made onsite</em>. If that's changed since January, email <em>customerservice@acsshows.com</em> now.</li>
+    <li>Sample sizes at bridal expos: typically 2 oz pours in compostable cups — enough to taste, not enough to be a drink.</li>
+    <li>Alcohol on the Salt Palace floor = extra Utah DABS permitting. Confirm with ACS + the venue whether your samples are alcoholic or mocktail. <strong>If unclear — ask in writing this week.</strong></li>
+    <li>Hand sanitizer, gloves, hairnets (if required), covered ice source — health inspectors do walk booths.</li>
+    <li>Trash plan: one bin behind the bar + a runner to empty it. A full trash bin kills the vibe.</li>
+  </ul>
+</div>
+</section>
+
+<section id="prep">
+<h2>Pre-Event Prep (Weeks Before)</h2>
+<div class="grid-2">
+  <div class="card">
+    <h3>Marketing</h3>
+    <ul>
+      <li>Request free-pass link from ACS to share with your audience — drives traffic <em>to your booth</em></li>
+      <li>3 IG posts: "see us at the expo," behind-the-scenes prep, signature drink tease</li>
+      <li>Email every cold/warm lead from the last 6 months: "We'll be there, come find us, here's a free pass"</li>
+      <li>Update lakesalt.us homepage with an expo banner the week of</li>
+      <li>Book a photographer (or self-shoot) — expo day content is pure gold for Q3 posts</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>Collateral to Print</h3>
+    <ul>
+      <li>200 tasting menus / drink cards (1 per engaged couple — expect 400–600 couples through the show)</li>
+      <li>100 higher-quality leave-behinds for serious prospects (tri-fold menu/pricing sheet)</li>
+      <li>QR code cards — big, prominent, points to a bridal-expo-specific landing page with a form + small gift</li>
+      <li>Retractable banner (8') — reusable</li>
+      <li>Bar-front façade signage (can be foam board + vinyl wrap on a custom plywood cutout)</li>
+      <li>Business cards as the <em>last</em> resort — not the first thing handed out</li>
+    </ul>
+  </div>
+</div>
+
+<div class="tip">
+  <strong>Create a dedicated landing page:</strong> lakesalt.us/bridal-expo. Short form (name, email, phone, event date, venue). Auto-reply with a thank-you + calendar link. This converts 3–5x better than a generic contact form.
+</div>
+</section>
+
+<section id="dayof">
+<h2>Day-of Timeline — Saturday, May 9</h2>
+<div class="warn">
+  <strong>Specific move-in times come with your booth number email (~2 weeks out).</strong> The schedule below is the typical ACS rhythm — treat it as a template until the official times arrive.
+</div>
+<div class="timeline">
+  <div class="step"><span class="time">6:30 am</span> — Wake, final gear check, load truck. Eat a real breakfast — you won't eat again for 8 hours.</div>
+  <div class="step"><span class="time">8:00 am</span> — Arrive at Salt Palace Hall 1 load-in dock. Expect a 15–30 min wait for dock access. GPS: 100 S. West Temple.</div>
+  <div class="step"><span class="time">8:30–10:30 am</span> — Move-in, booth build, bar façade assembly, sign placement.</div>
+  <div class="step"><span class="time">10:30–11:30 am</span> — Stock bar: ice, garnish prep, pre-batch signature drink, set QR cards, test payment reader, take booth photos before chaos.</div>
+  <div class="step"><span class="time">11:30 am–12:15 pm</span> — Walk the floor, meet neighbors, drop menus with key vendors (planners, venues, photographers — see networking list). Hit the bathroom now.</div>
+  <div class="step"><span class="time">12:15 pm</span> — Back to booth. Two people on. Final hair/apron/smile check.</div>
+  <div class="step"><span class="time">12:30 pm</span> — <strong>Doors open.</strong> Engage every person who makes eye contact. Goal: one conversation per minute during peak.</div>
+  <div class="step"><span class="time">1:30–3:30 pm</span> — Peak traffic. Rotate who's behind bar vs who's greeting. Keep garnish tray full, ice topped, trash hidden.</div>
+  <div class="step"><span class="time">3:30–5:00 pm</span> — Traffic slows. This is the time for <em>long</em> conversations with serious prospects. Book consult calls on the spot (open calendar on your phone).</div>
+  <div class="step"><span class="time">5:00 pm</span> — Show closes. Do NOT start tearing down until official move-out (breaking down early is a violation).</div>
+  <div class="step"><span class="time">5:00–7:00 pm</span> — Move-out, debrief with team in the truck, dump all leads into CRM while faces are still fresh.</div>
+</div>
+</section>
+
+<section id="checklist">
+<h2>Packing Checklist</h2>
+<div class="grid-3">
+  <div class="card">
+    <h3>Bar &amp; Sampling</h3>
+    <ul class="checklist">
+      <li>Portable bar / façade + hardware</li>
+      <li>Ice chest + 2 bags of ice</li>
+      <li>Pre-batched signature cocktail (2 gal)</li>
+      <li>Mocktail option (2 gal)</li>
+      <li>500+ compostable 2oz cups</li>
+      <li>Garnishes (citrus, herbs, edible flowers)</li>
+      <li>Cocktail napkins</li>
+      <li>Jiggers, shakers, strainers, bar spoons</li>
+      <li>Gloves (boxes of S/M/L)</li>
+      <li>Hand sanitizer + paper towels</li>
+      <li>Trash bags + hidden bin</li>
+      <li>Towels (6+) for spills</li>
+      <li>Cutting board + knife (locked up when unattended)</li>
+      <li>Backup bottled water (for you)</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>Brand &amp; Display</h3>
+    <ul class="checklist">
+      <li>8' retractable banner</li>
+      <li>Bar front signage</li>
+      <li>Table linen (to floor)</li>
+      <li>Menu / tasting cards (200)</li>
+      <li>Leave-behind brochures (100)</li>
+      <li>QR code cards (large format)</li>
+      <li>Business cards</li>
+      <li>Small floral / greenery</li>
+      <li>Battery LED lights</li>
+      <li>Signature glassware for display</li>
+      <li>Chalkboard or menu board</li>
+      <li>Zip ties, gaffer tape, Sharpies</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>Tech &amp; Ops</h3>
+    <ul class="checklist">
+      <li>iPad/phone for lead capture</li>
+      <li>Square reader + dongles</li>
+      <li>Extension cord + power strip</li>
+      <li>Phone chargers (2)</li>
+      <li>Printed lead sheet (backup)</li>
+      <li>Exhibitor kit printout + booth confirmation</li>
+      <li>Sampling form + health permit copies</li>
+      <li>Insurance COI (if requested)</li>
+      <li>Parking info / dock pass</li>
+      <li>Dolly / hand truck</li>
+      <li>Cash register / tip jar</li>
+      <li>Black apron(s) — on-brand uniform</li>
+      <li>First aid kit + band-aids</li>
+      <li>Advil, mints, deodorant</li>
+    </ul>
+  </div>
+</div>
+</section>
+
+<section id="networking">
+<h2>Vendors to Meet On-Site</h2>
+<p>You're a <strong>Food Sampling Sponsor</strong>, which puts Lake Salt in premium show materials and gives you natural pairing with other F&amp;B vendors. Spend the slow 30 minutes before doors (and after 4pm) walking the floor.</p>
+
+<div class="card">
+<h3>Direct peers (F&amp;B / bar — know what the others look like)</h3>
+<div class="vendor-grid">
+  <div>Love Potion Mobile Mixology</div>
+  <div>The Mobile Bar</div>
+  <div>Wandering Dry Bar</div>
+  <div>Vault of Velvet</div>
+  <div>Thirst Drinks</div>
+  <div>The Soda Fountain</div>
+</div>
+<div class="tip">These are fellow Food Sampling Sponsors. Be friendly, not competitive — they get overflow referrals from planners. Trade cards, follow each other on IG, be the vendor they'd refer when they're already booked.</div>
+</div>
+
+<div class="card">
+<h3>High-value referral partners — <em>prioritize these</em></h3>
+<table>
+  <tr><th>Category</th><th>Who to find</th><th>Why they matter</th></tr>
+  <tr><td>Planners / Coordinators</td><td>Roblan Events · Utah Proposal Planners · Miramour Events · Salt Lake Soirees · Merrimac Weddings · My Moment Weddings · Time &amp; Eternity Events</td><td>Planners book bar service for every wedding they run — one good planner = 10+ weddings/yr</td></tr>
+  <tr><td>Venues</td><td>The Lakehouse at Deer Creek · Chateau 75 · Red Canyon Lodge · The Ledges of St. George · Snowpine Lodge · Ruby's Inn · Deer Meadows Ranch · Brian Head Resort · Le Meridien &amp; Element SLC</td><td>Many don't have in-house bar — you want to be on their "preferred vendors" list</td></tr>
+  <tr><td>Catering / Food</td><td>R&amp;R BBQ · Beehive Meals · The Smoked Taco · Old Spaghetti Factory · Mi Ranchito · Kitchen 88</td><td>Caterers get asked "who do you use for bar?" constantly</td></tr>
+  <tr><td>Rentals</td><td>Celebration Rentals · Utah Luxury Event Rentals</td><td>Co-package opportunities + they talk to every couple</td></tr>
+  <tr><td>Photo/Video</td><td>Captured by Nathalie · Harmony Photos · Demi Rose · Isabella Bruun · Kaylee Kinder · Jade Jarvis</td><td>Photographers get hired first — they have early pipeline visibility</td></tr>
+  <tr><td>DJ / Entertainment</td><td>Complete Weddings + Events · LW Music · DJ Afrolicious · 47 Strings · Trio Fratelli · Tai Finlayson Music</td><td>Bar + DJ are always paired — natural referral loop</td></tr>
+  <tr><td>Photo Booths</td><td>321 Click · Digital Snap · ForeverView · The Party Lens · Photo Booth Bus</td><td>Another F&amp;B-adjacent vendor — often booked same day as bar</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>How to run a floor walk (do it twice)</h3>
+<ul>
+  <li><strong>11:30am pre-show walk:</strong> Drop a tasting menu + brief intro with planners, venues, caterers. "Hey, Lake Salt — we do mobile bar. Stop by booth [#] for a cocktail later, I'd love to swap info."</li>
+  <li><strong>4:15pm slow-hour walk:</strong> Real conversations. Ask planners: "Who's your usual bar referral?" Don't pitch — learn.</li>
+  <li>Track every vendor conversation on a single sheet: name, company, role, follow-up action, referral potential (H/M/L).</li>
+</ul>
+</div>
+</section>
+
+<section id="competitors">
+<h2>Competitive Analysis — Mobile Bars at the Expo</h2>
+<p>You're one of <strong>6 mobile bar / beverage vendors</strong> at the show (per the ACS exhibitor directory + Food Sampling Sponsor list). Here's the field, ranked by threat level to Lake Salt.</p>
+
+<div class="danger">
+  <strong>Threat ranking for Lake Salt's core offer (full-service mobile bar for weddings):</strong><br>
+  🔴 High — Wandering Jade Mobile Bar, The Mobile Bar (UT) &nbsp; · &nbsp; 🟡 Medium — Love Potion Mobile Mixology &nbsp; · &nbsp; 🟢 Adjacent — Thirst Drinks, The Soda Fountain
+</div>
+
+<div class="card">
+<h3>🔴 Wandering Jade Mobile Bar <small style="color:#888;font-weight:400;">— listed on the directory as "Wandering Dry Bar" (likely ACS typo)</small></h3>
+<div class="grid-2">
+  <div>
+    <div class="kv"><span>Website</span><span>wanderingjademobilebar.com</span></div>
+    <div class="kv"><span>Location</span><span>Lehi, UT</span></div>
+    <div class="kv"><span>Format</span><span>Vintage-inspired mobile bar</span></div>
+    <div class="kv"><span>Pricing</span><span>$250–$300 / hr (3 tiers, public)</span></div>
+    <div class="kv"><span>Insured + certified</span><span>Yes — promoted prominently</span></div>
+  </div>
+  <div>
+    <strong>Positioning:</strong> "Vintage charm + certified/insured pros. BYOB model — they supply everything but the liquid."<br><br>
+    <strong>Strengths:</strong> Clear published pricing, insurance/certifications up front, strong brand aesthetic, active Instagram reels.<br>
+    <strong>Weaknesses:</strong> BYOB model means client does liquor runs — friction point Lake Salt can flip.<br>
+    <strong>How to beat them:</strong> Lead with <em>full-service</em> (we handle the bar <em>and</em> the beverage sourcing/consultation). Emphasize signature cocktails, not just beer/wine tiers. Bring better photography to the booth.
+  </div>
+</div>
+</div>
+
+<div class="card">
+<h3>🔴 The Mobile Bar (UT)</h3>
+<div class="grid-2">
+  <div>
+    <div class="kv"><span>Website</span><span>themobilebarut.com</span></div>
+    <div class="kv"><span>Location</span><span>Lehi, UT — serves Utah County + SLC</span></div>
+    <div class="kv"><span>Format</span><span>Mobile bar, theme-adaptive</span></div>
+    <div class="kv"><span>Pricing</span><span>Not published</span></div>
+    <div class="kv"><span>Specialty</span><span>Custom cocktails + strong mocktail menu</span></div>
+  </div>
+  <div>
+    <strong>Positioning:</strong> "Custom cocktails + mocktails matched to your event vibe."<br><br>
+    <strong>Strengths:</strong> Flexible menu, mocktail emphasis, generic enough to appeal broadly. Name is literal SEO gold ("mobile bar Utah").<br>
+    <strong>Weaknesses:</strong> Opaque pricing, generic positioning ("custom for your vibe" = what everyone says), weak visual brand identity.<br>
+    <strong>How to beat them:</strong> Own a specific aesthetic and point of view. "Lake Salt = [your distinct vibe]" beats "we adapt to anything." Use the booth visuals to tell that story in 3 seconds.
+  </div>
+</div>
+</div>
+
+<div class="card">
+<h3>🟡 Love Potion Mobile Mixology</h3>
+<div class="grid-2">
+  <div>
+    <div class="kv"><span>Website</span><span>drinklovepotion.com</span></div>
+    <div class="kv"><span>Location</span><span>Ogden-based</span></div>
+    <div class="kv"><span>Format</span><span>Premium cocktails + RTD canned line</span></div>
+    <div class="kv"><span>Pricing</span><span>Not published</span></div>
+    <div class="kv"><span>Specialty</span><span>Espresso martinis / upscale cocktails</span></div>
+  </div>
+  <div>
+    <strong>Positioning:</strong> "Elevated cocktails, wherever love takes you" — premium-positioned, dual event + retail/RTD model.<br><br>
+    <strong>Strengths:</strong> Premium aesthetic, cocktail-forward, novelty of canned RTD creates buzz.<br>
+    <strong>Weaknesses:</strong> Ogden base = longer drive for SLC/Utah County weddings. Event bartending appears secondary to retail. Thin wedding portfolio.<br>
+    <strong>How to beat them:</strong> You're more accessible to the SLC wedding core. Emphasize wedding-specific experience and day-of coordination (they're not wedding specialists).
+  </div>
+</div>
+</div>
+
+<div class="card">
+<h3>🟢 Thirst Drinks (Adjacent — Non-Alcoholic)</h3>
+<div class="grid-2">
+  <div>
+    <div class="kv"><span>Website</span><span>thirstdrinks.com</span></div>
+    <div class="kv"><span>Format</span><span>Soda / pretzel / hot chocolate / mocktail carts</span></div>
+    <div class="kv"><span>Pricing</span><span>$600–$1,000+ / 3 hrs (published)</span></div>
+    <div class="kv"><span>Audience</span><span>Family-friendly, dry events, LDS market</span></div>
+  </div>
+  <div>
+    <strong>Positioning:</strong> Utah's favorite dirty-soda + treats mobile experience. Owns the non-alcoholic celebration niche.<br><br>
+    <strong>Why they matter here:</strong> In Utah's wedding market, a big chunk of couples want <em>dry</em> receptions. Thirst owns that. You won't win dry-only weddings against them.<br>
+    <strong>How to coexist:</strong> Don't compete — complement. Lake Salt is for couples who want a real bar. Offer strong mocktails so couples who want <em>both</em> alcohol and non-alcoholic options don't feel they need two vendors.
+  </div>
+</div>
+</div>
+
+<div class="card">
+<h3>🟢 The Soda Fountain (Adjacent — Non-Alcoholic)</h3>
+<div class="grid-2">
+  <div>
+    <div class="kv"><span>Format</span><span>Mobile soda / mocktail cart</span></div>
+    <div class="kv"><span>Audience</span><span>Family-friendly, dry events</span></div>
+  </div>
+  <div>
+    Similar positioning to Thirst — smaller brand. Same coexist-don't-compete strategy.
+  </div>
+</div>
+</div>
+
+<div class="card">
+<h3>Other F&amp;B bar-adjacent on the floor</h3>
+<p>Worth noting for full picture — not direct competitors for bar service: <strong>Vault of Velvet</strong> (couldn't verify online presence — may be new/low-profile; scout their booth day-of to assess), <strong>Beehive Meals</strong> (meals, not bar), plus the charcuterie / bakery sponsors.</p>
+</div>
+
+<h3>Where Lake Salt Wins — Booth Messaging</h3>
+<div class="card">
+<p>Based on the field above, here's the 3-hit message to lead with at the booth and on your collateral:</p>
+<ol>
+  <li><strong>Full-service, not BYOB.</strong> Wandering Jade is BYOB — you handle bar design, beverage consulting, sourcing, setup, and service. Less friction for the couple.</li>
+  <li><strong>A distinct point of view.</strong> The Mobile Bar's "we adapt to any vibe" is forgettable. Lake Salt has a specific aesthetic — lead with it visually. One look at the booth should tell couples "this is us."</li>
+  <li><strong>Weddings are the core, not a side project.</strong> Love Potion is retail-first. Thirst is dry-event-first. Lake Salt is wedding-bar-first — show a reel of real weddings you've run.</li>
+</ol>
+<p><strong>Mocktail parity is mandatory.</strong> The Mobile Bar and both dry-bar competitors push mocktails hard. Have 2 signature mocktails sampling alongside your signature cocktail so no couple walks away thinking "Lake Salt only does booze."</p>
+<p><strong>Publish pricing, or at least packages.</strong> Most competitors hide pricing — the ones who publish (Wandering Jade, Thirst) build trust. Even package tiers with "starting at" creates confidence.</p>
+</div>
+
+<h3>Floor walk priorities</h3>
+<div class="card">
+<ul>
+  <li><strong>Scout each competitor booth in the first 45 min.</strong> Photograph signage, read their menus, note pricing visibility, watch how they greet. Lake Salt needs to be objectively better within 3 hours.</li>
+  <li>Especially check Wandering Jade — they're the closest competitor on positioning.</li>
+  <li>Be friendly with all of them. The wedding world is small. Overflow referrals happen when the top vendor is already booked.</li>
+  <li>After the show: follow every competitor on Instagram, screenshot their booth, write a one-page "what they did well / badly" debrief for next year.</li>
+</ul>
+</div>
+
+<h2 style="margin-top:40px;">Local Competitive Landscape — Utah Market</h2>
+<p>These companies are not at the expo but are the real competition for weddings, corporate events, and large events across the Wasatch Front. Expo leads will comparison-shop against these — you should know who you're being compared to.</p>
+
+<div class="warn">
+  <strong>Lake Salt's three battlegrounds:</strong> Weddings (your core), Corporate (the growth lane), Big events / festivals (the moonshot). Each has different leaders and different winning plays.
+</div>
+
+<h3>🥂 Weddings — Utah's top wedding bar competitors</h3>
+<div class="card">
+<table>
+  <tr><th>Company</th><th>Positioning</th><th>Strength</th><th>Gap for Lake Salt</th></tr>
+  <tr>
+    <td><strong>Cheers &amp; Swizzles</strong></td>
+    <td>"Utah's premier bartending service" — wedding-heavy, strong SEO presence</td>
+    <td>Brand authority, years of content, SEO dominance</td>
+    <td>Generic branding — Lake Salt's distinct aesthetic wins on Instagram</td>
+  </tr>
+  <tr>
+    <td><strong>With A Twist (est. 2006)</strong></td>
+    <td>Established, full-service, certified bartenders, all event sizes</td>
+    <td>19+ years in market, insurance &amp; compliance reputation</td>
+    <td>Older brand feel — you can win the 25–35 couple demographic on visual/experience</td>
+  </tr>
+  <tr>
+    <td><strong>BARMASTERS (est. 2017)</strong></td>
+    <td>Mid-tier wedding + corporate, custom signature cocktails</td>
+    <td>Broad package menu, strong Google Ads presence</td>
+    <td>Commoditized — wins on price, not experience. Lake Salt wins on brand.</td>
+  </tr>
+  <tr>
+    <td><strong>Copa Bar Service</strong></td>
+    <td>All-inclusive — they procure alcohol too, not just bartend</td>
+    <td>Single-vendor convenience (rare in Utah's DABS-regulated market)</td>
+    <td>Verify their liquor license model — if legit, this is a real differentiator you should match or beat</td>
+  </tr>
+  <tr>
+    <td><strong>Deluxe Bartending Service</strong></td>
+    <td>Weddings, parties, corporate — volume player</td>
+    <td>Wide geographic coverage, many service locations</td>
+    <td>Thin on brand — looks like a franchise, not a boutique</td>
+  </tr>
+  <tr>
+    <td><strong>Above &amp; Beyond Bartending</strong></td>
+    <td>Bartender + food server staffing, upscale weddings</td>
+    <td>Staffing model — can scale staff quickly for big events</td>
+    <td>Staffing-first vs experience-first — Lake Salt sells the experience, not the headcount</td>
+  </tr>
+  <tr>
+    <td><strong>Sip + Vibe SLC</strong></td>
+    <td>Weddings + corporate + mocktails + photo booths (add-on stacking)</td>
+    <td>Multi-service bundling, younger brand feel</td>
+    <td>Jack-of-all-trades — Lake Salt's focus on bar is a sharper story</td>
+  </tr>
+  <tr>
+    <td><strong>Tonic Touch Bartending &amp; Mixology</strong></td>
+    <td>Craft cocktail focus, mixology-forward</td>
+    <td>Cocktail expertise angle</td>
+    <td>Smaller brand — Lake Salt can match on craft and win on polish</td>
+  </tr>
+  <tr>
+    <td><strong>Elevate Event Bartending</strong></td>
+    <td>Experienced bartenders, all event types</td>
+    <td>Industry experience positioning</td>
+    <td>Weak brand identity — nothing memorable</td>
+  </tr>
+  <tr>
+    <td><strong>LLL Mobile Bartending (St. George)</strong></td>
+    <td>Southern Utah focus, destination weddings</td>
+    <td>Owns Southern Utah wedding circuit</td>
+    <td>Not a SLC competitor — potential referral partner for St. George weddings you can't cover</td>
+  </tr>
+  <tr>
+    <td><strong>The Willow</strong></td>
+    <td>Private event mobile bar — sleek, design-forward</td>
+    <td>Similar aesthetic lane to Lake Salt</td>
+    <td>Direct style competitor — study their content closely</td>
+  </tr>
+</table>
+</div>
+
+<h3>🏢 Corporate Events — who you're really up against</h3>
+<div class="card">
+<p>Corporate is a different sale: buyer is an office manager, marketing coordinator, or exec assistant — not a bride. They optimize for reliability, insurance, invoicing, and brand safety.</p>
+<table>
+  <tr><th>Company</th><th>Why they win corporate</th><th>How Lake Salt wins</th></tr>
+  <tr>
+    <td><strong>Bacchus Event Services</strong> (est. 2005)</td>
+    <td>Utah's corporate heavyweight — scales from 8 to 6,000 guests. Every major SLC tech company has used them.</td>
+    <td>Can't out-scale them. Win on <em>experience design</em> — they're pros, Lake Salt is a brand. Land mid-size corporate (50–200) where experience matters more than scale.</td>
+  </tr>
+  <tr>
+    <td><strong>Top Shelf Utah</strong></td>
+    <td>10+ years, festival &amp; large event specialty, fast efficient service</td>
+    <td>They're built for volume. Lake Salt wins corporate events where the client wants "custom" — product launches, client appreciation, rooftop events.</td>
+  </tr>
+  <tr>
+    <td><strong>Premier Event Services</strong></td>
+    <td>20+ years, deep corporate rolodex, full event-services shop</td>
+    <td>Lake Salt's modern/Instagram-native brand wins the younger corporate buyers (tech, startups, creative agencies).</td>
+  </tr>
+  <tr>
+    <td><strong>Premier Staff</strong></td>
+    <td>National bartending staffing network</td>
+    <td>They're a staffing agency — Lake Salt is a brand experience. Different product.</td>
+  </tr>
+</table>
+<div class="tip">
+  <strong>Corporate-specific Lake Salt moves:</strong> (1) Get a W-9 + COI package ready to email instantly — corporate buyers ask day-1. (2) Offer invoice-terms (Net 15/30). (3) Package a "corporate signature drink" that can be co-branded with the company's colors/logo — nobody else offers this. (4) Build a one-pager tailored to office managers, not brides.
+</div>
+</div>
+
+<h3>🎪 Big Events &amp; Festivals — the moonshot tier</h3>
+<div class="card">
+<p>This is a different business model. Festivals and large events (5,000+ guests) run on cash handling, POS systems, bulk pours, state compliance, and tight logistics — not craft cocktails.</p>
+<table>
+  <tr><th>Company</th><th>What they do</th><th>Lake Salt's on-ramp</th></tr>
+  <tr>
+    <td><strong>Bacchus Event Services</strong></td>
+    <td>6,000-guest events. Owns the Utah festival/corporate-gala segment.</td>
+    <td>Sub-contract under them for smaller breakout bars, or win the "craft cocktail VIP lounge" inside a bigger event they run.</td>
+  </tr>
+  <tr>
+    <td><strong>Top Shelf Utah</strong></td>
+    <td>Festivals, concerts, ballparks — speed &amp; efficiency focus.</td>
+    <td>Same sub-contract play. Also: partner with them on "premium bar" add-ons.</td>
+  </tr>
+  <tr>
+    <td><strong>Venue in-house ops</strong> (Salt Palace, Vivint, Delta Center, Maverik Center, Eccles)</td>
+    <td>Large venues run their own bars. You can't compete on-site.</td>
+    <td>Target <em>private buyouts</em> or off-venue satellite events — wedding receptions at venues, parking lot activations, conference pre-parties.</td>
+  </tr>
+</table>
+<div class="tip">
+  <strong>Big-event on-ramp strategy:</strong> You don't jump from 200-guest weddings to 5,000-guest festivals. The path is: (1) 300–500 guest weddings → (2) 200–500 guest corporate galas → (3) mid-size 1,000 guest brand activations → (4) festival VIP tents as a <em>partner</em> under a scale player. Build a portfolio piece at each rung before you bid the next.
+</div>
+</div>
+
+<h3>Lake Salt's 3-Market Positioning Summary</h3>
+<div class="card">
+<table>
+  <tr><th>Market</th><th>Leader</th><th>Lake Salt's play</th><th>Honest assessment</th></tr>
+  <tr><td>Weddings</td><td>Cheers &amp; Swizzles / With A Twist</td><td>Win on brand aesthetic + Instagram + boutique feel</td><td>You can take real market share here in 12–24 months</td></tr>
+  <tr><td>Corporate</td><td>Bacchus / Premier Event Services</td><td>Mid-size (50–200) with co-brandable signature cocktails</td><td>Underserved segment — biggest growth opportunity</td></tr>
+  <tr><td>Big events</td><td>Bacchus / Top Shelf / venue ops</td><td>Partner, don't compete — VIP lounges + sub-contracts</td><td>Long game — 2–3 years before you can bid a festival solo</td></tr>
+</table>
+</div>
+
+<h3>Intelligence to gather at the expo (about the broader market)</h3>
+<div class="card">
+<ul>
+  <li>Ask every planner: "Who are the 2–3 bar services you work with most?" — crowdsource the real leader rankings.</li>
+  <li>Ask venues: "Do you have a preferred vendor list for bar service? How do I get on it?"</li>
+  <li>Ask corporate clients (they attend bridal shows more than you think — wedding planners book their company parties too): "Who does your office events?"</li>
+  <li>Price-anchor check: listen for the price range couples mention. If you're way above or below, recalibrate.</li>
+  <li>Watch for white space: which request keeps coming up that no vendor at the expo can fulfill? That's your next service line.</li>
+</ul>
+</div>
+</section>
+
+<section id="leads">
+<h2>Lead Capture — The Full Plan</h2>
+
+<div class="danger">
+<strong>The math of this show.</strong> Bridal expos run ~800–1,500 attending couples. Even with a great booth, expect 80–150 direct booth interactions over 4.5 hours. Your goal isn't scans — it's <em>qualified booked consults</em>. Target: 60+ leads captured, 25+ marked "hot," 10+ consults booked within 7 days, 3–5 weddings closed.
+</div>
+
+<h3>Step 1 — Build the infrastructure <em>before</em> the show</h3>
+<div class="card">
+<h4>A. Dedicated landing page: <code>lakesalt.us/bridal-expo</code></h4>
+<p>Not your homepage. A single-purpose page optimized for one action: capture the lead. Build this on Firebase hosting alongside your existing site.</p>
+<table>
+  <tr><th>Section</th><th>Content</th><th>Reason</th></tr>
+  <tr><td>Hero (above fold)</td><td>"Thanks for stopping by Lake Salt." + one hero photo + signature cocktail name</td><td>Continuity with what they just saw at the booth</td></tr>
+  <tr><td>The offer</td><td>"Enter to win a Signature Cocktail Experience ($250 value) for your wedding + get our full menu + package pricing"</td><td>Tangible incentive. Drawing + content = higher conversion than either alone</td></tr>
+  <tr><td>The form (4 fields)</td><td>Name · Email · Phone · Event date (MM/YYYY)</td><td>Every field past 4 drops conversion ~10%. Venue + guest count are nice-to-haves — ask on the reply-email instead</td></tr>
+  <tr><td>Social proof</td><td>3 wedding photos with a 1-line testimonial each</td><td>Closes the "is this a real business?" gap instantly</td></tr>
+  <tr><td>Mini FAQ (collapsed)</td><td>Pricing range · Areas served · How it works</td><td>Answers the objections without overwhelming the form</td></tr>
+</table>
+<p><strong>Tech stack:</strong> Firebase-hosted static page → form posts to Firestore <code>expo_leads</code> collection → Cloud Function triggers instant email (SendGrid or Resend) + Slack/SMS alert to you. Total build time: one afternoon.</p>
+</div>
+
+<div class="card">
+<h4>B. QR code — design and placement</h4>
+<ul>
+  <li>Generate one branded QR (use qrcode-monkey.com or similar — add your logo, make it brand-colored, keep 30%+ black ink for scanability)</li>
+  <li><strong>Print 6 copies minimum:</strong> large on bar front, on the second banner, on both menu card stacks, taped to the clipboard, and on a small acrylic stand at the QR station</li>
+  <li>Test-scan all of them from 3 feet away before you leave the house show morning — nothing kills conversion like a dead QR</li>
+  <li>Use a UTM tag on the URL: <code>?utm_source=bridal_expo&amp;utm_medium=qr&amp;utm_campaign=bsl_s26</code> so analytics tracks it</li>
+</ul>
+</div>
+
+<div class="card">
+<h4>C. Paper backup — the clipboard</h4>
+<ul>
+  <li>Branded half-page sign-up sheet. Same 4 fields as the digital form.</li>
+  <li>Keep at greeter zone. When someone's interested but says "I'll scan later" — hand them the clipboard.</li>
+  <li>At end of day, photograph every page before packing up (insurance against losing the physical sheet).</li>
+  <li>Pen tied to clipboard. Always. Losing pens at expos is a universal law.</li>
+</ul>
+</div>
+
+<h3>Step 2 — Capture method: the three-tier system</h3>
+<div class="card">
+<p>Most exhibitors use ONE capture method. You'll use three concurrent methods because each catches a different type of person.</p>
+<table>
+  <tr><th>Tier</th><th>Method</th><th>Best for</th><th>Conversion rate</th></tr>
+  <tr><td>1 — Passive</td><td>QR on all surfaces → landing page</td><td>Independent browsers who don't want to talk</td><td>10–15% of foot traffic</td></tr>
+  <tr><td>2 — Active</td><td>Greeter-led: "Scan this to enter the drawing — takes 30 seconds"</td><td>People who paused but haven't committed</td><td>35–50% when offered verbally</td></tr>
+  <tr><td>3 — Deep</td><td>1:1 tasting + hand-written card on the hot-lead clipboard</td><td>Qualified couples who want to talk</td><td>80%+ with a real conversation</td></tr>
+</table>
+<p>You need all three running simultaneously. The clipboard for Tier 3 is separate — labeled "Hot Leads" — because Tier 3 leads get white-glove follow-up.</p>
+</div>
+
+<h3>Step 3 — Qualifying on the floor (the 4-signal model)</h3>
+<div class="card">
+<p>Not every scan is a buyer. During conversations, listen for four signals. The more signals present, the hotter the lead.</p>
+<table>
+  <tr><th>Signal</th><th>What to listen for</th><th>Weight</th></tr>
+  <tr><td>📅 Date</td><td>They have a wedding date (specific month/year). Without a date, they're not buying yet.</td><td>★★★★</td></tr>
+  <tr><td>🏛️ Venue</td><td>Venue is booked. Bar-service shopping rarely happens before the venue is locked.</td><td>★★★★</td></tr>
+  <tr><td>👥 Guest count</td><td>They know it within ±25. Signals budget conversations have happened.</td><td>★★★</td></tr>
+  <tr><td>🤝 Decision makers</td><td>Both partners present, or the partner is consulted during the conversation. Solo-bride is still valid but slower to close.</td><td>★★</td></tr>
+</table>
+<p><strong>Classification rule:</strong></p>
+<ul>
+  <li><strong>🔥 Hot</strong> — 3–4 signals present, date within 12 months. <em>Personal call within 48 hours.</em></li>
+  <li><strong>🟡 Warm</strong> — 2 signals present or date 12–18 months out. <em>Email sequence, no call yet.</em></li>
+  <li><strong>🟢 Cold</strong> — 0–1 signals, "just looking." <em>Add to newsletter, 3-touch nurture.</em></li>
+</ul>
+<p>Mark every lead on the clipboard with 🔥 🟡 🟢 before they walk away. Takes 2 seconds, saves hours in follow-up sorting.</p>
+</div>
+
+<h3>Step 4 — The scripted 45-second pitch</h3>
+<div class="card">
+<p>Your greeter and bartender need a tight, repeatable opening. Generic "Hey, want to learn about us?" fails at expos. Try this script:</p>
+<ol>
+  <li><strong>Open (5 sec):</strong> "Hey! Try a sip — it's our signature [drink name]. We're Lake Salt, we build custom mobile bars for weddings."</li>
+  <li><strong>Qualify (10 sec):</strong> "Are you working on a wedding? When's the date?"</li>
+  <li><strong>Story (20 sec):</strong> "We do the bar build, the menu, the bartenders, all the glassware — so the couple basically just tells us the vibe and we handle it end to end. [Reference something specific to their vibe if they mentioned it.]"</li>
+  <li><strong>Ask (10 sec):</strong> "I'd love to send you our menu + pricing — mind scanning this? Takes 30 seconds and you're entered in our drawing for a free Signature Cocktail Experience."</li>
+</ol>
+<p><strong>Never:</strong> pitch price unprompted, do a monologue longer than 60 seconds, or talk over the partner. If one partner's uninterested, <em>engage them</em> — couples close together.</p>
+</div>
+
+<h3>Step 5 — The "in-the-moment" capture upgrade</h3>
+<div class="card">
+<p>For hot leads, don't just scan-and-bounce. Do this instead:</p>
+<ol>
+  <li>After they scan, say: "While you're here — what venue did you book?" Write it on the clipboard next to their name.</li>
+  <li>Pull out your phone, open Google Cal, say: "I'll save you a spot for a 20-minute consult — pick a time that works this week." Book it on the spot.</li>
+  <li>Email confirmation fires before they leave the booth. Massive psychological lock-in.</li>
+</ol>
+<p>On-the-spot consult booking converts at <strong>3–5x</strong> the rate of "I'll email you later." This is the single highest-leverage tactic in your whole day.</p>
+</div>
+
+<h3>Step 6 — Auto-responder sequence (fires from Firestore trigger)</h3>
+<div class="card">
+<table>
+  <tr><th>Timing</th><th>Channel</th><th>Content</th></tr>
+  <tr><td>Instant (on form submit)</td><td>Email</td><td>"Thanks for stopping by! Here's our full menu [PDF] + package pricing [PDF]. Reply with your date and venue and we'll check availability."</td></tr>
+  <tr><td>+2 hours</td><td>Email (if no reply)</td><td>"One more thing — here's a short video of us running a recent wedding. Take a look when you have 60 seconds: [link]"</td></tr>
+  <tr><td>Day 1 (Sunday)</td><td>Email</td><td>Personalized: "Great meeting you. Reference one detail from conversation. Here's a 15-min slot this week: [Calendly link]"</td></tr>
+  <tr><td>Day 2–3 (hot only)</td><td>SMS</td><td>"Hey [name], Kendell from Lake Salt. Free for a 10-min call Thu or Fri about your [month] wedding at [venue]?"</td></tr>
+  <tr><td>Day 5</td><td>Email</td><td>"Noticed you might still be comparing — here's how we're different from most Utah bar services [link to 1-page differentiator]"</td></tr>
+  <tr><td>Day 7</td><td>Email</td><td>Testimonial-led: "What couples say about working with us [3 short quotes + photos]"</td></tr>
+  <tr><td>Day 14</td><td>Email</td><td>Social content share — recent Reel, blog, new menu item</td></tr>
+  <tr><td>Day 30</td><td>Email</td><td>"Still planning? Here's our May booking availability — prices lock in at today's rate if you book this week."</td></tr>
+</table>
+<p><strong>Opt-out tracking:</strong> every email has an unsubscribe. Texts respect STOP. Don't get reported.</p>
+</div>
+
+<h3>Step 7 — The drawing (make it worth the scan)</h3>
+<div class="card">
+<p>The drawing prize has to feel real, not gimmicky.</p>
+<ul>
+  <li><strong>Prize:</strong> "Signature Cocktail Experience" — we'll design a custom cocktail named after the couple, craft 50 of them for their wedding, served with branded stir sticks. $250 value. Costs you maybe $60 in actual ingredients.</li>
+  <li><strong>Rules page:</strong> short, on the landing page. Drawing May 16 (one week after show). Email + social announcement. Must have a wedding date within 18 months to claim.</li>
+  <li><strong>The reveal:</strong> announcement email AND Instagram post tagging the winner. Reinforces brand presence with every lead on the list.</li>
+  <li><strong>Runner-up consolation:</strong> every non-winner gets 10% off their first booking if booked by end of May. Now the drawing is a full-funnel promo.</li>
+</ul>
+</div>
+
+<h3>Step 8 — The Bridal Registration List (post-show windfall)</h3>
+<div class="card">
+<p>ACS will email the full attendee list (~1,200 couples) the <strong>Friday after the show (May 15)</strong>. This is a major asset separate from your booth captures.</p>
+<ul>
+  <li>Import immediately into CRM, tag source <code>BSL_S26_ACS_List</code></li>
+  <li>Match against your booth-captured emails — dedupe. Booth people get the "hot/warm" sequence, list-only people get a different "welcome from the expo" sequence.</li>
+  <li>Send <em>one</em> intro email to list-only: "We met at the expo last weekend — here's our menu + a 15% discount code if you book by June 1." Don't spam.</li>
+  <li>List is seeded (ACS tracks use). <strong>Do not share with non-exhibitors.</strong> Violating this gets you banned and fined.</li>
+  <li>Unsubscribes: respect instantly. Anyone who unsubscribes here is probably already not your buyer.</li>
+</ul>
+</div>
+
+<h3>Step 9 — Tooling / tech checklist</h3>
+<div class="card">
+<table>
+  <tr><th>Tool</th><th>Purpose</th><th>Status</th></tr>
+  <tr><td>Firebase landing page <code>lakesalt.us/bridal-expo</code></td><td>Form capture</td><td>☐ Build this week</td></tr>
+  <tr><td>Firestore <code>expo_leads</code> collection</td><td>Lead storage</td><td>☐ Create + test</td></tr>
+  <tr><td>Cloud Function email trigger</td><td>Instant auto-reply</td><td>☐ Write + deploy</td></tr>
+  <tr><td>SendGrid / Resend API</td><td>Transactional email</td><td>☐ Account + API key</td></tr>
+  <tr><td>SMS (Twilio or similar)</td><td>Day 2–3 hot-lead text</td><td>☐ Account + A2P 10DLC registration if US</td></tr>
+  <tr><td>Calendly / Google Calendar appointment booking</td><td>On-the-spot consult scheduling</td><td>☐ Set up dedicated "Expo Consult" 20-min event</td></tr>
+  <tr><td>CRM tagging system</td><td>Track source, stage, follow-ups</td><td>☐ Create tags: <code>BSL_S26_Hot</code>, <code>BSL_S26_Warm</code>, <code>BSL_S26_Cold</code>, <code>BSL_S26_ACS_List</code></td></tr>
+  <tr><td>Branded QR codes (printed)</td><td>6+ copies around the booth</td><td>☐ Generate + print + laminate</td></tr>
+  <tr><td>Paper backup clipboards (x2)</td><td>Offline capture</td><td>☐ Design + print 50 sheets</td></tr>
+  <tr><td>Charging station / portable battery</td><td>Staff phones for lead intake + Calendly</td><td>☐ 2x portable chargers + cables</td></tr>
+  <tr><td>Wi-Fi hotspot backup</td><td>Salt Palace Wi-Fi is unreliable</td><td>☐ Use your phone hotspot, pre-tested</td></tr>
+</table>
+</div>
+
+<h3>Step 10 — Post-show lead triage (the 72-hour sprint)</h3>
+<div class="card">
+<table>
+  <tr><th>When</th><th>Action</th></tr>
+  <tr><td>Sat May 9, 8pm</td><td>Debrief with team for 30 min — capture what worked, what didn't, hot-lead names while fresh</td></tr>
+  <tr><td>Sat May 9, 10pm</td><td>All paper clipboard entries typed into Firestore/CRM. Photographs of clipboards backed up to Drive.</td></tr>
+  <tr><td>Sun May 10, morning</td><td>Personalized emails to every 🔥 hot lead. One sentence referencing the conversation.</td></tr>
+  <tr><td>Sun May 10, afternoon</td><td>Warm-lead batch email. Cold-lead add-to-newsletter.</td></tr>
+  <tr><td>Mon May 11</td><td>Text every hot lead who hasn't responded yet.</td></tr>
+  <tr><td>Tue May 12</td><td>Call every hot lead who hasn't booked a consult. This is the highest-ROI hour of your week.</td></tr>
+  <tr><td>Fri May 15</td><td>ACS Registration List arrives — dedupe, import, tag, one-time intro email.</td></tr>
+  <tr><td>Sat May 16</td><td>Announce drawing winner — email + Instagram post tagging them.</td></tr>
+</table>
+</div>
+
+<div class="tip">
+  <strong>Bridal Registration List security:</strong> ACS emails the list the Friday <em>after</em> the show. Any third party trying to sell you this list is a scammer. ACS's list is individually seeded to track misuse — never forward or share with non-exhibitors.
+</div>
+</section>
+
+<section id="followup">
+<h2>Post-Event Follow-up (This Is Where You Win)</h2>
+<div class="card">
+  <ul>
+    <li><strong>Same night:</strong> Dump every scan + paper lead into CRM. Tag source: "BSL S26".</li>
+    <li><strong>Sunday (day 1):</strong> Personalized email to every hot lead (date + venue noted). Reference one detail from your conversation.</li>
+    <li><strong>Monday/Tuesday (day 2–3):</strong> Text hot leads: "Hey [name] — Kendell from Lake Salt. Great meeting at the expo. Got a sec this week to chat about your [month] wedding at [venue]?"</li>
+    <li><strong>Day 5–7:</strong> General email to all warm leads — Bridal Registration List goes out Friday. Segment: booked venue vs still shopping.</li>
+    <li><strong>Day 10:</strong> Referral outreach to every vendor you met — "Loved meeting you. Let's get coffee or a virtual 15. Here's how we like to work with [planners/venues]."</li>
+    <li><strong>Day 14:</strong> Second touch to cold leads — share a piece of content (IG post, blog, menu update).</li>
+    <li><strong>Day 30:</strong> Pull show ROI — leads captured, consults booked, bookings closed, revenue. Note what design/process/pitch elements worked for next year.</li>
+  </ul>
+</div>
+</section>
+
+<section id="contacts">
+<h2>Key Contacts</h2>
+<div class="card">
+  <div class="kv"><span>ACS Customer Service</span><span>customerservice@acsshows.com · 888-433-3976</span></div>
+  <div class="kv"><span>Angela Garcia (billing)</span><span>Angela.Garcia@acsshows.com</span></div>
+  <div class="kv"><span>Campbell Talbor (rep)</span><span>Campbell.Talbor@acsshows.com</span></div>
+  <div class="kv"><span>Bridal Opportunities (logo/features)</span><span>BridalOpportunities@acsshows.com</span></div>
+  <div class="kv"><span>General info</span><span>info@acsshows.com</span></div>
+  <div class="kv"><span>Venue</span><span>Salt Palace Convention Center — 100 S. West Temple, SLC, UT 84101</span></div>
+  <div class="kv"><span>Show website</span><span>BridalShowsUT.com</span></div>
+  <div class="kv"><span>Exhibitor portal path</span><span>BridalShowsUT.com → I Am An Exhibitor → Download Exhibitor Forms</span></div>
+</div>
+</section>
+
+<section>
+<h2>Top 10 Tips — If You Only Remember These</h2>
+<div class="card">
+<ol>
+  <li>Sampling paperwork must be filed — verify this week.</li>
+  <li>Order electrical + services <em>early</em> for cheaper rates.</li>
+  <li>Submit your logo + URL to BridalOpportunities@acsshows.com.</li>
+  <li>Design the booth to look like a real bar, not a table with flyers.</li>
+  <li>No music, no speakers — ACS rule.</li>
+  <li>QR code + short landing page + incentive beats business cards 5:1.</li>
+  <li>Don't just work the booth — walk the floor twice, meet planners + venues.</li>
+  <li>Signature drink stays visible and in hand at all times — it's the magnet.</li>
+  <li>Hot leads get a personal call within 48 hours of the show.</li>
+  <li>Debrief and write down what worked while it's fresh — next year's playbook starts May 10.</li>
+</ol>
+</div>
+</section>
+
+</main>
+
+<footer>
+  Built for Lake Salt Bartending · Salt Lake City Bridal &amp; Wedding Expo · May 9, 2026<br>
+  Sources: ACS exhibitor emails (Dec 5 2025 – Apr 11 2026) · BridalShowsUT.com exhibitor directory &amp; sponsors page
+</footer>
+
+</body>
+</html>
