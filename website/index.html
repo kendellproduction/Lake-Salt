@@ -2105,8 +2105,10 @@
       .ob-cal { padding: 0.75rem 0.6rem 0.65rem; max-width: 280px; }
       .ob-cal-day { font-size: 0.68rem; border-radius: 4px; }
       .ob-cal-title { font-size: 0.85rem; }
-      .ob-time-wrap { max-width: 280px; }
+      .ob-time-wrap { max-width: 100%; }
       .ob-time-select { font-size: 0.78rem; padding: 0.4rem 0.5rem; }
+      .ob-chips[style*="display:flex"] { flex-direction: column; }
+      .ob-chips[style*="display:flex"] > * { width: 100%; }
       .ob-nav { margin-top: 0.75rem; }
       .quote-bar {
         flex-direction: column; align-items: flex-start;
@@ -2224,7 +2226,6 @@
         <div class="ob-chip-group">
           <div class="ob-chip-group-label">Bar Package</div>
           <div class="ob-chip-row">
-            <button class="ob-chip" data-val="open_bar" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🎉 Full Open Bar</button>
             <button class="ob-chip" data-val="beer_wine_only" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🍷 Beer &amp; Wine Only</button>
             <button class="ob-chip" data-val="dry_bar" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">✨ Dry Bar (No Alcohol)</button>
           </div>
@@ -2335,8 +2336,8 @@
         <div class="ob-cal-grid" id="ob-cal-grid"></div>
         <div class="ob-cal-label" id="ob-cal-label"></div>
       </div>
-      <div style="display:flex;gap:1rem;">
-        <div class="ob-time-wrap" style="flex:1;">
+      <div style="display:flex;gap:0.5rem;">
+        <div class="ob-time-wrap" style="flex:1;min-width:0;">
           <span class="ob-time-label">Start time</span>
           <select class="ob-time-select" id="ob-time" onchange="obTimeSelect(this.value)">
             <option value="">— Select —</option>
@@ -2367,7 +2368,7 @@
             <option value="10:00 PM">10:00 PM</option>
           </select>
         </div>
-        <div class="ob-time-wrap" style="flex:1;">
+        <div class="ob-time-wrap" style="flex:1;min-width:0;">
           <span class="ob-time-label">End time</span>
           <select class="ob-time-select" id="ob-end-time" onchange="obEndTimeSelect(this.value)">
             <option value="">— Select —</option>
@@ -2418,7 +2419,8 @@
       <div class="ob-chips" id="ob-guests">
         <button class="ob-chip" data-val="under_50" onclick="obToggleChip(this,'guestRange',true)">Under 50</button>
         <button class="ob-chip" data-val="50_100" onclick="obToggleChip(this,'guestRange',true)">50–100</button>
-        <button class="ob-chip" data-val="100_200" onclick="obToggleChip(this,'guestRange',true)">100–200</button>
+        <button class="ob-chip" data-val="100_150" onclick="obToggleChip(this,'guestRange',true)">100–150</button>
+        <button class="ob-chip" data-val="150_200" onclick="obToggleChip(this,'guestRange',true)">150–200</button>
         <button class="ob-chip" data-val="200_plus" onclick="obToggleChip(this,'guestRange',true)">200+</button>
       </div>
       <input class="ob-input" id="ob-guest-num" type="number" placeholder="Or enter a number" min="1" />
