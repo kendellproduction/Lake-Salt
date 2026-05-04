@@ -3523,7 +3523,24 @@ function switchMode(mode) {
 /* ─── MULTI-STEP ONBOARDING ─── */
 let obStep = 1;
 const obTotalSteps = 7;
-let obData = { eventType: 'all', drinks: [], drinkDetail: '', venue: null, venueText: '', date: '', guestRange: null, guestNum: '' };
+let obData = {
+  eventType: 'all',
+  drinks: [],
+  drinkDetail: '',
+  venue: null,
+  venueText: '',
+  date: '',
+  time: '',
+  endTime: '',
+  guestRange: null,
+  guestNum: '',
+  hasBuiltInBar: null,
+  name: '',
+  email: '',
+  phone: '',
+  budget: '',
+  message: ''
+};
 
 function obSelect(key, value) { obData[key] = value; }
 
