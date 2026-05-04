@@ -2424,11 +2424,44 @@
         <button class="ob-back" onclick="obGoTo(4)">← Back</button>
         <div style="display:flex;align-items:center;gap:0.6rem;">
           <button class="ob-skip-step" onclick="obSkipAll()">Skip</button>
-          <button class="ob-next-btn ob-finish" onclick="obFinish()">Continue to Website →</button>
+          <button class="ob-next-btn" onclick="obNext()">Next →</button>
         </div>
       </div>
       <button class="ob-goto-site-sm" onclick="obSkipAll()">Go to Site &rarr;</button>
     </div><!-- /ob-p5 -->
+
+    <!-- Step 6: Contact Info -->
+    <div class="ob-panel" id="ob-p6">
+      <h2 class="onboarding-q">Let's get in<br/><em>touch.</em></h2>
+      <p class="onboarding-sub">We'll reach out with your custom quote</p>
+      <input class="ob-input" id="ob-name" type="text" placeholder="Your full name" required />
+      <input class="ob-input" id="ob-email" type="email" placeholder="Your email address" required />
+      <input class="ob-input" id="ob-phone" type="tel" placeholder="Phone number (optional)" />
+      <div class="ob-nav">
+        <button class="ob-back" onclick="obGoTo(5)">← Back</button>
+        <div style="display:flex;align-items:center;gap:0.6rem;">
+          <button class="ob-skip-step" onclick="obSkipAll()">Skip & Use Form</button>
+          <button class="ob-next-btn" onclick="obNext()">Next →</button>
+        </div>
+      </div>
+      <button class="ob-goto-site-sm" onclick="obSkipAll()">Go to Site &rarr;</button>
+    </div><!-- /ob-p6 -->
+
+    <!-- Step 7: Budget & Details -->
+    <div class="ob-panel" id="ob-p7">
+      <h2 class="onboarding-q">Anything<br/><em>else?</em></h2>
+      <p class="onboarding-sub">Budget and special requests (both optional)</p>
+      <input class="ob-input" id="ob-budget" type="text" placeholder="e.g. $1,500 — helps us tailor the best plan" />
+      <textarea class="ob-input" id="ob-message" placeholder="Vision, theme, special requests, questions..." style="height:5rem;resize:none;"></textarea>
+      <div class="ob-nav">
+        <button class="ob-back" onclick="obGoTo(6)">← Back</button>
+        <div style="display:flex;align-items:center;gap:0.6rem;">
+          <button class="ob-skip-step" onclick="obSkipAll()">Skip & Use Form</button>
+          <button class="ob-next-btn ob-finish" onclick="obSubmitQuiz()">Send My Inquiry →</button>
+        </div>
+      </div>
+      <button class="ob-goto-site-sm" onclick="obSkipAll()">Go to Site &rarr;</button>
+    </div><!-- /ob-p7 -->
 
   </div><!-- /onboarding-inner -->
 </div><!-- /#onboarding -->
@@ -3487,7 +3520,7 @@ function switchMode(mode) {
 
 /* ─── MULTI-STEP ONBOARDING ─── */
 let obStep = 1;
-const obTotalSteps = 5;
+const obTotalSteps = 7;
 let obData = { eventType: 'all', drinks: [], drinkDetail: '', venue: null, venueText: '', date: '', guestRange: null, guestNum: '' };
 
 function obSelect(key, value) { obData[key] = value; }
@@ -3636,6 +3669,94 @@ function obFinish() {
   chooseMode(obData.eventType || 'all');
   setTimeout(prefillForm, 450);
   setTimeout(() => { document.getElementById('quote-bar').classList.add('show'); }, 1400);
+}
+
+function obSubmitQuiz() {
+  // Capture all onboarding data including contact info and budget
+  const nameEl    = document.getElementById('ob-name');
+  const emailEl   = document.getElementById('ob-email');
+  const phoneEl   = document.getElementById('ob-phone');
+  const budgetEl  = document.getElementById('ob-budget');
+  const messageEl = document.getElementById('ob-message');
+  const drinkDetailEl = document.getElementById('ob-drink-detail');
+  const venueTextEl   = document.getElementById('ob-venue-text');
+  const dateEl        = document.getElementById('ob-date');
+  const guestNumEl    = document.getElementById('ob-guest-num');
+  const endTimeEl     = document.getElementById('ob-end-time');
+
+  // Validate required fields
+  if (!nameEl?.value.trim() || !emailEl?.value.trim()) {
+    alert('Please fill in your name and email');
+    return;
+  }
+
+  // Store all data in obData
+  if (nameEl) obData.name = nameEl.value.trim();
+  if (emailEl) obData.email = emailEl.value.trim();
+  if (phoneEl) obData.phone = phoneEl.value.trim();
+  if (budgetEl) obData.budget = budgetEl.value.trim();
+  if (messageEl) obData.message = messageEl.value.trim();
+  if (drinkDetailEl) obData.drinkDetail = drinkDetailEl.value.trim();
+  if (venueTextEl) obData.venueText = venueTextEl.value.trim();
+  if (dateEl && dateEl.value && !obData.date) obData.date = dateEl.value.trim();
+  if (guestNumEl) obData.guestNum = guestNumEl.value.trim();
+  if (endTimeEl) obData.endTime = endTimeEl.value.trim();
+
+  // Store in localStorage
+  localStorage.setItem('ls-quote-data', JSON.stringify(obData));
+
+  // Populate the contact form with all onboarding data
+  const form = document.getElementById('contact-form');
+  if (!form) {
+    alert('Form not found. Please scroll to the contact section.');
+    return;
+  }
+
+  // Fill form fields from onboarding data
+  form.querySelector('[name="from_name"]').value = obData.name || '';
+  form.querySelector('[name="from_email"]').value = obData.email || '';
+  form.querySelector('[name="phone"]').value = obData.phone || '';
+  form.querySelector('[name="event_type"]').value = obData.eventType ?
+    { wedding: 'Wedding', corporate: 'Corporate Event', all: 'Private Celebration' }[obData.eventType] || '' : '';
+  form.querySelector('[name="event_date"]').value = obData.date ? new Date(obData.date).toISOString().split('T')[0] : '';
+  form.querySelector('[name="event_start_time"]').value = obData.time || '';
+  form.querySelector('[name="event_end_time"]').value = obData.endTime || '';
+  form.querySelector('[name="guest_count"]').value = obData.guestNum || (obData.guestRange ? { under_50: 'Under 50', '50_100': '50–100', '100_200': '100–200', '200_plus': '200+' }[obData.guestRange] || '' : '');
+  form.querySelector('[name="venue"]').value = obData.venueText || (obData.venue ? { home: 'At a Home', business: 'At a Business', venue_hall: 'At a Venue', outdoors: 'Outdoors' }[obData.venue] || '' : '');
+  form.querySelector('[name="has_built_in_bar"]').value = obData.hasBuiltInBar ? { yes: 'Yes', no: 'No', unsure: 'Unsure' }[obData.hasBuiltInBar] || '' : '';
+  form.querySelector('[name="budget"]').value = obData.budget || '';
+
+  // Build message from drinks + specific requests
+  let msgParts = [];
+  if (obData.drinks && obData.drinks.length) {
+    const dl = { cocktails: 'Cocktails', mocktails: 'Mocktails', beer: 'Beer', wine: 'Wine', open_bar: 'Open Bar',
+                 lemonade: 'Fresh Lemonade', iced_tea: 'Iced Tea', sparkling_water: 'Sparkling Water', juice_bar: 'Juice Bar' };
+    msgParts.push('Drinks: ' + obData.drinks.map(k => dl[k] || k).join(', '));
+  }
+  if (obData.drinkDetail) msgParts.push('Specific drinks: ' + obData.drinkDetail);
+  if (obData.message) msgParts.push(obData.message);
+  form.querySelector('[name="message"]').value = msgParts.join('\n');
+
+  // Fill hidden fields for EmailJS
+  document.getElementById('form-email-hidden').value = obData.email || '';
+  document.getElementById('form-event-time').value = obData.time || '';
+  document.getElementById('form-event-end-time').value = obData.endTime || '';
+  document.getElementById('form-has-built-in-bar').value = obData.hasBuiltInBar ? { yes: 'Yes', no: 'No', unsure: 'Unsure' }[obData.hasBuiltInBar] || '' : '';
+  document.getElementById('form-drinks').value = obData.drinks && obData.drinks.length ?
+    obData.drinks.map(k => ({ cocktails: 'Cocktails', mocktails: 'Mocktails', beer: 'Beer', wine: 'Wine', open_bar: 'Open Bar', lemonade: 'Fresh Lemonade', iced_tea: 'Iced Tea', sparkling_water: 'Sparkling Water', juice_bar: 'Juice Bar' }[k] || k)).join(', ') : '';
+  document.getElementById('form-drink-detail').value = obData.drinkDetail || '';
+
+  // Close onboarding and scroll to form
+  document.getElementById('onboarding').classList.add('hidden');
+  localStorage.setItem('ls-submitted', 'true');
+
+  // Scroll to contact section and submit
+  setTimeout(() => {
+    document.getElementById('contact').scrollIntoView({ behavior: 'smooth' });
+    setTimeout(() => {
+      form.dispatchEvent(new Event('submit'));
+    }, 500);
+  }, 300);
 }
 
 function prefillForm() {
