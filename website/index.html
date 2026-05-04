@@ -2451,13 +2451,13 @@
     <div class="ob-panel" id="ob-p7">
       <h2 class="onboarding-q">Anything<br/><em>else?</em></h2>
       <p class="onboarding-sub">Budget and special requests (both optional)</p>
-      <input class="ob-input" id="ob-budget" type="text" placeholder="e.g. $1,500 — helps us tailor the best plan" />
+      <input class="ob-input" id="ob-budget" type="text" placeholder="If you have a tight budget, let us know — we'll work within it" />
       <textarea class="ob-input" id="ob-message" placeholder="Vision, theme, special requests, questions..." style="height:5rem;resize:none;"></textarea>
       <div class="ob-nav">
         <button class="ob-back" onclick="obGoTo(6)">← Back</button>
         <div style="display:flex;align-items:center;gap:0.6rem;">
           <button class="ob-skip-step" onclick="obSkipAll()">Skip & Use Form</button>
-          <button class="ob-next-btn ob-finish" onclick="obSubmitQuiz()">Send My Inquiry →</button>
+          <button class="ob-next-btn ob-finish" id="ob-cta-btn" onclick="obCheckAndSubmit()">Send My Inquiry →</button>
         </div>
       </div>
       <button class="ob-goto-site-sm" onclick="obSkipAll()">Go to Site &rarr;</button>
@@ -3669,6 +3669,33 @@ function obFinish() {
   chooseMode(obData.eventType || 'all');
   setTimeout(prefillForm, 450);
   setTimeout(() => { document.getElementById('quote-bar').classList.add('show'); }, 1400);
+}
+
+function obCheckRequiredFields() {
+  const nameEl = document.getElementById('ob-name');
+  const emailEl = document.getElementById('ob-email');
+  const dateEl = document.getElementById('ob-date');
+  const endTimeEl = document.getElementById('ob-end-time');
+  const venueChip = document.querySelector('.ob-chips[style*="display:flex"] .ob-chip.selected');
+  const hasBuiltInBar = obData.hasBuiltInBar;
+
+  const nameValid = nameEl?.value?.trim().length > 0;
+  const emailValid = emailEl?.value?.trim().length > 0 && emailEl.value.includes('@');
+  const dateValid = dateEl?.value?.trim() || obData.date;
+  const endTimeValid = endTimeEl?.value?.trim() || obData.endTime;
+  const venueValid = obData.venue || obData.venueText?.trim().length > 0;
+  const barValid = hasBuiltInBar && (hasBuiltInBar === 'yes' || hasBuiltInBar === 'no' || hasBuiltInBar === 'unsure');
+
+  return nameValid && emailValid && dateValid && endTimeValid && venueValid && barValid;
+}
+
+function obCheckAndSubmit() {
+  if (obCheckRequiredFields()) {
+    obSubmitQuiz();
+  } else {
+    // Navigate to the form
+    obFinish();
+  }
 }
 
 function obSubmitQuiz() {
