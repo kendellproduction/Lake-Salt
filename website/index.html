@@ -2461,30 +2461,12 @@
       <div class="ob-nav">
         <button class="ob-back" onclick="obGoTo(6)">← Back</button>
         <div style="display:flex;align-items:center;gap:0.6rem;">
-          <button class="ob-skip-step" onclick="obCheckAndSubmit()">Send Inquiry Only</button>
-          <button class="ob-next-btn" onclick="obNext()">Book a Call →</button>
+          <button class="ob-skip-step" onclick="obSkipAll()">Skip & Use Form</button>
+          <button class="ob-next-btn ob-finish" id="ob-cta-btn" onclick="obCheckAndSubmit()">Send My Inquiry →</button>
         </div>
       </div>
       <button class="ob-goto-site-sm" onclick="obSkipAll()">Go to Site &rarr;</button>
     </div><!-- /ob-p7 -->
-
-    <!-- Step 8: Book a Call -->
-    <div class="ob-panel" id="ob-p8">
-      <h2 class="onboarding-q">Schedule a<br/><em>call</em></h2>
-      <p class="onboarding-sub">Pick a time that works for you (4 PM - 8 PM)</p>
-      <div id="ob-slots-container" style="max-height:20rem;overflow-y:auto;border:1px solid rgba(201,169,110,0.2);border-radius:0.5rem;padding:0.5rem;">
-        <div style="text-align:center;padding:2rem;color:rgba(255,255,255,0.5);">Loading available times...</div>
-      </div>
-      <input type="hidden" id="ob-selected-slot" />
-      <div class="ob-nav">
-        <button class="ob-back" onclick="obGoTo(7)">← Back</button>
-        <div style="display:flex;align-items:center;gap:0.6rem;">
-          <button class="ob-skip-step" onclick="obCheckAndSubmit()">Skip Booking</button>
-          <button class="ob-next-btn ob-finish" id="ob-book-btn" onclick="obBookCall()" disabled style="opacity:0.5;">Confirm Booking →</button>
-        </div>
-      </div>
-      <button class="ob-goto-site-sm" onclick="obSkipAll()">Go to Site &rarr;</button>
-    </div><!-- /ob-p8 -->
 
   </div><!-- /onboarding-inner -->
 </div><!-- /#onboarding -->
@@ -3543,7 +3525,7 @@ function switchMode(mode) {
 
 /* ─── MULTI-STEP ONBOARDING ─── */
 let obStep = 1;
-const obTotalSteps = 8;
+const obTotalSteps = 7;
 let obData = {
   eventType: 'all',
   drinks: [],
@@ -3683,10 +3665,6 @@ function obGoTo(step) {
     obCalViewDate = new Date();
     obCalRender();
   }
-  if (step === 8) {
-    // Load available call slots when Step 8 is reached
-    setTimeout(() => obLoadAvailableSlots(), 100);
-  }
 }
 
 function obNext() {
@@ -3742,92 +3720,6 @@ function obCheckAndSubmit() {
   }
 }
 
-function obLoadAvailableSlots() {
-  const container = document.getElementById('ob-slots-container');
-  container.innerHTML = '<div style="text-align:center;padding:2rem;color:rgba(255,255,255,0.5);">Loading available times...</div>';
-
-  // Call the Cloud Function to get available slots
-  firebase.functions().httpsCallable('getAvailableSlots')({})
-    .then(result => {
-      if (result.data.success && result.data.slots.length > 0) {
-        renderSlots(result.data.slots);
-      } else {
-        container.innerHTML = '<div style="padding:2rem;text-align:center;color:rgba(255,255,255,0.7);">No available slots in the next 30 days. Please contact us directly.</div>';
-      }
-    })
-    .catch(error => {
-      console.error('Error loading slots:', error);
-      container.innerHTML = '<div style="padding:2rem;text-align:center;color:#dc2626;">Error loading availability. Please try again.</div>';
-    });
-}
-
-function renderSlots(slots) {
-  const container = document.getElementById('ob-slots-container');
-  container.innerHTML = '';
-
-  slots.forEach(slot => {
-    const button = document.createElement('button');
-    button.className = 'ob-chip';
-    button.style.cssText = 'display:block;width:100%;margin:0.25rem 0;text-align:left;';
-    button.textContent = slot.startFormatted;
-    button.onclick = () => {
-      // Remove previous selection
-      document.querySelectorAll('#ob-slots-container .ob-chip.selected').forEach(b => b.classList.remove('selected'));
-      // Add selection to clicked button
-      button.classList.add('selected');
-      // Store selected slot
-      document.getElementById('ob-selected-slot').value = slot.start;
-      // Enable book button
-      const bookBtn = document.getElementById('ob-book-btn');
-      bookBtn.disabled = false;
-      bookBtn.style.opacity = '1';
-    };
-    container.appendChild(button);
-  });
-}
-
-function obBookCall() {
-  const nameEl = document.getElementById('ob-name');
-  const emailEl = document.getElementById('ob-email');
-  const phoneEl = document.getElementById('ob-phone');
-  const selectedSlot = document.getElementById('ob-selected-slot').value;
-  const eventType = obData.eventType || 'Wedding';
-
-  if (!selectedSlot) {
-    alert('Please select a time slot');
-    return;
-  }
-
-  const bookBtn = document.getElementById('ob-book-btn');
-  bookBtn.disabled = true;
-  bookBtn.textContent = 'Booking...';
-
-  // Call the Cloud Function to book the call
-  firebase.functions().httpsCallable('bookCallSlot')({
-    name: nameEl.value,
-    email: emailEl.value,
-    phone: phoneEl.value,
-    slotStart: selectedSlot,
-    eventType: eventType
-  })
-    .then(result => {
-      if (result.data.success) {
-        obData.bookedCallTime = selectedSlot;
-        localStorage.setItem('ls-quote-data', JSON.stringify(obData));
-        // Show success and submit inquiry
-        alert('Call booked successfully! Check your email for the calendar invite.');
-        setTimeout(() => obCheckAndSubmit(), 500);
-      } else {
-        throw new Error(result.data.error);
-      }
-    })
-    .catch(error => {
-      console.error('Error booking call:', error);
-      alert('Error booking call: ' + error.message);
-      bookBtn.disabled = false;
-      bookBtn.textContent = 'Confirm Booking →';
-    });
-}
 
 function obSubmitQuiz() {
   // Capture all onboarding data including contact info and budget
