@@ -2302,6 +2302,14 @@
         <button class="ob-chip" data-val="outdoors" onclick="obToggleChip(this,'venue',true)">🌿 Outdoors</button>
       </div>
       <input class="ob-input" id="ob-venue-text" type="text" placeholder="Venue name or city (optional)" />
+      <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid rgba(201,169,110,0.2);">
+        <label class="onboarding-sub" style="display:block;margin-bottom:0.8rem;">Does the venue have a built-in bar?</label>
+        <div class="ob-chips" style="display:flex;gap:0.6rem;">
+          <button class="ob-chip" data-val="yes" onclick="obToggleChip(this,'hasBuiltInBar',true)">Yes</button>
+          <button class="ob-chip" data-val="no" onclick="obToggleChip(this,'hasBuiltInBar',true)">No</button>
+          <button class="ob-chip" data-val="unsure" onclick="obToggleChip(this,'hasBuiltInBar',true)">Unsure</button>
+        </div>
+      </div>
       <div class="ob-nav">
         <button class="ob-back" onclick="obGoTo(2)">← Back</button>
         <div style="display:flex;align-items:center;gap:0.6rem;">
@@ -2325,36 +2333,71 @@
         <div class="ob-cal-grid" id="ob-cal-grid"></div>
         <div class="ob-cal-label" id="ob-cal-label"></div>
       </div>
-      <div class="ob-time-wrap">
-        <span class="ob-time-label">Start time</span>
-        <select class="ob-time-select" id="ob-time" onchange="obTimeSelect(this.value)">
-          <option value="">— Select —</option>
-          <option value="10:00 AM">10:00 AM</option>
-          <option value="10:30 AM">10:30 AM</option>
-          <option value="11:00 AM">11:00 AM</option>
-          <option value="11:30 AM">11:30 AM</option>
-          <option value="12:00 PM">12:00 PM</option>
-          <option value="12:30 PM">12:30 PM</option>
-          <option value="1:00 PM">1:00 PM</option>
-          <option value="1:30 PM">1:30 PM</option>
-          <option value="2:00 PM">2:00 PM</option>
-          <option value="2:30 PM">2:30 PM</option>
-          <option value="3:00 PM">3:00 PM</option>
-          <option value="3:30 PM">3:30 PM</option>
-          <option value="4:00 PM">4:00 PM</option>
-          <option value="4:30 PM">4:30 PM</option>
-          <option value="5:00 PM">5:00 PM</option>
-          <option value="5:30 PM">5:30 PM</option>
-          <option value="6:00 PM">6:00 PM</option>
-          <option value="6:30 PM">6:30 PM</option>
-          <option value="7:00 PM">7:00 PM</option>
-          <option value="7:30 PM">7:30 PM</option>
-          <option value="8:00 PM">8:00 PM</option>
-          <option value="8:30 PM">8:30 PM</option>
-          <option value="9:00 PM">9:00 PM</option>
-          <option value="9:30 PM">9:30 PM</option>
-          <option value="10:00 PM">10:00 PM</option>
-        </select>
+      <div style="display:flex;gap:1rem;">
+        <div class="ob-time-wrap" style="flex:1;">
+          <span class="ob-time-label">Start time</span>
+          <select class="ob-time-select" id="ob-time" onchange="obTimeSelect(this.value)">
+            <option value="">— Select —</option>
+            <option value="10:00 AM">10:00 AM</option>
+            <option value="10:30 AM">10:30 AM</option>
+            <option value="11:00 AM">11:00 AM</option>
+            <option value="11:30 AM">11:30 AM</option>
+            <option value="12:00 PM">12:00 PM</option>
+            <option value="12:30 PM">12:30 PM</option>
+            <option value="1:00 PM">1:00 PM</option>
+            <option value="1:30 PM">1:30 PM</option>
+            <option value="2:00 PM">2:00 PM</option>
+            <option value="2:30 PM">2:30 PM</option>
+            <option value="3:00 PM">3:00 PM</option>
+            <option value="3:30 PM">3:30 PM</option>
+            <option value="4:00 PM">4:00 PM</option>
+            <option value="4:30 PM">4:30 PM</option>
+            <option value="5:00 PM">5:00 PM</option>
+            <option value="5:30 PM">5:30 PM</option>
+            <option value="6:00 PM">6:00 PM</option>
+            <option value="6:30 PM">6:30 PM</option>
+            <option value="7:00 PM">7:00 PM</option>
+            <option value="7:30 PM">7:30 PM</option>
+            <option value="8:00 PM">8:00 PM</option>
+            <option value="8:30 PM">8:30 PM</option>
+            <option value="9:00 PM">9:00 PM</option>
+            <option value="9:30 PM">9:30 PM</option>
+            <option value="10:00 PM">10:00 PM</option>
+          </select>
+        </div>
+        <div class="ob-time-wrap" style="flex:1;">
+          <span class="ob-time-label">End time</span>
+          <select class="ob-time-select" id="ob-end-time" onchange="obEndTimeSelect(this.value)">
+            <option value="">— Select —</option>
+            <option value="10:00 AM">10:00 AM</option>
+            <option value="10:30 AM">10:30 AM</option>
+            <option value="11:00 AM">11:00 AM</option>
+            <option value="11:30 AM">11:30 AM</option>
+            <option value="12:00 PM">12:00 PM</option>
+            <option value="12:30 PM">12:30 PM</option>
+            <option value="1:00 PM">1:00 PM</option>
+            <option value="1:30 PM">1:30 PM</option>
+            <option value="2:00 PM">2:00 PM</option>
+            <option value="2:30 PM">2:30 PM</option>
+            <option value="3:00 PM">3:00 PM</option>
+            <option value="3:30 PM">3:30 PM</option>
+            <option value="4:00 PM">4:00 PM</option>
+            <option value="4:30 PM">4:30 PM</option>
+            <option value="5:00 PM">5:00 PM</option>
+            <option value="5:30 PM">5:30 PM</option>
+            <option value="6:00 PM">6:00 PM</option>
+            <option value="6:30 PM">6:30 PM</option>
+            <option value="7:00 PM">7:00 PM</option>
+            <option value="7:30 PM">7:30 PM</option>
+            <option value="8:00 PM">8:00 PM</option>
+            <option value="8:30 PM">8:30 PM</option>
+            <option value="9:00 PM">9:00 PM</option>
+            <option value="9:30 PM">9:30 PM</option>
+            <option value="10:00 PM">10:00 PM</option>
+            <option value="11:00 PM">11:00 PM</option>
+            <option value="12:00 AM">12:00 AM</option>
+          </select>
+        </div>
       </div>
       <input type="hidden" id="ob-date" />
       <div class="ob-nav">
@@ -3063,16 +3106,37 @@
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Event Date</label>
-            <input type="date" name="event_date" class="form-input" />
+            <input type="date" name="event_date" class="form-input" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Event Start Time</label>
+            <input type="text" name="event_start_time" class="form-input" placeholder="e.g. 5:00 PM" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Event End Time</label>
+            <input type="text" name="event_end_time" class="form-input" placeholder="e.g. 11:00 PM" required />
           </div>
           <div class="form-group">
             <label class="form-label">Guest Count</label>
             <input type="text" name="guest_count" class="form-input" placeholder="Approx. number of guests" />
           </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Venue / Location</label>
-          <input type="text" name="venue" class="form-input" placeholder="Venue name or city" />
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Venue / Location</label>
+            <input type="text" name="venue" class="form-input" placeholder="Venue name or city" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Built-in Bar?</label>
+            <select name="has_built_in_bar" class="form-select form-input">
+              <option value="">Select...</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+              <option value="Unsure">Unsure</option>
+            </select>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">Bar Catering Budget <span style="font-weight:400;opacity:0.5;">(optional)</span></label>
@@ -3084,6 +3148,8 @@
         </div>
         <input type="hidden" name="email" id="form-email-hidden" />
         <input type="hidden" name="event_time" id="form-event-time" />
+        <input type="hidden" name="event_end_time" id="form-event-end-time" />
+        <input type="hidden" name="has_built_in_bar" id="form-has-built-in-bar" />
         <input type="hidden" name="drinks" id="form-drinks" />
         <input type="hidden" name="drink_detail" id="form-drink-detail" />
         <button type="submit" class="form-submit">Send My Inquiry →</button>
@@ -3525,6 +3591,10 @@ function obTimeSelect(val) {
   obCalRender(); // refresh label to show time
 }
 
+function obEndTimeSelect(val) {
+  obData.endTime = val;
+}
+
 function obGoTo(step) {
   const cur = document.getElementById(`ob-p${obStep}`);
   const nxt = document.getElementById(`ob-p${step}`);
@@ -3555,11 +3625,13 @@ function obFinish() {
   const venueTextEl   = document.getElementById('ob-venue-text');
   const dateEl        = document.getElementById('ob-date');
   const guestNumEl    = document.getElementById('ob-guest-num');
+  const endTimeEl     = document.getElementById('ob-end-time');
   if (drinkDetailEl) obData.drinkDetail = drinkDetailEl.value.trim();
   if (venueTextEl)   obData.venueText   = venueTextEl.value.trim();
   // obData.date is set directly by the calendar picker (obCalSelect)
   if (dateEl && dateEl.value && !obData.date) obData.date = dateEl.value.trim();
   if (guestNumEl)    obData.guestNum    = guestNumEl.value.trim();
+  if (endTimeEl)     obData.endTime     = endTimeEl.value.trim();
   localStorage.setItem('ls-quote-data', JSON.stringify(obData));
   chooseMode(obData.eventType || 'all');
   setTimeout(prefillForm, 450);
@@ -3607,9 +3679,32 @@ function prefillForm() {
     }
   }
 
-  // Time
+  // Time (start and end)
   const timeHidden = document.getElementById('form-event-time');
   if (timeHidden && d.time) timeHidden.value = d.time;
+
+  const startTimeInput = document.querySelector('input[name="event_start_time"]');
+  if (startTimeInput && d.time) startTimeInput.value = d.time;
+
+  const endTimeInput = document.querySelector('input[name="event_end_time"]');
+  if (endTimeInput && d.endTime) endTimeInput.value = d.endTime;
+
+  const endTimeHidden = document.getElementById('form-event-end-time');
+  if (endTimeHidden && d.endTime) endTimeHidden.value = d.endTime;
+
+  // Built-in bar
+  const builtInBarSelect = document.querySelector('select[name="has_built_in_bar"]');
+  if (builtInBarSelect && d.hasBuiltInBar) {
+    const barMap = { yes: 'Yes', no: 'No', unsure: 'Unsure' };
+    const barVal = barMap[d.hasBuiltInBar] || '';
+    Array.from(builtInBarSelect.options).forEach(o => { if (o.value === barVal) o.selected = true; });
+  }
+
+  const builtInBarHidden = document.getElementById('form-has-built-in-bar');
+  if (builtInBarHidden && d.hasBuiltInBar) {
+    const barMap = { yes: 'Yes', no: 'No', unsure: 'Unsure' };
+    builtInBarHidden.value = barMap[d.hasBuiltInBar] || '';
+  }
 
   // Drinks
   const drinksHidden = document.getElementById('form-drinks');
@@ -4062,21 +4157,23 @@ function handleSubmit(e) {
 
   // Capture lead data for Firestore
   const leadData = {
-    name:       form.querySelector('[name="from_name"]')?.value || '',
-    email:      emailVal,
-    phone:      form.querySelector('[name="phone"]')?.value || '',
-    eventType:  form.querySelector('[name="event_type"]')?.value || '',
-    eventDate:  form.querySelector('[name="event_date"]')?.value || '',
-    eventTime:  form.querySelector('[name="event_time"]')?.value || '',
-    guestCount: form.querySelector('[name="guest_count"]')?.value || '',
-    venue:      form.querySelector('[name="venue"]')?.value || '',
-    drinks:     form.querySelector('[name="drinks"]')?.value || '',
-    drinkDetail:form.querySelector('[name="drink_detail"]')?.value || '',
-    message:    form.querySelector('[name="message"]')?.value || '',
-    budget:     form.querySelector('[name="budget"]')?.value || '',
-    stage:      'New Lead',
-    source:     'Website Form',
-    createdAt:  firebase.firestore.FieldValue.serverTimestamp()
+    name:           form.querySelector('[name="from_name"]')?.value || '',
+    email:          emailVal,
+    phone:          form.querySelector('[name="phone"]')?.value || '',
+    eventType:      form.querySelector('[name="event_type"]')?.value || '',
+    eventDate:      form.querySelector('[name="event_date"]')?.value || '',
+    eventStartTime: form.querySelector('[name="event_start_time"]')?.value || '',
+    eventEndTime:   form.querySelector('[name="event_end_time"]')?.value || '',
+    guestCount:     form.querySelector('[name="guest_count"]')?.value || '',
+    venue:          form.querySelector('[name="venue"]')?.value || '',
+    hasBuiltInBar:  form.querySelector('[name="has_built_in_bar"]')?.value || '',
+    drinks:         form.querySelector('[name="drinks"]')?.value || '',
+    drinkDetail:    form.querySelector('[name="drink_detail"]')?.value || '',
+    message:        form.querySelector('[name="message"]')?.value || '',
+    budget:         form.querySelector('[name="budget"]')?.value || '',
+    stage:          'New Lead',
+    source:         'Website Form',
+    createdAt:      firebase.firestore.FieldValue.serverTimestamp()
   };
 
   // Save lead to Firestore (fire-and-forget — don't block EmailJS)
