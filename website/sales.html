@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Buy a Custom Mobile Bar — Lake Salt (Coming Soon)</title>
+  <meta name="description" content="Lake Salt is launching custom mobile bar builds. Modern wood mobile bars built to your specs — perfect for venues, caterers, and entrepreneurs starting their own mobile bar business. Join the waitlist." />
+  <meta name="keywords" content="custom mobile bar Utah, buy mobile bar, custom bar builds, wood bar fabrication, mobile bar for sale, start a mobile bar business" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://lakesalt.us/sales.html" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://lakesalt.us/sales.html" />
+  <meta property="og:title" content="Buy a Custom Mobile Bar — Lake Salt" />
+  <meta property="og:description" content="Custom-built mobile bars. Coming soon — join the waitlist." />
+
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": "Lake Salt Custom Mobile Bar",
+    "description": "Custom-built mobile wood bars made to your specifications. Each build is unique — finishes, branding, footprint, and storage all customized.",
+    "brand": { "@type": "Brand", "name": "Lake Salt" },
+    "offers": {
+      "@type": "Offer",
+      "availability": "https://schema.org/PreOrder",
+      "priceCurrency": "USD",
+      "url": "https://lakesalt.us/sales.html"
+    }
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <script src="firebase-config.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script>
+    if (window.FIREBASE_CONFIG) {
+      firebase.initializeApp(window.FIREBASE_CONFIG);
+      window._db = firebase.firestore();
+    }
+  </script>
+
+  <style>
+    :root {
+      --navy: #0C1526;
+      --navy-mid: #172038;
+      --navy-light: #243057;
+      --champagne: #C9A96E;
+      --champagne-lt: #DFC08A;
+      --ivory: #FAF8F4;
+      --cream: #F2EDE0;
+      --white: #FFFFFF;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', sans-serif; color: var(--navy); background: var(--ivory); line-height: 1.6; }
+    a { color: inherit; text-decoration: none; }
+
+    .navbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1.25rem 2rem;
+      background: rgba(12,21,38,0.92); backdrop-filter: blur(10px); color: var(--ivory);
+    }
+    .nav-logo { font-family: 'Cormorant Garamond', serif; font-size: 1.4rem; font-weight: 600; }
+    .nav-logo span { color: var(--champagne); font-style: italic; }
+    .nav-links { display: flex; gap: 1.75rem; list-style: none; font-size: 0.86rem; }
+    .nav-links a:hover { color: var(--champagne); }
+    .nav-cta {
+      background: var(--champagne); color: var(--navy);
+      padding: 0.6rem 1.2rem; border-radius: 999px;
+      font-size: 0.82rem; font-weight: 500;
+    }
+    @media (max-width: 720px) { .nav-links { display: none; } }
+
+    .hero {
+      min-height: 75vh; padding: 9rem 2rem 4rem;
+      background:
+        linear-gradient(135deg, var(--navy), var(--navy-mid));
+      color: var(--ivory);
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      text-align: center;
+      position: relative;
+    }
+    .hero::after {
+      content: '📸 Photos of our bar builds coming soon';
+      position: absolute; bottom: 1.25rem; left: 50%; transform: translateX(-50%);
+      font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--champagne); opacity: 0.7;
+    }
+    .pill {
+      display: inline-block; padding: 0.45rem 1.1rem;
+      border: 1px solid var(--champagne); border-radius: 999px;
+      font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--champagne); margin-bottom: 1.5rem;
+      background: rgba(201,169,110,0.08);
+    }
+    .hero h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2.6rem, 7vw, 5rem); font-weight: 500;
+      line-height: 1.05; margin-bottom: 1.25rem; max-width: 900px;
+    }
+    .hero h1 em { color: var(--champagne); font-style: italic; }
+    .hero p { max-width: 720px; font-size: 1.08rem; opacity: 0.92; margin-bottom: 2rem; }
+    .hero-cta {
+      display: inline-block; padding: 1rem 2rem; border-radius: 999px;
+      background: var(--champagne); color: var(--navy);
+      font-size: 0.95rem; font-weight: 500; letter-spacing: 0.05em;
+      transition: transform 0.15s ease, background 0.2s;
+    }
+    .hero-cta:hover { background: var(--champagne-lt); transform: translateY(-1px); }
+
+    .section { padding: 5rem 2rem; }
+    .section-inner { max-width: 1100px; margin: 0 auto; }
+    .eyebrow { display: inline-block; font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--champagne); margin-bottom: 0.6rem; }
+    .section-title {
+      font-family: 'Cormorant Garamond', serif; font-weight: 500;
+      font-size: clamp(1.8rem, 3.6vw, 2.8rem); line-height: 1.15;
+      margin-bottom: 0.6rem;
+    }
+    .section-title em { color: var(--champagne); font-style: italic; font-weight: 400; }
+    .section-sub { color: var(--navy-light); max-width: 700px; margin-bottom: 2.5rem; }
+
+    .process-grid {
+      display: grid; gap: 1.25rem;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+    .process-card {
+      background: var(--white); border-radius: 14px;
+      border: 1px solid rgba(12,21,38,0.08); padding: 1.75rem 1.5rem;
+    }
+    .process-card .num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2rem; color: var(--champagne); font-style: italic;
+      margin-bottom: 0.5rem;
+    }
+    .process-card h4 {
+      font-family: 'Cormorant Garamond', serif; font-size: 1.3rem;
+      font-weight: 600; margin-bottom: 0.5rem;
+    }
+    .process-card p { font-size: 0.9rem; color: var(--navy-light); }
+
+    .feature-grid {
+      display: grid; gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+    .feature {
+      background: var(--white); border-radius: 12px; padding: 1.25rem 1.4rem;
+      border: 1px solid rgba(12,21,38,0.06);
+      font-size: 0.92rem;
+    }
+    .feature strong { display: block; margin-bottom: 0.3rem; color: var(--navy); }
+
+    .form-section { background: var(--cream); }
+    form { display: grid; gap: 1rem; max-width: 680px; margin: 0 auto; }
+    form label { font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--navy-light); }
+    form input, form textarea, form select {
+      width: 100%; padding: 0.95rem 1rem;
+      border: 1px solid rgba(12,21,38,0.15); border-radius: 10px;
+      font-family: inherit; font-size: 0.95rem; background: var(--white);
+    }
+    form textarea { min-height: 130px; resize: vertical; }
+    form input:focus, form textarea:focus, form select:focus {
+      outline: 2px solid var(--champagne); border-color: var(--champagne);
+    }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
+    .submit-btn {
+      background: var(--champagne); color: var(--navy);
+      padding: 1.1rem; border: none; border-radius: 999px;
+      font-family: inherit; font-size: 0.95rem; font-weight: 500;
+      cursor: pointer; transition: background 0.2s;
+    }
+    .submit-btn:hover { background: var(--champagne-lt); }
+    .form-success { background: #dff5e3; color: #1a6b34; padding: 1rem 1.25rem; border-radius: 10px; display: none; }
+    .form-success.show { display: block; }
+
+    footer {
+      background: var(--navy); color: var(--ivory);
+      padding: 3rem 2rem 1.5rem; text-align: center;
+    }
+    footer a { color: var(--champagne); }
+    footer .f-copy { font-size: 0.8rem; opacity: 0.7; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="index.html" class="nav-logo">Lake <span>Salt</span></a>
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="index.html#services">Services</a></li>
+    <li><a href="index.html#pricing-packages">Pricing</a></li>
+    <li><a href="rentals.html">Rentals</a></li>
+    <li><a href="sales.html" style="color:var(--champagne);">Buy a Bar</a></li>
+  </ul>
+  <a href="#waitlist" class="nav-cta">Join Waitlist</a>
+</nav>
+
+<section class="hero">
+  <span class="pill">Custom Builds · Coming Soon</span>
+  <h1>Buy a <em>Lake Salt</em><br/>Mobile Bar.</h1>
+  <p>We build modern wood mobile bars to order. Whether you want one just like ours, or something completely your own — finishes, footprint, branding, all custom. Perfect for venues, caterers, restaurants, and entrepreneurs starting their own mobile bar business.</p>
+  <a href="#waitlist" class="hero-cta">Join the Waitlist →</a>
+</section>
+
+<section class="section">
+  <div class="section-inner" style="text-align:center;">
+    <span class="eyebrow">What You Get</span>
+    <h2 class="section-title">Built <em>your way</em>.</h2>
+    <p class="section-sub" style="margin:0 auto 2.5rem;">Every build is fully custom. Here&apos;s what comes standard — and everything else is yours to shape.</p>
+    <div class="feature-grid">
+      <div class="feature"><strong>Solid wood construction</strong>Premium hardwood frame, durable for years of event use.</div>
+      <div class="feature"><strong>Custom finish</strong>Stain, paint, or two-tone — pick your aesthetic.</div>
+      <div class="feature"><strong>Built-in storage</strong>Bottle racks, ice well, garnish trays — configured to your service style.</div>
+      <div class="feature"><strong>Mobile-ready</strong>Sturdy casters, breakdown-friendly footprint, fits standard cargo van.</div>
+      <div class="feature"><strong>Optional branding</strong>Engraved logo, custom signage panel, or LED accent lighting.</div>
+      <div class="feature"><strong>Front-of-house quality</strong>Built to match the look of any premium venue or wedding.</div>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="background: var(--cream);">
+  <div class="section-inner">
+    <div style="text-align:center;margin-bottom:2.5rem;">
+      <span class="eyebrow">Process</span>
+      <h2 class="section-title">From <em>idea</em> to <em>delivery</em>.</h2>
+    </div>
+    <div class="process-grid">
+      <div class="process-card">
+        <div class="num">01</div>
+        <h4>Consult</h4>
+        <p>Free 30-minute call to talk through your use case, footprint, branding, and timeline.</p>
+      </div>
+      <div class="process-card">
+        <div class="num">02</div>
+        <h4>Design</h4>
+        <p>We turn your inputs into a build spec — dimensions, materials, finishes, storage layout.</p>
+      </div>
+      <div class="process-card">
+        <div class="num">03</div>
+        <h4>Quote</h4>
+        <p>Concrete quote with timeline. 50% deposit secures your build slot.</p>
+      </div>
+      <div class="process-card">
+        <div class="num">04</div>
+        <h4>Build &amp; Deliver</h4>
+        <p>Build typically 6–10 weeks. Delivered locally; shipping available for out-of-state.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section form-section" id="waitlist">
+  <div class="section-inner">
+    <div style="text-align:center;margin-bottom:2.5rem;">
+      <span class="eyebrow">Waitlist</span>
+      <h2 class="section-title">Be <em>first</em> in line.</h2>
+      <p class="section-sub" style="margin:0 auto;">We&apos;re launching custom builds soon. Drop your details and we&apos;ll reach out the moment we open up build slots — plus you&apos;ll get founder pricing on the first round.</p>
+    </div>
+
+    <div id="sales-success" class="form-success" style="margin-bottom:1.5rem;">
+      You&apos;re on the list — talk soon.
+    </div>
+
+    <form id="sales-form" onsubmit="return submitWaitlist(event)">
+      <div class="form-row">
+        <div>
+          <label for="s-name">Your name</label>
+          <input id="s-name" name="name" required type="text" />
+        </div>
+        <div>
+          <label for="s-email">Email</label>
+          <input id="s-email" name="email" required type="email" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label for="s-phone">Phone (optional)</label>
+          <input id="s-phone" name="phone" type="tel" />
+        </div>
+        <div>
+          <label for="s-use">Primary use</label>
+          <select id="s-use" name="primaryUse">
+            <option value="">Pick one…</option>
+            <option value="own-mobile-bar">Starting my own mobile bar business</option>
+            <option value="venue">Venue / event space</option>
+            <option value="catering">Catering company</option>
+            <option value="restaurant">Restaurant / hospitality</option>
+            <option value="personal">Personal / home use</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label for="s-vision">What kind of bar do you want?</label>
+        <textarea id="s-vision" name="vision" placeholder="Style, size, color, branding, special features…"></textarea>
+      </div>
+
+      <div>
+        <label for="s-budget">Rough budget range (optional)</label>
+        <input id="s-budget" name="budget" type="text" placeholder="e.g. $4k–$8k" />
+      </div>
+
+      <button type="submit" class="submit-btn">Join Waitlist →</button>
+    </form>
+  </div>
+</section>
+
+<footer>
+  <div>
+    <a href="index.html" class="nav-logo">Lake <span>Salt</span></a>
+  </div>
+  <div style="margin-top:1rem;display:flex;justify-content:center;gap:1.5rem;flex-wrap:wrap;font-size:0.85rem;">
+    <a href="index.html">Home</a>
+    <a href="index.html#pricing-packages">Pricing</a>
+    <a href="rentals.html">Rentals</a>
+    <a href="sales.html">Buy a Bar</a>
+    <a href="recipes.html">Recipes</a>
+    <a href="index.html#contact">Contact</a>
+  </div>
+  <p class="f-copy">© 2025 Lake Salt Bartending · All Rights Reserved · Saratoga Springs, UT</p>
+</footer>
+
+<script>
+  async function submitWaitlist(e) {
+    e.preventDefault();
+    const data = {
+      intent: 'bar-sale',
+      source: 'sales.html',
+      name: document.getElementById('s-name').value.trim(),
+      email: document.getElementById('s-email').value.trim(),
+      phone: document.getElementById('s-phone').value.trim(),
+      primaryUse: document.getElementById('s-use').value,
+      vision: document.getElementById('s-vision').value.trim(),
+      budget: document.getElementById('s-budget').value.trim(),
+      createdAt: new Date().toISOString()
+    };
+    try {
+      if (window._db) {
+        await window._db.collection('leads').add(data);
+      }
+      document.getElementById('sales-success').classList.add('show');
+      document.getElementById('sales-form').reset();
+    } catch (err) {
+      console.error(err);
+      alert('Something went wrong. Please email hello@lakesalt.us and we\'ll add you manually.');
+    }
+    return false;
+  }
+</script>
+
+</body>
+</html>
