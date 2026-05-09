@@ -2138,7 +2138,7 @@
     /* ─────────────────────────────────────────
        WEDDING FEATURE
     ───────────────────────────────────────── */
-    .wedding-feature { background: var(--cream); overflow: hidden; }
+    .wedding-feature { background: var(--cream); overflow: hidden; content-visibility: auto; contain-intrinsic-size: 1px 900px; }
     .wedding-feature-grid {
       max-width: 1200px;
       margin: 0 auto;
@@ -2224,7 +2224,7 @@
     /* ─────────────────────────────────────────
        DRY HIRE SECTION
     ───────────────────────────────────────── */
-    .dry-hire { background: var(--navy); color: var(--white); position: relative; overflow: hidden; }
+    .dry-hire { background: var(--navy); color: var(--white); position: relative; overflow: hidden; content-visibility: auto; contain-intrinsic-size: 1px 900px; }
     .dry-hire::before {
       content: '';
       position: absolute;
@@ -2351,7 +2351,7 @@
     /* ─────────────────────────────────────────
        SERVICES
     ───────────────────────────────────────── */
-    .services { background: var(--ivory); }
+    .services { background: var(--ivory); content-visibility: auto; contain-intrinsic-size: 1px 800px; }
     .services-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -2528,7 +2528,7 @@
     /* ─────────────────────────────────────────
        GALLERY
     ───────────────────────────────────────── */
-    .gallery-section { background: var(--cream); }
+    .gallery-section { background: var(--cream); content-visibility: auto; contain-intrinsic-size: 1px 900px; }
     .gallery-strip {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -2601,6 +2601,8 @@
       position: relative;
       background-color: var(--ivory);
       isolation: isolate;
+      content-visibility: auto;
+      contain-intrinsic-size: 1px 700px;
     }
     .testimonials::before {
       content: ''; position: absolute; inset: 0; z-index: -1;
@@ -2740,6 +2742,8 @@
       position: relative;
       background-color: var(--ivory);
       isolation: isolate;
+      content-visibility: auto;
+      contain-intrinsic-size: 1px 700px;
     }
     .faq-section::before {
       content: ''; position: absolute; inset: 0; z-index: -1;
@@ -2766,6 +2770,8 @@
       position: relative;
       background-color: var(--ivory);
       isolation: isolate;
+      content-visibility: auto;
+      contain-intrinsic-size: 1px 1400px;
     }
     #pricing-packages::before {
       content: ''; position: absolute; inset: 0; z-index: -1;
@@ -3372,7 +3378,7 @@
     /* ─────────────────────────────────────────
        HOW PRICING WORKS (replaces Packages)
     ───────────────────────────────────────── */
-    .pricing-section { background: var(--navy); overflow: hidden; position: relative; }
+    .pricing-section { background: var(--navy); overflow: hidden; position: relative; content-visibility: auto; contain-intrinsic-size: 1px 1100px; }
     .pricing-section::before {
       content: '';
       position: absolute;
@@ -5196,15 +5202,31 @@ function buildReviewCard(r) {
 }
 
 // Holographic rotating border on the booking form (matches fuseprints.com)
+// Only ticks while the form is on-screen — saves CPU/GPU when scrolled away.
 (function startHoloAngle() {
   const card = document.getElementById('holo-form-card');
   if (!card) return;
   if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   let angle = 0;
-  setInterval(() => {
+  let timer = null;
+  const tick = () => {
     angle = (angle + 2) % 360;
     card.style.setProperty('--holo-angle', angle + 'deg');
-  }, 40);
+  };
+  const start = () => { if (!timer) timer = setInterval(tick, 40); };
+  const stop  = () => { if (timer) { clearInterval(timer); timer = null; } };
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver(entries => {
+      entries[0].isIntersecting ? start() : stop();
+    }, { rootMargin: '120px' });
+    io.observe(card);
+  } else {
+    start();
+  }
+  // Stop when tab is hidden (saves battery/cpu)
+  document.addEventListener('visibilitychange', () => {
+    document.hidden ? stop() : (card.getBoundingClientRect().bottom > 0 && start());
+  });
 })();
 
 function scrollReviews(dir) {
@@ -6009,17 +6031,28 @@ function initHeroAnimations() {
     .to('#hero-scroll',  { opacity: 1, duration: 0.6 }, '-=0.3');
 }
 
-/* ─── NAVBAR ─── */
+/* ─── NAVBAR + PROGRESS BAR (combined, rAF-throttled, passive) ─── */
 const navbar = document.getElementById('navbar');
+const _progressBar = document.getElementById('progress-bar');
+let _scrollTicking = false;
+function _onScroll() {
+  if (_scrollTicking) return;
+  _scrollTicking = true;
+  requestAnimationFrame(() => {
+    const sy = window.scrollY;
+    if (navbar) navbar.classList.toggle('scrolled', sy > 60);
+    if (_progressBar) {
+      const h = document.documentElement;
+      const pct = (sy / (h.scrollHeight - h.clientHeight)) * 100;
+      _progressBar.style.width = pct + '%';
+    }
+    _scrollTicking = false;
+  });
+}
+window.addEventListener('scroll', _onScroll, { passive: true });
+// Legacy no-op scroll listener kept (replaced by _onScroll above)
 window.addEventListener('scroll', () => {
-  navbar.classList.toggle('scrolled', window.scrollY > 60);
-});
-
-/* ─── PROGRESS BAR ─── */
-window.addEventListener('scroll', () => {
-  const h = document.documentElement;
-  const pct = (window.scrollY / (h.scrollHeight - h.clientHeight)) * 100;
-  document.getElementById('progress-bar').style.width = pct + '%';
+  // intentionally empty — old progress-bar handler superseded
 });
 
 /* ─── CUSTOM CURSOR ─── */
