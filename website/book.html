@@ -55,7 +55,7 @@
     }
 
     /* ─── Starfield (canvas-driven) ───────────────────────────────────────
-     * Single fixed <canvas> element; JS draws ~80 stars + 6 fireflies in a
+     * Single fixed <canvas> element; JS draws ~80 drifting stars in a
      * requestAnimationFrame loop. Much smoother than CSS box-shadow with
      * hundreds of stops, and animation pauses when the tab is hidden.
      * ─────────────────────────────────────────────────────────────────── */
@@ -856,8 +856,8 @@
   const savePublicLeadFn = fns.httpsCallable('savePublicLead');
 
   /* ─── Starfield (canvas) ─────────────────────────────────────────────────
-   * 60fps render loop with three drifting star tiers + a handful of fireflies
-   * that wander on a smooth Lissajous curve. Pauses on tab hide.
+   * 60fps render loop with three drifting star tiers (small/medium/bright).
+   * Pauses on tab hide.
    * Stars are seeded across the entire viewport on init so there's no slow
    * "fade-in" — the field is full from frame 1.
    * ─────────────────────────────────────────────────────────────────────── */
