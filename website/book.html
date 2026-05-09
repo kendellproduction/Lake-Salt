@@ -19,6 +19,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+  <script src="/analytics.js" defer></script>
 
   <style>
     :root {
@@ -941,37 +942,19 @@
     });
   })();
 
-  /* ─── Lightweight analytics ───────────────────────────────────────────────
-   * Writes one Firestore doc per significant page event to /page_events.
-   * Used to gauge expo traffic, completion rate, drop-off step, etc.
-   * Best-effort — never blocks UI. Anonymous sessionId only; no PII unless
-   * explicitly passed.
+  /* ─── Analytics ────────────────────────────────────────────────────────
+   * The shared /analytics.js module exposes window.lsTrack(event, props) and
+   * auto-tracks page_view, element_click, scroll_depth, session_summary.
+   * Inside /book we emit the same event names with extra wizard context.
+   * If the shared module hasn't loaded yet, calls become no-ops.
    * ─────────────────────────────────────────────────────────────────────── */
-  const _sessionId = (function () {
-    try {
-      let s = sessionStorage.getItem('lsBookSessionId');
-      if (!s) {
-        s = Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-        sessionStorage.setItem('lsBookSessionId', s);
-      }
-      return s;
-    } catch (e) { return Math.random().toString(36).slice(2, 10); }
-  })();
   function track(event, props) {
-    try {
-      db.collection('page_events').add({
-        sessionId: _sessionId,
-        page: '/book',
-        event,
-        props: props || {},
-        ua: (navigator.userAgent || '').slice(0, 200),
-        referrer: document.referrer || '',
-        utmSource: (typeof url !== 'undefined' && url.searchParams.get('utm_source')) || '',
-        infoOnly: !!(typeof state !== 'undefined' && state.infoOnly),
-        fromExpo: !!(typeof state !== 'undefined' && state.fromExpo),
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-      });
-    } catch (e) { /* ignore */ }
+    if (typeof window.lsTrack !== 'function') return;
+    const merged = Object.assign({}, props || {}, {
+      infoOnly: !!(typeof state !== 'undefined' && state.infoOnly),
+      fromExpo: !!(typeof state !== 'undefined' && state.fromExpo),
+    });
+    window.lsTrack(event, merged);
   }
 
   /* ─── State ─── */
@@ -1680,10 +1663,10 @@
   /* Initial chrome state */
   updateChrome();
 
-  /* ─── Analytics ─── */
-  track('page_view');
-
-  /* Track abandonment when the page is hidden mid-wizard */
+  /* ─── Analytics ─────────────────────────────────────────────────────────
+   * page_view is fired automatically by /analytics.js. /book adds wizard-
+   * specific events on top: wizard_step_view, wizard_submitted, raffle_submitted,
+   * wizard_abandoned. Each piggybacks on lsTrack via the local track() shim. */
   let _abandonTracked = false;
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden' && currentStep > 0 && currentStep < 10 && !_abandonTracked) {
