@@ -8,7 +8,7 @@ service cloud.firestore {
              exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    // ── leads — public create (website form), admin everything else ──
+    // ── leads — public create (website form + /expo raffle), admin everything else ──
     match /leads/{id} {
       allow create: if true;
       allow read, update, delete: if isAdmin();
@@ -35,5 +35,19 @@ service cloud.firestore {
 
     // ── Activity log — admin write + read ──
     match /activity/{id}   { allow read, write: if isAdmin(); }
+
+    // ── Closer-mode supporting collections ──
+    // call_bookings: created by Cloud Function (admin SDK bypasses rules); admins read/write.
+    match /call_bookings/{id}    { allow read, write: if isAdmin(); }
+    // kendell_followups: manual Chase-invoice tasks; created by Cloud Function; admin only.
+    match /kendell_followups/{id} { allow read, write: if isAdmin(); }
+
+    // ── Analytics: anonymous page_view / wizard_step events. Public CREATE
+    //    only (never read/update/delete from the client). Admins can read.
+    match /page_events/{id} {
+      allow create: if true;
+      allow read:   if isAdmin();
+      allow update, delete: if false;
+    }
   }
 }

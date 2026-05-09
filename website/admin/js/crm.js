@@ -2,7 +2,14 @@
    MODULE 1 — CRM & LEAD PIPELINE
 ══════════════════════════════════════ */
 
-const CRM_STAGES = ['New Lead', 'Contacted', 'Proposal Sent', 'Booked', 'Completed', 'Lost'];
+const CRM_STAGES = ['New Lead', 'Call Scheduled', 'Contacted', 'Proposal Sent', 'Booked-Tentative', 'Booked', 'Completed', 'Lost'];
+
+/* Campaign cohorts — track at-event lead generation. */
+const CRM_COHORTS = [
+  { id: '', label: 'All Leads' },
+  { id: 'WeddingExpo2026-05-09', label: 'Wedding Expo · 5/9' },
+];
+let crmActiveCohort = '';
 
 async function renderCRM() {
   const c = document.getElementById('module-container');
@@ -14,6 +21,21 @@ async function renderCRM() {
       </div>
       <button class="btn btn-primary" onclick="openAddLeadModal()">+ Add Lead</button>
     </div>
+
+    <div class="cohort-tabs" id="cohort-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px 0">
+      ${CRM_COHORTS.map(co => `
+        <button type="button" class="cohort-chip${co.id === crmActiveCohort ? ' active' : ''}"
+                data-cohort="${co.id}"
+                onclick="setCohort('${co.id}')"
+                style="font-family:inherit;font-size:12px;font-weight:600;letter-spacing:0.04em;padding:6px 14px;border-radius:999px;cursor:pointer;border:1.5px solid var(--border,rgba(255,245,235,0.18));background:${co.id === crmActiveCohort ? 'var(--gold,#C9A96E)' : 'transparent'};color:${co.id === crmActiveCohort ? '#fff' : 'var(--text,#F2EAE2)'}">
+          ${co.label}
+        </button>`).join('')}
+    </div>
+
+    <div id="cohort-stats" style="display:none;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.25);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:var(--text,#F2EAE2);">
+      <span id="cohort-stats-text"></span>
+    </div>
+
     <div class="filter-bar">
       <input class="search-input" id="crm-search" placeholder="🔍 Search leads…" oninput="filterKanban()"/>
       <select class="filter-select" id="crm-filter-type" onchange="filterKanban()">
@@ -48,6 +70,11 @@ function renderKanban(filter = '') {
   const search   = (document.getElementById('crm-search')?.value || '').toLowerCase();
   const typeFilter = document.getElementById('crm-filter-type')?.value || '';
 
+  /* Apply cohort filter first so stats reflect the same set as the kanban. */
+  const cohortFiltered = Object.values(crmLeads).filter(l =>
+    !crmActiveCohort || l.campaign === crmActiveCohort
+  );
+
   CRM_STAGES.forEach(stage => {
     const colId = 'col-' + stage.replace(/\s/g,'-');
     const cntId = 'col-count-' + stage.replace(/\s/g,'-');
@@ -55,8 +82,11 @@ function renderKanban(filter = '') {
     const cnt = document.getElementById(cntId);
     if (!col || !cnt) return;
 
-    const leads = Object.values(crmLeads).filter(l => {
-      if (l.stage !== stage) return false;
+    /* "Booked-Tentative" stage should also catch legacy "Booked" leads only when
+       a real "Booked-Tentative" stage isn't set. Each lead matches exactly one column. */
+    const leads = cohortFiltered.filter(l => {
+      const stageNorm = l.stage || 'New Lead';
+      if (stageNorm !== stage) return false;
       if (search && !`${l.name}${l.email}${l.phone}${l.eventType}`.toLowerCase().includes(search)) return false;
       if (typeFilter && l.eventType !== typeFilter) return false;
       return true;
@@ -66,6 +96,45 @@ function renderKanban(filter = '') {
     col.innerHTML   = leads.length ? leads.map(leadCardHTML).join('') :
       `<div style="text-align:center;padding:20px 10px;color:var(--text-muted);font-size:12px">No leads</div>`;
   });
+
+  renderCohortStats(cohortFiltered);
+}
+
+function renderCohortStats(filtered) {
+  const wrap = document.getElementById('cohort-stats');
+  const text = document.getElementById('cohort-stats-text');
+  if (!wrap || !text) return;
+  if (!crmActiveCohort) { wrap.style.display = 'none'; return; }
+
+  const counts = {
+    raffle:  filtered.filter(l => l.source === 'Expo Raffle').length,
+    chat:    filtered.filter(l => l.source === 'Expo Booth Chat' || l.source === 'Expo Curious Browse').length,
+    consult: filtered.filter(l => l.source === 'Expo Wants Consult').length,
+    locked:  filtered.filter(l => l.stage === 'Booked-Tentative' || l.stage === 'Booked').length,
+    contacted: filtered.filter(l => l.stage === 'Contacted' || l.stage === 'Proposal Sent').length,
+  };
+  const cohort = CRM_COHORTS.find(c => c.id === crmActiveCohort);
+  text.innerHTML = `
+    <strong>${cohort ? cohort.label : 'Cohort'}</strong> · ${filtered.length} total
+    &nbsp;·&nbsp; ${counts.raffle} raffle entries
+    &nbsp;·&nbsp; ${counts.chat} booth chats
+    &nbsp;·&nbsp; ${counts.consult} consult requests
+    &nbsp;·&nbsp; <strong style="color:#16a34a">${counts.locked} locked</strong>
+    &nbsp;·&nbsp; ${counts.contacted} contacted
+  `;
+  wrap.style.display = 'block';
+}
+
+function setCohort(id) {
+  crmActiveCohort = id;
+  /* Update chip styles without re-rendering everything (preserves search input focus). */
+  document.querySelectorAll('.cohort-chip').forEach(chip => {
+    const isActive = chip.dataset.cohort === id;
+    chip.style.background = isActive ? 'var(--gold,#C9A96E)' : 'transparent';
+    chip.style.color = isActive ? '#fff' : 'var(--text,#F2EAE2)';
+    chip.classList.toggle('active', isActive);
+  });
+  renderKanban();
 }
 
 function filterKanban() { renderKanban(); }

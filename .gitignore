@@ -39,6 +39,8 @@ service-account.json
 *-service-account.json
 firebase-adminsdk*.json
 google-credentials.json
+lake-salt-calendar-key.json
+lakesalt-*.json
 .firebase/
 firebase-debug.log
 firestore-debug.log
