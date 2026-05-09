@@ -13,6 +13,10 @@ const CALL_DURATION_MINUTES = 15;
 const CALL_WINDOW_DAYS = 14;                 // bride must book within 14 days of submitting
 const CAMPAIGN_TAG_DEFAULT = 'WeddingExpo2026-05-09';
 
+/* Lake Salt can run up to two weddings on the same date (one team, half-day
+ * each — afternoon and evening). Beyond this the date is fully booked. */
+const MAX_EVENTS_PER_DAY = 2;
+
 /* Default availability — weekdays 5:00 PM to 7:30 PM Mountain.
  * Each entry is local-time hour-min pairs, repeating Mon-Fri.
  * Phase 2: read this from Firestore so Kendell can edit without a deploy. */
@@ -313,6 +317,49 @@ exports.savePublicLead = onCall(async (request) => {
  * - For the rare case Kendell wants to lock a wedding date AFTER the call
  *   (e.g., quote accepted on the call). Just Firestore — no calendar.
  * ══════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════
+ * STAFF-ONLY: get capacity status for a date
+ * - Returns { count, capacity, status } where status is one of:
+ *     'open'  → 0 / 2
+ *     'half'  → 1 / 2
+ *     'full'  → 2 / 2
+ * - Lists which leads occupy the slots so the CRM can show who they are.
+ * ══════════════════════════════════════════════════════════════════════════ */
+exports.getDateCapacity = onCall(async (request) => {
+  await requireAdmin(request);
+  const data = (request && request.data) || {};
+  const { date } = data;
+
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new HttpsError('invalid-argument', 'date must be YYYY-MM-DD');
+  }
+
+  const snap = await db.collection('leads')
+    .where('eventDate', '==', date)
+    .where('stage', 'in', ['Booked-Tentative', 'Booked', 'Completed'])
+    .get();
+
+  const occupants = snap.docs.map(d => ({
+    leadId: d.id,
+    name: d.data().name || '',
+    eventType: d.data().eventType || '',
+    stage: d.data().stage,
+  }));
+
+  const status = occupants.length === 0 ? 'open'
+              : occupants.length < MAX_EVENTS_PER_DAY ? 'half'
+              : 'full';
+
+  return {
+    success: true,
+    date,
+    count: occupants.length,
+    capacity: MAX_EVENTS_PER_DAY,
+    status,
+    occupants,
+  };
+});
+
 exports.markBooked = onCall(async (request) => {
   const adminUser = await requireAdmin(request);
   const data = (request && request.data) || {};
@@ -322,18 +369,21 @@ exports.markBooked = onCall(async (request) => {
     throw new HttpsError('invalid-argument', 'leadId + eventDate (YYYY-MM-DD) required.');
   }
 
-  /* Atomic date-conflict check inside transaction. */
+  /* Atomic date-conflict check inside transaction.
+   * Allow up to MAX_EVENTS_PER_DAY (2) weddings on the same date so we can
+   * run a half-day-afternoon + half-day-evening pairing. */
   const result = await db.runTransaction(async (tx) => {
     const conflictSnap = await tx.get(
       db.collection('leads')
         .where('eventDate', '==', eventDate)
         .where('stage', 'in', ['Booked-Tentative', 'Booked', 'Completed'])
     );
-    const conflicts = conflictSnap.docs.filter(d => d.id !== leadId);
-    if (conflicts.length) {
+    const others = conflictSnap.docs.filter(d => d.id !== leadId);
+    if (others.length >= MAX_EVENTS_PER_DAY) {
+      const names = others.slice(0, MAX_EVENTS_PER_DAY).map(d => d.data().name || 'another lead').join(' & ');
       throw new HttpsError(
         'failed-precondition',
-        `Date already taken by ${conflicts[0].data().name || 'another lead'}.`
+        `Date fully booked (${MAX_EVENTS_PER_DAY}/${MAX_EVENTS_PER_DAY} weddings already): ${names}.`
       );
     }
 
