@@ -5,6 +5,31 @@ None of them block the expo. Tackle them the week of May 11 in priority order.
 
 ---
 
+## 🚦 Priority 0 — Recipe automation for SEO (the biggest organic-traffic lever)
+
+**Why this matters most**: Lake Salt's Wedding Expo cohort showed 35% of brides are 12+ months out from their wedding. The single best way to capture them later is to be the top organic result when they finally Google "wedding bartender utah." Recipe content is the cheapest, fastest path there.
+
+### Mechanics
+- **Fresh content frequency** is one of Google's strongest local-business signals
+- **Recipe schema markup** (`@type: Recipe`) gets you into the recipe carousel — huge visibility
+- **Long-tail recipe queries** ("citrus rosemary spritz utah") are easier to rank for than "wedding bartender utah"
+- **Internal linking** from recipes back to /book and / distributes domain authority to your money pages
+
+### Build (~6-10 hours)
+1. New Firestore collection `recipes` with fields: `slug, title, ingredients, instructions, mocktail (bool), seasonality, heroImage, publishedAt, schemaJson, published (bool)`
+2. New static page `website/recipes/<slug>.html` per recipe (Cloud Function generates these on publish, OR use a single dynamic page that hydrates from Firestore on load)
+3. Auto-generated Recipe schema JSON-LD per page
+4. Cloud Scheduler cron: every Tuesday 9 AM Mountain → publish next queued recipe → bump sitemap
+5. Pre-write 12-20 recipes, queue them, autopilot from there
+
+### Quick win Kendell can do TODAY without code
+- Open `website/recipes.html`
+- Make sure each recipe has a unique `<h2>` and Recipe schema JSON-LD
+- Submit sitemap to Google Search Console
+- Re-publish manually each week with one new recipe
+
+---
+
 ## 🚦 Priority 1 — Admin lead + analytics dashboard
 
 **The need:** "Can we add a page in the admin section for me to watch leads in
