@@ -46,25 +46,34 @@ async function renderExpo() {
       ${[1,2,3,4,5].map(()=>`<div class="stat-card"><div class="skeleton skeleton-line w-1/4" style="height:11px;margin-bottom:10px;"></div><div class="skeleton skeleton-line w-1/2" style="height:28px;"></div></div>`).join('')}
     </div>
 
-    <!-- Charts row -->
+    <!-- Charts row — each canvas wrapped in a height-bounded div so
+         Chart.js's maintainAspectRatio:false doesn't let them grow forever. -->
     <div class="dashboard-grid" style="grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
       <div class="card">
         <div class="card-header"><span class="card-title">Wedding-date distribution</span><span class="text-muted" id="expo-distro-sub" style="font-size:12px"></span></div>
-        <canvas id="expo-distro-chart" height="240"></canvas>
+        <div style="position:relative;height:260px;width:100%">
+          <canvas id="expo-distro-chart"></canvas>
+        </div>
       </div>
       <div class="card">
         <div class="card-header"><span class="card-title">/book funnel</span><span class="text-muted" id="expo-funnel-sub" style="font-size:12px"></span></div>
-        <canvas id="expo-funnel-chart" height="240"></canvas>
+        <div style="position:relative;height:260px;width:100%">
+          <canvas id="expo-funnel-chart"></canvas>
+        </div>
       </div>
     </div>
     <div class="dashboard-grid" style="grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
       <div class="card">
         <div class="card-header"><span class="card-title">Traffic by hour (campaign window)</span></div>
-        <canvas id="expo-hourly-chart" height="200"></canvas>
+        <div style="position:relative;height:220px;width:100%">
+          <canvas id="expo-hourly-chart"></canvas>
+        </div>
       </div>
       <div class="card">
         <div class="card-header"><span class="card-title">Sources</span></div>
-        <canvas id="expo-source-chart" height="200"></canvas>
+        <div style="position:relative;height:220px;width:100%">
+          <canvas id="expo-source-chart"></canvas>
+        </div>
       </div>
     </div>
 
