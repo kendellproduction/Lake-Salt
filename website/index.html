@@ -225,13 +225,17 @@
       }
     }
   </script>
-  <!-- ANALYTICS HELPER — central place for all custom event tracking.
-       To activate Firebase Analytics: in Firebase Console → Analytics → Get Started, then add
-       "measurementId": "G-XXXXXXXX" to your firebase-config.js. Until then, events log to the
-       console only (visible in DevTools), so we can verify wiring before going live. -->
+  <!-- ANALYTICS — external script auto-tracks page views, clicks, scroll depth, session summary. -->
+  <script src="/analytics.js" defer></script>
+  <!-- Local trackEvent() helper for explicit conversion events (lead submitted, CTA clicked, quiz step).
+       Routes through window.lsTrack (from analytics.js) when available, else falls back to Firebase Analytics or console. -->
   <script>
     window.trackEvent = function(eventName, params) {
       try {
+        if (typeof window.lsTrack === 'function') {
+          window.lsTrack(eventName, params || {});
+          return;
+        }
         if (window._analytics && typeof window._analytics.logEvent === 'function') {
           window._analytics.logEvent(eventName, params || {});
         } else {

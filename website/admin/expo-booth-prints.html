@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Lake Salt — Expo Booth Print-Outs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --navy: #0C1526;
+      --navy-mid: #172038;
+      --champagne: #C9A96E;
+      --champagne-lt: #DFC08A;
+      --ivory: #FAF8F4;
+      --cream: #F2EDE0;
+      --charcoal: #1A1A1A;
+      --muted: #787878;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #888;
+      padding: 32px 16px;
+      color: var(--charcoal);
+    }
+    .toolbar {
+      max-width: 8.5in;
+      margin: 0 auto 24px;
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+    .toolbar h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 22px;
+      font-weight: 500;
+      color: var(--navy);
+    }
+    .toolbar p {
+      font-size: 12px;
+      color: var(--muted);
+      max-width: 480px;
+    }
+    .toolbar button {
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px 22px;
+      background: var(--navy);
+      color: var(--ivory);
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    /* ─── Page sheet — US Letter (8.5×11) ─── */
+    .sheet {
+      width: 8.5in;
+      min-height: 11in;
+      margin: 0 auto 24px;
+      padding: 0.5in;
+      background: white;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      page-break-after: always;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ─── Sign 1 — Table tent (8x6", quarter-page top half) ─── */
+    .sign-table-tent {
+      background: var(--navy);
+      color: var(--ivory);
+      border-radius: 12px;
+      padding: 0.4in;
+      text-align: center;
+      flex: 0 0 auto;
+      margin-bottom: 0.4in;
+    }
+    .sign-table-tent .brand {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 28pt;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .sign-table-tent .brand em {
+      color: var(--champagne);
+      font-style: italic;
+      font-weight: 400;
+    }
+    .sign-table-tent .tag {
+      font-size: 9pt;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--champagne-lt);
+      margin-bottom: 18px;
+    }
+    .sign-table-tent .prize-pill {
+      display: inline-block;
+      padding: 5px 18px;
+      border: 1.5px solid var(--champagne);
+      border-radius: 999px;
+      font-size: 9pt;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--champagne-lt);
+      margin-bottom: 12px;
+    }
+    .sign-table-tent .head {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 32pt;
+      font-weight: 500;
+      line-height: 1.1;
+      color: var(--ivory);
+      margin-bottom: 8px;
+    }
+    .sign-table-tent .head em {
+      font-style: italic;
+      color: var(--champagne);
+      font-weight: 500;
+    }
+    .sign-table-tent .sub {
+      font-size: 11pt;
+      color: rgba(250,248,244,0.75);
+      margin-bottom: 16px;
+      max-width: 5.5in;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .qr-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+      margin-top: 8px;
+    }
+    .qr-row img {
+      width: 2.4in;
+      height: 2.4in;
+      background: var(--ivory);
+      padding: 8px;
+      border-radius: 14px;
+    }
+    .qr-side {
+      text-align: left;
+    }
+    .qr-side .scan {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 26pt;
+      font-weight: 500;
+      color: var(--ivory);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .qr-side .scan em { font-style: italic; color: var(--champagne); }
+    .qr-side ol {
+      list-style: none;
+      counter-reset: step;
+    }
+    .qr-side ol li {
+      counter-increment: step;
+      font-size: 11pt;
+      color: rgba(250,248,244,0.85);
+      padding: 4px 0 4px 28px;
+      position: relative;
+    }
+    .qr-side ol li::before {
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 4px;
+      width: 20px;
+      height: 20px;
+      background: var(--champagne);
+      color: var(--navy);
+      border-radius: 50%;
+      font-size: 10pt;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .footer-line {
+      margin-top: 16px;
+      font-size: 9pt;
+      color: rgba(250,248,244,0.55);
+      letter-spacing: 0.04em;
+    }
+
+    /* ─── Sign 2 — Soft-close script (4x6 card, lower half) ─── */
+    .sign-script {
+      background: var(--ivory);
+      border: 2px solid var(--navy);
+      border-radius: 12px;
+      padding: 0.35in;
+      flex: 1 1 auto;
+    }
+    .sign-script h2 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 22pt;
+      font-weight: 500;
+      color: var(--navy);
+      margin-bottom: 4px;
+    }
+    .sign-script h2 em { font-style: italic; color: var(--champagne); }
+    .sign-script .lead {
+      font-size: 9pt;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .script-block {
+      background: var(--cream);
+      border-left: 3px solid var(--champagne);
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      border-radius: 6px;
+    }
+    .script-block .label {
+      font-size: 8pt;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--champagne);
+      margin-bottom: 4px;
+    }
+    .script-block .quote {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 14pt;
+      font-style: italic;
+      color: var(--navy);
+      line-height: 1.4;
+    }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .step-box {
+      border: 1px solid rgba(12,21,38,0.18);
+      border-radius: 8px;
+      padding: 10px 12px;
+      background: white;
+    }
+    .step-box .num {
+      display: inline-block;
+      width: 22px;
+      height: 22px;
+      background: var(--champagne);
+      color: var(--navy);
+      border-radius: 50%;
+      font-size: 11pt;
+      font-weight: 700;
+      text-align: center;
+      line-height: 22px;
+      margin-right: 6px;
+    }
+    .step-box h3 {
+      display: inline;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 13pt;
+      font-weight: 500;
+      color: var(--navy);
+    }
+    .step-box p {
+      font-size: 9.5pt;
+      color: var(--charcoal);
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+    .step-box code {
+      font-family: ui-monospace, SF Mono, Menlo, monospace;
+      font-size: 8.5pt;
+      background: var(--navy);
+      color: var(--champagne-lt);
+      padding: 2px 6px;
+      border-radius: 4px;
+      letter-spacing: 0.02em;
+    }
+
+    /* ─── Cut-out cards page (4 staff lanyard cards) ─── */
+    .cards-page {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 0.25in;
+      flex: 1;
+    }
+    .lanyard-card {
+      background: var(--navy);
+      color: var(--ivory);
+      border-radius: 10px;
+      padding: 0.25in;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      page-break-inside: avoid;
+    }
+    .lanyard-card .lc-brand {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 14pt;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .lanyard-card .lc-brand em { color: var(--champagne); font-style: italic; }
+    .lanyard-card .lc-title {
+      font-size: 8pt;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--champagne-lt);
+      margin-bottom: 8px;
+    }
+    .lanyard-card .lc-quote {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 11pt;
+      font-style: italic;
+      line-height: 1.35;
+      color: rgba(250,248,244,0.95);
+      flex: 1;
+    }
+    .lanyard-card .lc-foot {
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,0.18);
+      font-size: 8pt;
+      color: rgba(250,248,244,0.7);
+      line-height: 1.5;
+    }
+    .lanyard-card .lc-foot b { color: var(--champagne); }
+
+    @media print {
+      body { background: white; padding: 0; }
+      .toolbar { display: none; }
+      .sheet { box-shadow: none; margin: 0; page-break-after: always; }
+      @page { size: letter; margin: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div>
+    <h1>Wedding Expo — Print-Outs</h1>
+    <p>Print on US Letter, 100% scale (no shrink-to-fit). Page 1: table sign + soft-close script. Page 2: 4 lanyard cards (cut on dotted lines, laminate).</p>
+  </div>
+  <button onclick="window.print()">Print</button>
+</div>
+
+<!-- ════════ PAGE 1 — TABLE SIGN + SCRIPT ════════ -->
+<div class="sheet">
+
+  <!-- Table tent / sign -->
+  <div class="sign-table-tent">
+    <div class="brand">Lake <em>Salt</em></div>
+    <div class="tag">Utah Bar &amp; Mocktail Service</div>
+
+    <div class="prize-pill">Wedding Expo · 5/9 Raffle</div>
+    <div class="head">Win a <em>$50</em> gift card</div>
+    <div class="sub">Plus our signature mocktail recipe — yours free.</div>
+
+    <div class="qr-row">
+      <img src="../assets/expo-qr-code.svg" alt="Scan to enter the raffle" />
+      <div class="qr-side">
+        <div class="scan">Scan to <em>enter</em></div>
+        <ol>
+          <li>Open camera</li>
+          <li>Point at the code</li>
+          <li>Tap to enter — 30 sec</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="footer-line">lakesalt.us/book · winners drawn Sunday May 10</div>
+  </div>
+
+  <!-- Soft-close script + 3-path cheat sheet -->
+  <div class="sign-script">
+    <h2>Soft-Close <em>Script</em></h2>
+    <div class="lead">Keep this under the table — refresh memory as needed</div>
+
+    <div class="script-block">
+      <div class="label">If they say "I want to book Lake Salt"</div>
+      <div class="quote">
+        "Let's lock your date right now — no payment today. We'll email you a $100 deposit invoice in 14 days; that's just to confirm you're serious. Cancel anytime before then with no questions asked."
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="step-box">
+        <span class="num">1</span><h3>Drive-by</h3>
+        <p>Smile + point at QR sign. "Win a $50 gift card &mdash; takes 30 seconds." They scan, you move on.</p>
+      </div>
+      <div class="step-box">
+        <span class="num">2</span><h3>Brief chat</h3>
+        <p>Same QR. After raffle, the page suggests "Tell us about your event + book a 15-min call." Tell them to do that on their phone — Kendell calls them this week.</p>
+      </div>
+      <div class="step-box">
+        <span class="num">3</span><h3>Apple-store</h3>
+        <p>If they want help, grab the iPad behind the bar. Open <code>lakesalt.us/book</code>. Walk them through. Same form, same outcome.</p>
+      </div>
+      <div class="step-box">
+        <span class="num">4</span><h3>"Just info"</h3>
+        <p>If they're not ready for a call, the wizard has "Just send me wedding info" as an option. Kendell emails a starting quote.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ PAGE 2 — LANYARD CARDS ════════ -->
+<div class="sheet">
+  <div class="cards-page">
+
+    <div class="lanyard-card">
+      <div class="lc-brand">Lake <em>Salt</em></div>
+      <div class="lc-title">The Pitch</div>
+      <div class="lc-quote">
+        "Scan our QR — you'll enter the raffle, then there's an option to book a free 15-min call with Kendell. He'll send you a custom quote that week. No payment today."
+      </div>
+      <div class="lc-foot">
+        <b>The QR points to:</b> lakesalt.us/book
+      </div>
+    </div>
+
+    <div class="lanyard-card">
+      <div class="lc-brand">Lake <em>Salt</em></div>
+      <div class="lc-title">3 Booth Paths</div>
+      <div class="lc-quote">
+        <strong style="color:var(--champagne);font-style:normal">DRIVE-BY:</strong> "Win a $50 gift card — scan the QR"<br><br>
+        <strong style="color:var(--champagne);font-style:normal">CHAT:</strong> Same QR, then "Tell us about your event + book a 15-min call"<br><br>
+        <strong style="color:var(--champagne);font-style:normal">APPLE-STORE:</strong> If they ask for help, grab the iPad → lakesalt.us/book
+      </div>
+      <div class="lc-foot">
+        <b>Brides do it on their phones.</b> Don't pull out yours.
+      </div>
+    </div>
+
+    <div class="lanyard-card">
+      <div class="lc-brand">Lake <em>Salt</em></div>
+      <div class="lc-title">If they ask…</div>
+      <div class="lc-quote">
+        <strong style="color:var(--champagne);font-style:normal">"How much?"</strong><br>"Depends on guest count + drink menu — Kendell quotes on the call."<br><br>
+        <strong style="color:var(--champagne);font-style:normal">"Are you free June 13?"</strong><br>"Likely yes — book the call, we'll confirm."<br><br>
+        <strong style="color:var(--champagne);font-style:normal">"Do I need to pay?"</strong><br>"Nothing today. Quote comes after the call."
+      </div>
+      <div class="lc-foot">
+        Always end with: "We'll be in touch this week."
+      </div>
+    </div>
+
+    <div class="lanyard-card">
+      <div class="lc-brand">Lake <em>Salt</em></div>
+      <div class="lc-title">Don'ts</div>
+      <div class="lc-quote">
+        <strong style="color:var(--champagne);font-style:normal">Don't</strong> pitch pricing — that's Kendell's call.<br><br>
+        <strong style="color:var(--champagne);font-style:normal">Don't</strong> promise a date — the call confirms.<br><br>
+        <strong style="color:var(--champagne);font-style:normal">Don't</strong> share alcohol — water/mocktails only per UT law.
+      </div>
+      <div class="lc-foot">
+        Sample sign-off: <i>"We'll be in touch this week."</i>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,156 +1,432 @@
-const functions = require('firebase-functions');
+/* Use v2 (Gen 2) — required because Cloud Run services already exist with
+ * these names and can't be migrated back to Gen 1. v2 callable handlers
+ * receive a single `request` parameter with `.data`, `.auth`, etc. */
+const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const admin = require('firebase-admin');
-const { google } = require('googleapis');
 
 admin.initializeApp();
+const db = admin.firestore();
 
-// Configuration
-const CALENDAR_EMAIL = 'contact@lakesalt.us';
-const AVAILABILITY_START_HOUR = 16; // 4 PM
-const AVAILABILITY_END_HOUR = 20; // 8 PM (20:00)
+/* ─── Configuration ───────────────────────────────────────────────────────── */
+const TIMEZONE_OFFSET_HOURS = -6;            // America/Denver, ignoring DST for slot math
 const CALL_DURATION_MINUTES = 15;
-const BOOKING_WINDOW_DAYS = 30;
-const TIMEZONE = 'America/Denver'; // Adjust to your timezone
+const CALL_WINDOW_DAYS = 14;                 // bride must book within 14 days of submitting
+const CAMPAIGN_TAG_DEFAULT = 'WeddingExpo2026-05-09';
 
-// Initialize Google Calendar API with service account
-let calendar;
+/* Lake Salt can run up to two weddings on the same date (one team, half-day
+ * each — afternoon and evening). Beyond this the date is fully booked. */
+const MAX_EVENTS_PER_DAY = 2;
 
-function initializeCalendar() {
-  if (calendar) return;
+/* Default availability — weekdays 5:00 PM to 7:30 PM Mountain.
+ * Each entry is local-time hour-min pairs, repeating Mon-Fri.
+ * Phase 2: read this from Firestore so Kendell can edit without a deploy. */
+const SLOT_HOURS = [
+  { h: 17, m:  0 }, { h: 17, m: 15 }, { h: 17, m: 30 }, { h: 17, m: 45 },
+  { h: 18, m:  0 }, { h: 18, m: 15 }, { h: 18, m: 30 }, { h: 18, m: 45 },
+  { h: 19, m:  0 }, { h: 19, m: 15 },
+];
 
-  // Service account credentials from Firebase environment
-  const serviceAccount = JSON.parse(
-    process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || '{}'
-  );
+/* ─── Helpers ─────────────────────────────────────────────────────────────── */
 
-  const auth = new google.auth.GoogleAuth({
-    credentials: serviceAccount,
-    scopes: ['https://www.googleapis.com/auth/calendar'],
-  });
-
-  calendar = google.calendar({ version: 'v3', auth });
+/* Treat the user's input as local Mountain time for display, but persist as
+ * UTC ISO for unambiguous storage. Slot start/end are stored as Firestore
+ * Timestamps (admin.firestore.Timestamp). Daylight-saving math is approximated
+ * — the booth runs in MDT, so a fixed -6 offset is fine for the call-window
+ * (May 6 → May 23 2026 is fully MDT). Phase 2 hardens this. */
+function localToUtcDate(yyyymmdd, h, m) {
+  const [Y, M, D] = yyyymmdd.split('-').map(Number);
+  return new Date(Date.UTC(Y, M - 1, D, h - TIMEZONE_OFFSET_HOURS, m, 0));
 }
 
-// Get available time slots
-exports.getAvailableSlots = functions.https.onCall(async (data, context) => {
-  try {
-    initializeCalendar();
+function ymd(date) {
+  return date.toISOString().slice(0, 10);
+}
 
-    const now = new Date();
-    const endDate = new Date(now.getTime() + BOOKING_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+function isWeekday(date) {
+  /* Mon=1 ... Fri=5, in UTC. Approximation that's correct for our slot hours. */
+  const dow = date.getUTCDay();
+  return dow >= 1 && dow <= 5;
+}
 
-    // Get calendar events for the booking window
-    const response = await calendar.events.list({
-      calendarId: CALENDAR_EMAIL,
-      timeMin: now.toISOString(),
-      timeMax: endDate.toISOString(),
-      singleEvents: true,
-      orderBy: 'startTime',
-    });
+/* Admin-only guard — accepts the v2 request object (request.auth). */
+async function requireAdmin(request) {
+  const auth = request && request.auth;
+  if (!auth) {
+    throw new HttpsError('unauthenticated', 'Sign-in required.');
+  }
+  const doc = await db.collection('admins').doc(auth.uid).get();
+  if (!doc.exists) {
+    throw new HttpsError('permission-denied', 'Admin access required.');
+  }
+  return { uid: auth.uid, email: auth.token && auth.token.email, name: doc.data().name || '' };
+}
 
-    const bookedSlots = response.data.items || [];
-    const availableSlots = [];
+/* ═══════════════════════════════════════════════════════════════════════════
+ * PUBLIC: get available call slots
+ * - No auth required (public booking page calls this).
+ * - Returns 15-min call slots over the next CALL_WINDOW_DAYS, weekdays,
+ *   5:00–7:30 PM Mountain, minus slots that already have a call_bookings doc.
+ * ══════════════════════════════════════════════════════════════════════════ */
+exports.getCallSlots = onCall(async (request) => {
+  const data = (request && request.data) || {};
+  const daysAhead = Math.min(Math.max(parseInt(data && data.daysAhead, 10) || CALL_WINDOW_DAYS, 1), 30);
 
-    // Generate all possible 15-minute slots in the availability window
-    let currentDate = new Date(now);
-    currentDate.setHours(AVAILABILITY_START_HOUR, 0, 0, 0);
+  const now = new Date();
+  const cutoff = new Date(now.getTime() + daysAhead * 24 * 60 * 60 * 1000);
 
-    while (currentDate < endDate) {
-      // Skip past dates and times before 4 PM
-      if (currentDate > now && currentDate.getHours() >= AVAILABILITY_START_HOUR && currentDate.getHours() < AVAILABILITY_END_HOUR) {
-        // Check if this slot is available (not booked)
-        const slotEnd = new Date(currentDate.getTime() + CALL_DURATION_MINUTES * 60 * 1000);
-        const isBooked = bookedSlots.some(event => {
-          const eventStart = new Date(event.start.dateTime || event.start.date);
-          const eventEnd = new Date(event.end.dateTime || event.end.date);
-          return currentDate < eventEnd && slotEnd > eventStart;
+  /* Fetch every booked slot in the window once. */
+  const bookedSnap = await db.collection('call_bookings')
+    .where('slotStart', '>=', admin.firestore.Timestamp.fromDate(now))
+    .where('slotStart', '<=', admin.firestore.Timestamp.fromDate(cutoff))
+    .get();
+  const bookedSet = new Set(bookedSnap.docs.map(d => d.data().slotStart.toMillis()));
+
+  const slots = [];
+  const cursor = new Date(now);
+  cursor.setUTCHours(0, 0, 0, 0);
+
+  while (cursor < cutoff) {
+    if (isWeekday(cursor)) {
+      const dateStr = ymd(cursor);
+      for (const t of SLOT_HOURS) {
+        const slotStart = localToUtcDate(dateStr, t.h, t.m);
+        if (slotStart <= now) continue;
+        if (slotStart >= cutoff) continue;
+        if (bookedSet.has(slotStart.getTime())) continue;
+        slots.push({
+          startISO: slotStart.toISOString(),
+          startMs: slotStart.getTime(),
+          dateStr,
+          hour12: t.h > 12 ? t.h - 12 : t.h,
+          minute: t.m,
+          ampm: t.h >= 12 ? 'PM' : 'AM',
         });
-
-        if (!isBooked) {
-          availableSlots.push({
-            start: currentDate.toISOString(),
-            startFormatted: currentDate.toLocaleString('en-US', {
-              weekday: 'short',
-              month: 'short',
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              timeZone: TIMEZONE
-            }),
-          });
-        }
-      }
-
-      // Move to next 15-minute slot
-      currentDate.setMinutes(currentDate.getMinutes() + CALL_DURATION_MINUTES);
-
-      // Skip to next day if past availability hours
-      if (currentDate.getHours() >= AVAILABILITY_END_HOUR) {
-        currentDate.setDate(currentDate.getDate() + 1);
-        currentDate.setHours(AVAILABILITY_START_HOUR, 0, 0, 0);
       }
     }
-
-    // Return first 15 available slots
-    return { success: true, slots: availableSlots.slice(0, 15) };
-  } catch (error) {
-    console.error('Error getting available slots:', error);
-    return { success: false, error: error.message };
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
+
+  return { success: true, slots };
 });
 
-// Book a call slot
-exports.bookCallSlot = functions.https.onCall(async (data, context) => {
-  try {
-    initializeCalendar();
+/* ═══════════════════════════════════════════════════════════════════════════
+ * PUBLIC: book a call slot
+ * - No auth required.
+ * - Atomic Firestore transaction prevents two callers from booking the same slot.
+ * - Creates `call_bookings` doc + `leads` doc + `kendell_followups` reminder.
+ * ══════════════════════════════════════════════════════════════════════════ */
+exports.bookCallSlot = onCall(async (request) => {
+  const data = (request && request.data) || {};
+  const {
+    name = '',
+    email = '',
+    phone = '',
+    slotStartMs,
+    /* Event-detail fields collected by /book wizard: */
+    eventType = 'Wedding',
+    eventDate = '',
+    guestCount = '',
+    venue = '',
+    drinks = [],
+    drinkDetail = '',
+    budget = '',
+    hasBuiltInBar = '',
+    notes = '',
+    instagramFollowed = false,
+    raffleEntered = false,
+    /* Provenance: */
+    campaign = CAMPAIGN_TAG_DEFAULT,
+    source = 'Public /book',
+    capturedByEmail = '',          // optional: bartender email if signed in
+    capturedByName = '',
+  } = data;
 
-    const { name, email, phone, slotStart, eventType } = data;
+  /* Required-field validation. */
+  if (!name.trim() || !email.trim() || !phone.trim()) {
+    throw new HttpsError('invalid-argument', 'Name, email, and phone are required.');
+  }
+  if (!slotStartMs || typeof slotStartMs !== 'number') {
+    throw new HttpsError('invalid-argument', 'A valid slotStartMs is required.');
+  }
 
-    if (!name || !email || !slotStart) {
-      throw new Error('Missing required fields: name, email, or slotStart');
+  const slotStartDate = new Date(slotStartMs);
+  if (isNaN(slotStartDate.getTime()) || slotStartDate <= new Date()) {
+    throw new HttpsError('invalid-argument', 'Slot must be in the future.');
+  }
+
+  const slotStartTs = admin.firestore.Timestamp.fromDate(slotStartDate);
+  const slotEndDate = new Date(slotStartMs + CALL_DURATION_MINUTES * 60 * 1000);
+
+  /* Atomic check-and-book transaction. */
+  const result = await db.runTransaction(async (tx) => {
+    /* Look for any existing booking with this exact slotStart. */
+    const conflictSnap = await tx.get(
+      db.collection('call_bookings').where('slotStart', '==', slotStartTs).limit(1)
+    );
+    if (!conflictSnap.empty) {
+      throw new HttpsError(
+        'failed-precondition',
+        'That slot was just booked by someone else. Please pick another.'
+      );
     }
 
-    const startTime = new Date(slotStart);
-    const endTime = new Date(startTime.getTime() + CALL_DURATION_MINUTES * 60 * 1000);
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const callRef = db.collection('call_bookings').doc();
+    const leadRef = db.collection('leads').doc();
+    const followupRef = db.collection('kendell_followups').doc();
 
-    // Create calendar event
-    const event = {
-      summary: `Lake Salt Call - ${name}`,
-      description: `Call with ${name} (${eventType})\nEmail: ${email}\nPhone: ${phone}`,
-      start: { dateTime: startTime.toISOString(), timeZone: TIMEZONE },
-      end: { dateTime: endTime.toISOString(), timeZone: TIMEZONE },
-      attendees: [
-        { email: CALENDAR_EMAIL },
-        { email: email },
-      ],
-      transparency: 'opaque',
-    };
-
-    const createdEvent = await calendar.events.insert({
-      calendarId: CALENDAR_EMAIL,
-      resource: event,
-      sendUpdates: 'all', // Send invite to attendees
-    });
-
-    // Save booking to Firestore
-    await admin.firestore().collection('call_bookings').add({
-      name,
-      email,
-      phone,
+    const callPayload = {
+      slotStart: slotStartTs,
+      slotEnd: admin.firestore.Timestamp.fromDate(slotEndDate),
+      name: name.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
       eventType,
-      bookedTime: startTime,
-      calendarEventId: createdEvent.data.id,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      eventDate,
+      guestCount,
+      venue,
+      drinks,
+      drinkDetail,
+      budget,
+      hasBuiltInBar,
+      notes,
+      campaign,
+      source,
+      leadId: leadRef.id,
+      status: 'scheduled',
+      createdAt: now,
+    };
+
+    const leadPayload = {
+      name: name.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      eventDate,
+      eventType,
+      guestCount,
+      venue,
+      drinks,
+      drinkDetail,
+      budget,
+      hasBuiltInBar,
+      message: notes,
+      stage: 'Call Scheduled',
+      source,
+      campaign,
+      instagramFollowed,
+      raffleEntered,
+      callBookingId: callRef.id,
+      callSlot: slotStartTs,
+      capturedByEmail,
+      capturedByName,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const followupPayload = {
+      leadId: leadRef.id,
+      leadName: name.trim(),
+      leadEmail: email.trim(),
+      leadPhone: phone.trim(),
+      type: 'prep_for_quote_call',
+      callSlot: slotStartTs,
+      dueAt: admin.firestore.Timestamp.fromDate(
+        new Date(slotStartMs - 30 * 60 * 1000) /* 30 min before the call */
+      ),
+      completed: false,
+      createdAt: now,
+      notes: 'Review lead details, prep custom quote ranges before the 15-min call.',
+    };
+
+    tx.set(callRef, callPayload);
+    tx.set(leadRef, leadPayload);
+    tx.set(followupRef, followupPayload);
+
+    return { callBookingId: callRef.id, leadId: leadRef.id };
+  });
+
+  return {
+    success: true,
+    leadId: result.leadId,
+    callBookingId: result.callBookingId,
+    slotStartISO: slotStartDate.toISOString(),
+  };
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * PUBLIC: save lead without booking a call
+ * - For the "Just send me wedding info" path on /book.
+ * ══════════════════════════════════════════════════════════════════════════ */
+exports.savePublicLead = onCall(async (request) => {
+  const data = (request && request.data) || {};
+  const {
+    name = '',
+    email = '',
+    phone = '',
+    eventType = 'Wedding',
+    eventDate = '',
+    guestCount = '',
+    venue = '',
+    drinks = [],
+    drinkDetail = '',
+    budget = '',
+    hasBuiltInBar = '',
+    notes = '',
+    instagramFollowed = false,
+    raffleEntered = false,
+    campaign = CAMPAIGN_TAG_DEFAULT,
+    source = 'Public /book — info only',
+    capturedByEmail = '',
+    capturedByName = '',
+  } = data;
+
+  if (!name.trim() || !email.trim()) {
+    throw new HttpsError('invalid-argument', 'Name and email are required.');
+  }
+
+  const now = admin.firestore.FieldValue.serverTimestamp();
+  const leadRef = await db.collection('leads').add({
+    name: name.trim(),
+    email: email.trim(),
+    phone: phone.trim(),
+    eventDate,
+    eventType,
+    guestCount,
+    venue,
+    drinks,
+    drinkDetail,
+    budget,
+    hasBuiltInBar,
+    message: notes,
+    stage: 'New Lead',
+    source,
+    campaign,
+    instagramFollowed,
+    raffleEntered,
+    capturedByEmail,
+    capturedByName,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  return { success: true, leadId: leadRef.id };
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * STAFF-ONLY: manual date-lock override
+ * - For the rare case Kendell wants to lock a wedding date AFTER the call
+ *   (e.g., quote accepted on the call). Just Firestore — no calendar.
+ * ══════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════
+ * STAFF-ONLY: get capacity status for a date
+ * - Returns { count, capacity, status } where status is one of:
+ *     'open'  → 0 / 2
+ *     'half'  → 1 / 2
+ *     'full'  → 2 / 2
+ * - Lists which leads occupy the slots so the CRM can show who they are.
+ * ══════════════════════════════════════════════════════════════════════════ */
+exports.getDateCapacity = onCall(async (request) => {
+  await requireAdmin(request);
+  const data = (request && request.data) || {};
+  const { date } = data;
+
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new HttpsError('invalid-argument', 'date must be YYYY-MM-DD');
+  }
+
+  const snap = await db.collection('leads')
+    .where('eventDate', '==', date)
+    .where('stage', 'in', ['Booked-Tentative', 'Booked', 'Completed'])
+    .get();
+
+  const occupants = snap.docs.map(d => ({
+    leadId: d.id,
+    name: d.data().name || '',
+    eventType: d.data().eventType || '',
+    stage: d.data().stage,
+  }));
+
+  const status = occupants.length === 0 ? 'open'
+              : occupants.length < MAX_EVENTS_PER_DAY ? 'half'
+              : 'full';
+
+  return {
+    success: true,
+    date,
+    count: occupants.length,
+    capacity: MAX_EVENTS_PER_DAY,
+    status,
+    occupants,
+  };
+});
+
+exports.markBooked = onCall(async (request) => {
+  const adminUser = await requireAdmin(request);
+  const data = (request && request.data) || {};
+  const { leadId, eventDate, depositAmount = 100, depositDays = 14 } = data;
+
+  if (!leadId || !eventDate || !/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
+    throw new HttpsError('invalid-argument', 'leadId + eventDate (YYYY-MM-DD) required.');
+  }
+
+  /* Atomic date-conflict check inside transaction.
+   * Allow up to MAX_EVENTS_PER_DAY (2) weddings on the same date so we can
+   * run a half-day-afternoon + half-day-evening pairing. */
+  const result = await db.runTransaction(async (tx) => {
+    const conflictSnap = await tx.get(
+      db.collection('leads')
+        .where('eventDate', '==', eventDate)
+        .where('stage', 'in', ['Booked-Tentative', 'Booked', 'Completed'])
+    );
+    const others = conflictSnap.docs.filter(d => d.id !== leadId);
+    if (others.length >= MAX_EVENTS_PER_DAY) {
+      const names = others.slice(0, MAX_EVENTS_PER_DAY).map(d => d.data().name || 'another lead').join(' & ');
+      throw new HttpsError(
+        'failed-precondition',
+        `Date fully booked (${MAX_EVENTS_PER_DAY}/${MAX_EVENTS_PER_DAY} weddings already): ${names}.`
+      );
+    }
+
+    const leadRef = db.collection('leads').doc(leadId);
+    const leadDoc = await tx.get(leadRef);
+    if (!leadDoc.exists) {
+      throw new HttpsError('not-found', 'Lead not found.');
+    }
+
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const depositDueAt = admin.firestore.Timestamp.fromDate(
+      new Date(Date.now() + depositDays * 24 * 60 * 60 * 1000)
+    );
+
+    tx.update(leadRef, {
+      stage: 'Booked-Tentative',
+      eventDate,
+      dateLocked: now,
+      depositDueAt,
+      depositAmount,
+      lockedBy: adminUser.email,
+      lockedByName: adminUser.name,
+      updatedAt: now,
     });
 
-    return {
-      success: true,
-      message: 'Call booked successfully!',
-      eventId: createdEvent.data.id,
-      meetLink: createdEvent.data.hangoutLink,
-    };
-  } catch (error) {
-    console.error('Error booking call:', error);
-    return { success: false, error: error.message };
-  }
+    /* Create deposit followup. */
+    const followupRef = db.collection('kendell_followups').doc();
+    tx.set(followupRef, {
+      leadId,
+      leadName: leadDoc.data().name || '',
+      leadEmail: leadDoc.data().email || '',
+      leadPhone: leadDoc.data().phone || '',
+      eventDate,
+      type: 'send_chase_deposit_invoice',
+      amount: depositAmount,
+      dueAt: depositDueAt,
+      completed: false,
+      createdAt: now,
+      notes: `Send $${depositAmount} deposit invoice via Chase QuickPay.`,
+    });
+
+    return { leadId, depositDueAt: depositDueAt.toMillis() };
+  });
+
+  return { success: true, ...result };
 });
