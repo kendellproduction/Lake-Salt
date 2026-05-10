@@ -1797,21 +1797,26 @@
       gap: 1.25rem;
       text-align: left;
     }
-    .ii-wwd-grid li {
+    .ii-wwd-grid li { list-style: none; display: flex; }
+    .ii-wwd-card {
       position: relative;
+      flex: 1;
+      display: flex; flex-direction: column;
       padding: 2.25rem 1.75rem 1.85rem;
       background: var(--navy);
       border-radius: 16px;
       border: 1px solid rgba(255,255,255,0.06);
       color: var(--ivory);
+      text-decoration: none;
       transition: transform 0.36s cubic-bezier(.2,.7,.2,1),
                   box-shadow 0.36s ease,
                   border-color 0.36s ease,
                   background 0.36s ease;
       overflow: hidden;
       isolation: isolate;
+      cursor: pointer;
     }
-    .ii-wwd-grid li::before {
+    .ii-wwd-card::before {
       content: '';
       position: absolute; inset: 0;
       background: radial-gradient(circle at 0% 0%, rgba(201,169,110,0.18) 0%, transparent 55%);
@@ -1819,13 +1824,27 @@
       transition: opacity 0.4s ease;
       z-index: 0;
     }
-    .ii-wwd-grid li > * { position: relative; z-index: 1; }
-    .ii-wwd-grid li:hover {
+    .ii-wwd-card > * { position: relative; z-index: 1; }
+    .ii-wwd-card:hover {
       transform: translateY(-6px);
       box-shadow: 0 24px 56px rgba(12,21,38,0.4);
       border-color: rgba(201,169,110,0.45);
     }
-    .ii-wwd-grid li:hover::before { opacity: 1; }
+    .ii-wwd-card:hover::before { opacity: 1; }
+    .ii-wwd-card:focus-visible {
+      outline: 2px solid var(--champagne);
+      outline-offset: 3px;
+    }
+    .ii-wwd-cta {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      margin-top: 1.1rem; padding-top: 1.1rem;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      font-size: 0.78rem; font-weight: 600;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--champagne);
+      transition: gap 0.3s ease, color 0.3s ease;
+    }
+    .ii-wwd-card:hover .ii-wwd-cta { gap: 0.7rem; color: var(--champagne-lt); }
     .ii-wwd-icon-wrap {
       display: flex; align-items: center; justify-content: space-between;
       margin-bottom: 1.5rem;
@@ -1840,7 +1859,7 @@
       transition: background 0.3s, border-color 0.3s, transform 0.3s;
     }
     .ii-wwd-icon svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.5; }
-    .ii-wwd-grid li:hover .ii-wwd-icon {
+    .ii-wwd-card:hover .ii-wwd-icon {
       background: rgba(201,169,110,0.2);
       border-color: var(--champagne);
       transform: rotate(-4deg) scale(1.05);
@@ -1895,7 +1914,7 @@
     }
     @media (max-width: 600px) {
       .ii-wwd-grid { gap: 0.85rem; }
-      .ii-wwd-grid li { padding: 1.6rem 1.35rem; }
+      .ii-wwd-card { padding: 1.6rem 1.35rem; }
       .ii-wwd-grid strong { font-size: 1.35rem; }
     }
     .ii-eyebrow {
@@ -4146,104 +4165,63 @@
       <p class="ii-wwd-lead">We started as a wedding bartending team, but couples and event planners kept asking for more. Today we offer four ways to work with us.</p>
       <ul class="ii-wwd-grid">
         <li>
-          <div class="ii-wwd-icon-wrap">
-            <span class="ii-wwd-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16l-7 9v6"/><path d="M9 19h6"/><path d="M7 8h10"/></svg>
-            </span>
-            <span class="ii-wwd-num">01</span>
-          </div>
-          <strong>Full-Service Bartending</strong>
-          <span class="ii-wwd-desc">TIPS-certified bartenders, custom cocktail and mocktail menus, complete bar setup from glassware to garnish.</span>
-          <span class="ii-wwd-tag">Our Flagship</span>
+          <a class="ii-wwd-card" href="#contact" onclick="trackEvent('intent_bartending_clicked', {});">
+            <div class="ii-wwd-icon-wrap">
+              <span class="ii-wwd-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16l-7 9v6"/><path d="M9 19h6"/><path d="M7 8h10"/></svg>
+              </span>
+              <span class="ii-wwd-num">01</span>
+            </div>
+            <strong>Full-Service Bartending</strong>
+            <span class="ii-wwd-desc">TIPS-certified bartenders, custom cocktail and mocktail menus, complete bar setup from glassware to garnish.</span>
+            <span class="ii-wwd-tag">Our Flagship</span>
+            <span class="ii-wwd-cta">Plan your bar →</span>
+          </a>
         </li>
         <li>
-          <div class="ii-wwd-icon-wrap">
-            <span class="ii-wwd-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="11" rx="1.5"/><path d="M3 10h18"/><path d="M6 17v3"/><path d="M18 17v3"/><path d="M9 13.5h.01M12 13.5h.01M15 13.5h.01"/></svg>
-            </span>
-            <span class="ii-wwd-num">02</span>
-          </div>
-          <strong>Mobile Bar Rental</strong>
-          <span class="ii-wwd-desc">Just need the bar? Rent our modern wood mobile bar for DIY events or venues with their own staff.</span>
-          <span class="ii-wwd-tag">From $150 / day</span>
+          <a class="ii-wwd-card" href="rentals.html#bar" onclick="trackEvent('intent_rental_clicked', { rentalType: 'bar' });">
+            <div class="ii-wwd-icon-wrap">
+              <span class="ii-wwd-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="11" rx="1.5"/><path d="M3 10h18"/><path d="M6 17v3"/><path d="M18 17v3"/><path d="M9 13.5h.01M12 13.5h.01M15 13.5h.01"/></svg>
+              </span>
+              <span class="ii-wwd-num">02</span>
+            </div>
+            <strong>Mobile Bar Rental</strong>
+            <span class="ii-wwd-desc">Just need the bar? Rent our modern wood mobile bar for DIY events or venues with their own staff.</span>
+            <span class="ii-wwd-tag">From $150 / day</span>
+            <span class="ii-wwd-cta">Request a rental →</span>
+          </a>
         </li>
         <li>
-          <div class="ii-wwd-icon-wrap">
-            <span class="ii-wwd-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v8h12V4"/><path d="M4 12h16"/><path d="M7 12v8"/><path d="M17 12v8"/><path d="M7 17h10"/></svg>
-            </span>
-            <span class="ii-wwd-num">03</span>
-          </div>
-          <strong>Tables &amp; Chairs</strong>
-          <span class="ii-wwd-desc">Six-foot white folding tables and matching folding chairs. Pickup or local Wasatch Front delivery.</span>
-          <span class="ii-wwd-tag">Coming Soon</span>
+          <a class="ii-wwd-card" href="rentals.html#tables" onclick="trackEvent('intent_rental_clicked', { rentalType: 'tables' });">
+            <div class="ii-wwd-icon-wrap">
+              <span class="ii-wwd-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v8h12V4"/><path d="M4 12h16"/><path d="M7 12v8"/><path d="M17 12v8"/><path d="M7 17h10"/></svg>
+              </span>
+              <span class="ii-wwd-num">03</span>
+            </div>
+            <strong>Tables &amp; Chairs</strong>
+            <span class="ii-wwd-desc">Six-foot white folding tables and matching folding chairs. Pickup or local Wasatch Front delivery.</span>
+            <span class="ii-wwd-tag">Coming Soon</span>
+            <span class="ii-wwd-cta">Request a rental →</span>
+          </a>
         </li>
         <li>
-          <div class="ii-wwd-icon-wrap">
-            <span class="ii-wwd-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 5.5l4 4-2 2-4-4z"/><path d="M12.5 7.5L4 16v4h4l8.5-8.5"/><path d="M14 14l3 3"/></svg>
-            </span>
-            <span class="ii-wwd-num">04</span>
-          </div>
-          <strong>Custom Bar Builds</strong>
-          <span class="ii-wwd-desc">Designed and built to your spec — for venues, planners, and vendors who want their own modern bar.</span>
-          <span class="ii-wwd-tag">Coming Soon</span>
+          <a class="ii-wwd-card" href="sales.html#waitlist" onclick="trackEvent('intent_sale_clicked', {});">
+            <div class="ii-wwd-icon-wrap">
+              <span class="ii-wwd-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 5.5l4 4-2 2-4-4z"/><path d="M12.5 7.5L4 16v4h4l8.5-8.5"/><path d="M14 14l3 3"/></svg>
+              </span>
+              <span class="ii-wwd-num">04</span>
+            </div>
+            <strong>Custom Bar Builds</strong>
+            <span class="ii-wwd-desc">Designed and built to your spec — for venues, planners, and vendors who want their own modern bar.</span>
+            <span class="ii-wwd-tag">Coming Soon</span>
+            <span class="ii-wwd-cta">Join the waitlist →</span>
+          </a>
         </li>
       </ul>
-      <p class="ii-wwd-foot">Pick the path that fits below — we'll only ask the questions that matter for your event.</p>
-    </div>
-
-    <div class="ii-header">
-      <span class="ii-eyebrow">Tell us what you need</span>
-      <h2 class="ii-title">What are you <em>looking for?</em></h2>
-      <p class="ii-sub">Pick what fits and we'll ask just the right questions — or scroll past to keep browsing.</p>
-    </div>
-
-    <!-- Featured: Bartending — full-width with real Lake Salt photo -->
-    <button class="ii-feature" onclick="openBartendingFlow()">
-      <div class="ii-feature-img" style="background-image:url('images/IMG_5959.jpeg');"></div>
-      <div class="ii-feature-body">
-        <span class="ii-feature-tag">Our Main Service</span>
-        <h3 class="ii-feature-title">Bartending for an Event</h3>
-        <p class="ii-feature-desc">Wedding, corporate, or private celebration. TIPS-certified bartenders, custom cocktail &amp; mocktail menus, full bar setup. <strong>Most events $1,200–$1,800.</strong></p>
-        <span class="ii-feature-cta">Plan your bar →</span>
-      </div>
-    </button>
-
-    <!-- Secondary: 3 cards in a row, each with a photo placeholder + clear pricing -->
-    <div class="ii-secondary-row">
-      <button class="ii-secondary" onclick="openRentalFlow('bar')">
-        <div class="ii-secondary-img ii-photo-soon ii-photo-bar"><span>Photos<br/>Coming Soon</span></div>
-        <div class="ii-secondary-body">
-          <span class="ii-secondary-tag">Rentals</span>
-          <h4 class="ii-secondary-title">Rent the Mobile Bar</h4>
-          <div class="ii-price"><span class="ii-price-num">$150</span><span class="ii-price-unit">/day</span></div>
-          <p class="ii-secondary-desc">Our wood mobile bar. Bring your own bartenders or DIY. Pickup or local delivery.</p>
-          <span class="ii-secondary-cta">Request a rental →</span>
-        </div>
-      </button>
-
-      <button class="ii-secondary" onclick="openRentalFlow('tables')">
-        <div class="ii-secondary-img ii-photo-soon ii-photo-tables"><span>Photos<br/>Coming Soon</span></div>
-        <div class="ii-secondary-body">
-          <span class="ii-secondary-tag">Rentals</span>
-          <h4 class="ii-secondary-title">Tables &amp; Chairs</h4>
-          <div class="ii-price"><span class="ii-price-num" style="font-size:1.3rem;">Reach out</span><span class="ii-price-unit">for pricing</span></div>
-          <p class="ii-secondary-desc">6&apos; white folding tables (up to 10) and matching white folding chairs.</p>
-          <span class="ii-secondary-cta">Request a rental →</span>
-        </div>
-      </button>
-
-      <button class="ii-secondary" onclick="openSaleFlow()">
-        <div class="ii-secondary-img ii-photo-soon ii-photo-build"><span>Photos<br/>Coming Soon</span></div>
-        <div class="ii-secondary-body">
-          <span class="ii-secondary-tag">Coming Soon</span>
-          <h4 class="ii-secondary-title">Buy a Custom Bar</h4>
-          <div class="ii-price"><span class="ii-price-num">Custom</span><span class="ii-price-unit">build &amp; quote</span></div>
-          <p class="ii-secondary-desc">Custom-built mobile bars to your spec. Modern wood, custom finish, optional branding.</p>
-          <span class="ii-secondary-cta">Join the waitlist →</span>
-        </div>
-      </button>
+      <p class="ii-wwd-foot">Pick the path that fits — we'll only ask the questions that matter for your event.</p>
     </div>
   </div>
 </section>
