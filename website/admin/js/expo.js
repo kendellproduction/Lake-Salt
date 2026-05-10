@@ -859,23 +859,73 @@ function drawRaffleWinners(expo) {
         ${count} winner${count === 1 ? '' : 's'} · drawn ${new Date().toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' })}
       </div>
       ${winners.map((w, i) => `
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;margin-bottom:8px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.3);border-radius:10px">
-          <div style="flex:1;font-size:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;margin-bottom:8px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.3);border-radius:10px;flex-wrap:wrap">
+          <div style="flex:1;min-width:200px;font-size:14px">
             <strong style="color:var(--text)">#${i+1} · ${escapeHtml(w.name||'(no name)')}</strong>
             <span class="text-muted"> · ${escapeHtml(w.email||'')}</span>
             <div class="text-muted" style="font-size:12px">${escapeHtml(w.phone||'')}${w.eventDate ? ' · wedding ' + escapeHtml(w.eventDate) : ''}</div>
           </div>
-          <div style="display:flex;gap:6px;flex-shrink:0">
+          <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap">
             <button class="btn btn-secondary" onclick="markRaffleWinnerLead('${w.id}', '${escapeHtml(expo.id)}', this)" style="font-size:11px;padding:5px 10px">⭐ Mark as winner</button>
+            <button class="btn btn-secondary" onclick="draftWinnerEmail('${w.id}')" style="font-size:11px;padding:5px 10px">📧 Draft email</button>
             <button class="btn btn-secondary" onclick="(typeof openLeadModal==='function') ? openLeadModal('${w.id}') : (window.location.hash='#crm')" style="font-size:11px;padding:5px 10px">View card</button>
           </div>
         </div>
       `).join('')}
       <div class="text-muted" style="font-size:12px;margin-top:8px">
-        ↺ Click "Spin again" for a fresh draw. "Mark as winner" stamps the lead's CRM card with raffle-winner status and timestamp.
+        ↺ "Spin again" = fresh draw · ⭐ "Mark as winner" = stamp CRM · 📧 "Draft email" = open a Gmail compose with the winner email pre-filled (doesn't send — you review then click Send manually).
       </div>
     </div>
   `;
+}
+
+/* ─── Draft the winner congrats email in Gmail compose ────────────────── */
+async function draftWinnerEmail(leadId) {
+  const winner = (_expoState._raffleLeads || []).find(l => l.id === leadId);
+  if (!winner) return showToast('Lead not found', 'error');
+
+  const firstName = (winner.name || '').split(/\s+/)[0] || 'there';
+  const weddingLine = winner.eventDate
+    ? `your wedding on **${formatDate(winner.eventDate)}** is closer than you think, and we'd love to be the bar at it`
+    : `your wedding is closer than you think, and we'd love to be the bar at it`;
+
+  /* Subject + body. Kept short enough to fit in a Gmail URL (~2000 char limit). */
+  const subject = `You won the Lake Salt $50 raffle — and your wedding's coming up 🎉`;
+  const body =
+`Hi ${firstName},
+
+Congrats — you're one of our 4 winners from the Wedding Expo raffle on Saturday! Your $50 Amazon gift card just landed in your inbox (separate email straight from Amazon).
+
+Real quick — ${weddingLine.replace(/\*\*/g, '')}. No pressure, no obligation: hit reply with three things and I'll send a custom quote within 48 hours.
+
+1. Approximate guest count
+2. Venue (or "still deciding")
+3. Drinks vibe — full cocktails, mocktails, beer & wine, themed?
+
+We have base packages on our site (lakesalt.us/index.html#pricing-packages) but every wedding is unique — your quote will be tailored.
+
+P.S. If you're not already following us, we'd love to have you on Instagram @lakesaltbartending — that's where we post recipes, behind-the-scenes from weddings, and seasonal menus.
+
+Either way, congratulations again and thanks for entering.
+
+— Kendell & Maddie
+Lake Salt — Utah women-owned bar service
+lakesalt.us · @lakesaltbartending`;
+
+  /* Open Gmail compose in a new tab with everything pre-filled.
+   * Uses the Gmail web compose URL — works as long as you're signed
+   * into Gmail in this browser. */
+  const url = 'https://mail.google.com/mail/?view=cm&fs=1' +
+    '&to=' + encodeURIComponent(winner.email || '') +
+    '&su=' + encodeURIComponent(subject) +
+    '&body=' + encodeURIComponent(body);
+
+  const win = window.open(url, '_blank', 'noopener,noreferrer');
+  if (!win) {
+    showToast('Pop-up blocked — allow pop-ups for lakesalt.us', 'warn');
+  } else {
+    showToast('Gmail draft opened in a new tab — review before sending');
+  }
 }
 
 async function markRaffleWinnerLead(leadId, expoId, btn) {
