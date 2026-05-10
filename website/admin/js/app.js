@@ -225,45 +225,7 @@ db.collection('inventory').onSnapshot(snap => {
 // ══════════════════════════════════════
 async function renderDashboard() {
   const c = document.getElementById('module-container');
-  /* Expo Mode banner — shown until the expo passes (May 9 2026 + 14d invoice window). */
-  const expoCutoff = new Date('2026-05-23');
-  const showExpoBanner = new Date() < expoCutoff;
-  const expoBannerHTML = showExpoBanner ? `
-    <div class="card" style="margin-bottom:16px;background:linear-gradient(135deg,#0C1526,#172038);color:#FAF8F4;border:1px solid rgba(201,169,110,0.4);position:relative;overflow:hidden">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap">
-        <div style="flex:1;min-width:200px">
-          <div style="font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:#DFC08A;margin-bottom:4px">Wedding Expo · May 9, 2026</div>
-          <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:500;color:#FAF8F4">Booth <em style="color:#C9A96E;font-style:italic">Mode</em></div>
-          <div style="font-size:13px;color:rgba(250,248,244,0.7);margin-top:4px">Quick links for the team this weekend</div>
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:14px">
-        <a href="/expo" target="_blank" rel="noopener" style="text-decoration:none;display:flex;flex-direction:column;padding:14px;background:rgba(201,169,110,0.18);border:1px solid rgba(201,169,110,0.4);border-radius:10px;color:#FAF8F4;transition:background 0.2s" onmouseover="this.style.background='rgba(201,169,110,0.28)'" onmouseout="this.style.background='rgba(201,169,110,0.18)'">
-          <span style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#DFC08A">QR Target</span>
-          <span style="font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:500;margin-top:2px">Raffle Page →</span>
-          <span style="font-size:11px;color:rgba(250,248,244,0.65);margin-top:4px">What the QR scans to</span>
-        </a>
-        <a href="/book" target="_blank" rel="noopener" style="text-decoration:none;display:flex;flex-direction:column;padding:14px;background:rgba(34,197,94,0.18);border:1px solid rgba(34,197,94,0.4);border-radius:10px;color:#FAF8F4;transition:background 0.2s" onmouseover="this.style.background='rgba(34,197,94,0.28)'" onmouseout="this.style.background='rgba(34,197,94,0.18)'">
-          <span style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#86efac">Public Wizard</span>
-          <span style="font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:500;margin-top:2px">Book a Date →</span>
-          <span style="font-size:11px;color:rgba(250,248,244,0.65);margin-top:4px">9-step wizard + 15-min call slot picker</span>
-        </a>
-        <a href="expo-booth-prints.html" target="_blank" rel="noopener" style="text-decoration:none;display:flex;flex-direction:column;padding:14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.18);border-radius:10px;color:#FAF8F4;transition:background 0.2s" onmouseover="this.style.background='rgba(255,255,255,0.12)'" onmouseout="this.style.background='rgba(255,255,255,0.06)'">
-          <span style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#DFC08A">Print</span>
-          <span style="font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:500;margin-top:2px">Booth Signs →</span>
-          <span style="font-size:11px;color:rgba(250,248,244,0.65);margin-top:4px">Table tent + lanyard cards</span>
-        </a>
-        <a href="#crm" onclick="setTimeout(()=>setCohort&&setCohort('WeddingExpo2026-05-09'),200)" style="text-decoration:none;display:flex;flex-direction:column;padding:14px;background:rgba(59,130,246,0.18);border:1px solid rgba(59,130,246,0.4);border-radius:10px;color:#FAF8F4;transition:background 0.2s" onmouseover="this.style.background='rgba(59,130,246,0.28)'" onmouseout="this.style.background='rgba(59,130,246,0.18)'">
-          <span style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#93c5fd">Live</span>
-          <span style="font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:500;margin-top:2px">Expo Cohort →</span>
-          <span style="font-size:11px;color:rgba(250,248,244,0.65);margin-top:4px">Filtered CRM view of new leads</span>
-        </a>
-      </div>
-      <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.1);font-size:12px;color:rgba(250,248,244,0.65)">
-        <strong style="color:#DFC08A">Booth flow:</strong> brides scan QR → /expo raffle → tap "book a 15-min call" → /book wizard. No staff phones; one iPad behind bar for the rare assist case.
-      </div>
-    </div>
-  ` : '';
+  /* Expo-related quick links live on the Expos hub now (admin/js/expo.js). */
   c.innerHTML = `
     <div class="page-header">
       <div>
@@ -271,7 +233,6 @@ async function renderDashboard() {
         <div class="page-subtitle">Welcome back, ${currentUser?.displayName?.split(' ')[0] || 'Kendell'}</div>
       </div>
     </div>
-    ${expoBannerHTML}
     <div class="stat-grid" id="dash-stats">
       ${[1,2,3,4,5].map(()=>`<div class="stat-card"><div class="skeleton skeleton-line w-1/4" style="height:11px;margin-bottom:10px;"></div><div class="skeleton skeleton-line w-1/2" style="height:28px;"></div></div>`).join('')}
     </div>

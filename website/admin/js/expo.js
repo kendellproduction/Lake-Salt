@@ -215,11 +215,47 @@ async function renderTabOverview(expo) {
     <div><strong>Cost:</strong> ${expo.cost ? '$' + expo.cost : '—'}</div>
     <div><strong>Campaign tag:</strong> <code style="background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px">${escapeHtml(expo.campaign)}</code></div>
     ${expo.expectedNextRegistration ? `<div><strong>Next-year registration window:</strong> est. ${formatDate(expo.expectedNextRegistration)} (Phase 2 agent will monitor)</div>` : ''}
-    <div style="margin-top:12px;color:var(--text-muted);font-size:13px">
-      Tabs above: <em>Analytics</em> for charts &amp; funnel · <em>Cohort</em> for the wedding-date buckets &amp; paste-ready emails ·
-      <em>Notes</em> for thoughts &amp; learnings · <em>Prep</em> for checklists.
+  `;
+
+  /* Quick links — moved here from the main Dashboard so the dashboard stays clean. */
+  const linksCard = document.createElement('div');
+  linksCard.className = 'card';
+  linksCard.style.marginTop = '18px';
+  linksCard.innerHTML = `
+    <div class="card-header"><span class="card-title">Quick links for this expo</span></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">
+      <a href="/expo" target="_blank" rel="noopener" style="text-decoration:none;display:flex;flex-direction:column;padding:14px;background:rgba(201,169,110,0.18);border:1px solid rgba(201,169,110,0.4);border-radius:10px;color:var(--text);transition:background 0.2s" onmouseover="this.style.background='rgba(201,169,110,0.28)'" onmouseout="this.style.background='rgba(201,169,110,0.18)'">
+        <span style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#DFC08A">QR Target</span>
+        <span style="font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:500;margin-top:2px">Raffle Page →</span>
+        <span style="font-size:11px;color:var(--text-muted);margin-top:4px">What the QR scans to</span>
+      </a>
+      <a href="/book" target="_blank" rel="noopener" style="text-decoration:none;display:flex;flex-direction:column;padding:14px;background:rgba(34,197,94,0.18);border:1px solid rgba(34,197,94,0.4);border-radius:10px;color:var(--text);transition:background 0.2s" onmouseover="this.style.background='rgba(34,197,94,0.28)'" onmouseout="this.style.background='rgba(34,197,94,0.18)'">
+        <span style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#86efac">Public Wizard</span>
+        <span style="font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:500;margin-top:2px">Book a Date →</span>
+        <span style="font-size:11px;color:var(--text-muted);margin-top:4px">9-step wizard + 15-min call slot picker</span>
+      </a>
+      <a href="expo-booth-prints.html" target="_blank" rel="noopener" style="text-decoration:none;display:flex;flex-direction:column;padding:14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.18);border-radius:10px;color:var(--text);transition:background 0.2s" onmouseover="this.style.background='rgba(255,255,255,0.12)'" onmouseout="this.style.background='rgba(255,255,255,0.06)'">
+        <span style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#DFC08A">Print</span>
+        <span style="font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:500;margin-top:2px">Booth Signs →</span>
+        <span style="font-size:11px;color:var(--text-muted);margin-top:4px">Table tent + lanyard cards</span>
+      </a>
+      <a href="#crm" onclick="setTimeout(()=>typeof setCohort==='function'&&setCohort('${escapeHtml(expo.campaign)}'),200)" style="text-decoration:none;display:flex;flex-direction:column;padding:14px;background:rgba(59,130,246,0.18);border:1px solid rgba(59,130,246,0.4);border-radius:10px;color:var(--text);transition:background 0.2s" onmouseover="this.style.background='rgba(59,130,246,0.28)'" onmouseout="this.style.background='rgba(59,130,246,0.18)'">
+        <span style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#93c5fd">Live</span>
+        <span style="font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:500;margin-top:2px">Cohort in CRM →</span>
+        <span style="font-size:11px;color:var(--text-muted);margin-top:4px">Filtered CRM view of these leads</span>
+      </a>
+    </div>
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--text-muted)">
+      <strong style="color:#DFC08A">Booth flow:</strong> brides scan QR → /expo raffle → tap "book a 15-min call" → /book wizard. No staff phones; one iPad behind bar for the rare assist case.
     </div>
   `;
+  document.getElementById('expo-tab-content').appendChild(linksCard);
+
+  /* Tip block at the bottom */
+  const tip = document.createElement('div');
+  tip.style = 'margin-top:14px;color:var(--text-muted);font-size:13px';
+  tip.innerHTML = 'Tabs above: <em>Analytics</em> for charts &amp; funnel · <em>Cohort</em> for the wedding-date buckets &amp; paste-ready emails · <em>Notes</em> for thoughts &amp; learnings · <em>Prep</em> for checklists.';
+  document.getElementById('expo-tab-content').appendChild(tip);
 }
 
 function showOverviewError(msg) {
