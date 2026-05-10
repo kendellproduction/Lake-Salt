@@ -140,6 +140,7 @@ function fmtDateInput(ts) {
 function stageColor(stage) {
   const map = {
     'New Lead':         '#1A9E8F',
+    'Waitlist':         '#FF4FB8',  // Custom Bar Build waitlist (pink → distinct from active pipeline)
     'Call Scheduled':   '#3b82f6',
     'Contacted':        '#C9A84C',
     'Proposal Sent':    '#a855f7',
@@ -154,6 +155,7 @@ function stageColor(stage) {
 function stageBadgeClass(stage) {
   const map = {
     'New Lead':         'badge-new-lead',
+    'Waitlist':         'badge-proposal',  // reuse purple/pink-ish badge for visibility
     'Call Scheduled':   'badge-contacted',
     'Contacted':        'badge-contacted',
     'Proposal Sent':    'badge-proposal',
