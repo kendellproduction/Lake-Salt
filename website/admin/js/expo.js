@@ -167,7 +167,14 @@ async function renderTabOverview(expo) {
     </div>
   `;
 
-  const leadsSnap = await db.collection('leads').where('campaign', '==', expo.campaign).get();
+  /* Wrap Firestore reads so a query failure surfaces in the UI instead of
+   * leaving the skeleton spinning forever. */
+  let leadsSnap, evSnap;
+  try {
+    leadsSnap = await db.collection('leads').where('campaign', '==', expo.campaign).get();
+  } catch (e) {
+    return showOverviewError('Couldn\'t load leads — ' + (e.message || e.code || e));
+  }
   const leads = leadsSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(l => l.email && !String(l.email).includes('@test.local'));
   const ig = leads.filter(l => l.instagramFollowed).length;
   const buckets = bucketize(leads);
@@ -176,9 +183,15 @@ async function renderTabOverview(expo) {
   /* Pull traffic — count, no painting on overview */
   const start = firebase.firestore.Timestamp.fromDate(new Date(expo.eventStart));
   const end   = firebase.firestore.Timestamp.fromDate(new Date(expo.eventEnd));
-  const evSnap = await db.collection('page_events')
-    .where('timestamp', '>=', start).where('timestamp', '<=', end).limit(5000).get();
-  const events = evSnap.docs.map(d => d.data());
+  let events = [];
+  try {
+    evSnap = await db.collection('page_events')
+      .where('timestamp', '>=', start).where('timestamp', '<=', end).limit(5000).get();
+    events = evSnap.docs.map(d => d.data());
+  } catch (e) {
+    /* Don't block the whole page if traffic query fails — just zero it out. */
+    console.warn('expo overview: page_events read failed', e);
+  }
   const sessions = new Set(events.map(e => e.sessionId));
   const raffSess = new Set(events.filter(e => e.event === 'raffle_submitted').map(e => e.sessionId));
   const bookSess = new Set(events.filter(e => (e.page||'').includes('book')).map(e => e.sessionId));
@@ -205,6 +218,22 @@ async function renderTabOverview(expo) {
     <div style="margin-top:12px;color:var(--text-muted);font-size:13px">
       Tabs above: <em>Analytics</em> for charts &amp; funnel · <em>Cohort</em> for the wedding-date buckets &amp; paste-ready emails ·
       <em>Notes</em> for thoughts &amp; learnings · <em>Prep</em> for checklists.
+    </div>
+  `;
+}
+
+function showOverviewError(msg) {
+  const el = document.getElementById('expo-tab-content');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="card" style="border:1px solid rgba(239,68,68,0.4);background:rgba(239,68,68,0.06)">
+      <div class="card-header"><span class="card-title" style="color:#ef4444">Couldn't load this expo's data</span></div>
+      <div style="font-size:13px;color:var(--text);line-height:1.5">${escapeHtml(msg)}</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:14px">
+        If you're signed in but still seeing this, your account may not be in the <code>admins</code> Firestore collection.
+        Try the <a href="#crm" style="color:var(--gold)">CRM</a> tab — if it loads there, it's an expo-specific bug, ping Kendell.
+      </div>
+      <button class="btn btn-secondary" onclick="renderExpo()" style="margin-top:14px">Retry</button>
     </div>
   `;
 }
@@ -591,6 +620,10 @@ function chartOpts(opts) {
       y: { ticks: { color: text }, grid: { color: grid } }
     },
   };
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
 function copyToClipboard(text, msg) {
