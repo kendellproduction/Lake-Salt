@@ -311,7 +311,9 @@
        MARQUEE — capabilities ticker */
     .marq {
       position: relative;
-      background: var(--ink);
+      background: rgba(11,14,24,0.55);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
       border-block: 1px solid var(--line);
       overflow: hidden;
     }
@@ -428,7 +430,7 @@
 
     /* ─────────────────────────────────────────
        PROCESS — animated SVG line + 4 steps */
-    .process { background: linear-gradient(180deg, var(--obsidian), var(--ink)); }
+    .process { background: transparent; }
     .process-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -472,7 +474,7 @@
 
     /* ─────────────────────────────────────────
        FEATURE PILLARS — split with vertical line */
-    .pillars { background: var(--obsidian); }
+    .pillars { background: transparent; }
     .pillars-grid {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
@@ -512,7 +514,7 @@
        WAITLIST FORM — premium, animated holographic border */
     .waitlist-section {
       padding: 7rem 2rem 8rem;
-      background: linear-gradient(180deg, var(--ink) 0%, var(--obsidian) 100%);
+      background: transparent;
       position: relative;
     }
     .waitlist-section::before {
@@ -618,9 +620,16 @@
       border-radius: 12px;
       color: var(--text);
       font-family: 'Inter', sans-serif;
-      font-size: 0.95rem;
+      font-size: 16px;  /* 16px prevents iOS auto-zoom on focus */
       transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
       outline: none;
+      width: 100%;
+      min-height: 48px;  /* generous touch target */
+    }
+    .field select { -webkit-appearance: none; appearance: none;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%23D4AF6A' stroke-width='2'><path d='M1 1l5 5 5-5'/></svg>");
+      background-repeat: no-repeat; background-position: right 1rem center;
+      padding-right: 2.5rem;
     }
     .field textarea { min-height: 110px; resize: vertical; line-height: 1.55; }
     .field input::placeholder, .field textarea::placeholder { color: rgba(245,241,232,0.32); }
@@ -641,14 +650,15 @@
     }
     .use-card {
       position: relative;
-      padding: 1rem 1rem;
+      padding: 0.95rem 1rem;
+      min-height: 64px;  /* comfortable tap target on mobile */
       background: rgba(245,241,232,0.03);
       border: 1px solid var(--line-strong);
       border-radius: 12px;
       cursor: pointer;
       transition: all 0.25s ease;
       text-align: left;
-      display: flex; flex-direction: column; gap: 0.3rem;
+      display: flex; flex-direction: column; justify-content: center; gap: 0.3rem;
     }
     .use-card input { position: absolute; opacity: 0; pointer-events: none; }
     .use-card .label {
@@ -675,7 +685,8 @@
     }
     .cap {
       display: flex; align-items: flex-start; gap: 0.7rem;
-      padding: 0.8rem 0.9rem;
+      padding: 0.85rem 0.9rem;
+      min-height: 56px;  /* tap target */
       background: rgba(245,241,232,0.03);
       border: 1px solid var(--line-strong);
       border-radius: 10px;
@@ -833,7 +844,9 @@
     /* ─────────────────────────────────────────
        FOOTER */
     .footer {
-      background: var(--shadow);
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
       padding: 3rem 2rem 2rem;
       text-align: center;
       border-top: 1px solid var(--line);
@@ -861,6 +874,59 @@
     }
     .reveal.in {
       opacity: 1; transform: none; filter: none;
+    }
+
+    /* ─────────────────────────────────────────
+       MOBILE OPTIMIZATIONS — form is the conversion path,
+       has to be completely effortless on a phone */
+    @media (max-width: 720px) {
+      body { font-size: 15px; }
+      .nav { padding: 0.85rem 1.1rem; }
+      .nav-logo { font-size: 1.25rem; }
+      .nav-cta { padding: 0.55rem 0.95rem; font-size: 0.7rem; }
+      .hero { padding: 7rem 1.25rem 4rem; min-height: 90vh; }
+      .hero-stats { gap: 1.75rem; margin-top: 3rem; padding-top: 1.75rem; }
+      .hero-stat .num { font-size: 1.85rem; }
+      .hero-stat .lbl { font-size: 0.62rem; letter-spacing: 0.18em; }
+      .marq-track { gap: 1.75rem; padding: 1rem 0; animation-duration: 28s; }
+      .marq-track span { font-size: 1.1rem; }
+      .section { padding: 4.5rem 1.25rem; }
+      .waitlist-section { padding: 4.5rem 1.25rem 5rem; }
+      .section-title { font-size: clamp(1.85rem, 7vw, 2.4rem); }
+      .builds-grid, .pillars-grid { grid-template-columns: 1fr; gap: 0.85rem; }
+      .pillars-grid { border-radius: 14px; }
+      .pillar { padding: 1.85rem 1.4rem; }
+      .process-grid { grid-template-columns: 1fr; gap: 0.75rem; margin-top: 2.5rem; }
+      .process-step { padding: 1.5rem 1.25rem; }
+      .form-glow-wrap { border-radius: 22px; }
+      .waitlist-form { padding: 1.5rem 1.15rem 1.65rem !important; gap: 1.25rem; }
+      .form-row { grid-template-columns: 1fr; gap: 1rem; }
+      .field label { font-size: 0.6rem; letter-spacing: 0.18em; }
+      .use-grid { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+      .use-card { padding: 0.85rem 0.85rem; min-height: 60px; }
+      .use-card .label { font-size: 0.88rem; }
+      .use-card .sublabel { font-size: 0.7rem; }
+      .cap-grid { grid-template-columns: 1fr; gap: 0.5rem; }
+      .ai-callout { flex-direction: column; gap: 0.85rem; padding: 1.25rem; }
+      .ai-callout svg { width: 24px; height: 24px; }
+      .ai-callout h5 { font-size: 1.05rem; }
+      .ai-callout p { font-size: 0.82rem; }
+      .upload-wrap { padding: 1.25rem 1rem; }
+      .submit-btn {
+        align-self: stretch;  /* full-width tap target on phones */
+        text-align: center;
+        padding: 1.1rem 1.5rem;
+      }
+      .form-success { padding: 1rem 1.15rem; font-size: 0.88rem; }
+      .footer { padding: 2.25rem 1.25rem 1.75rem; }
+      .f-links { gap: 1rem; font-size: 0.72rem; }
+    }
+    /* iOS Safari — disable smooth scroll inside form to avoid scroll-jacking
+       when an input keyboard opens */
+    @supports (-webkit-touch-callout: none) {
+      .waitlist-form input, .waitlist-form textarea, .waitlist-form select {
+        font-size: 16px;  /* belt-and-suspenders for old iOS */
+      }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -898,9 +964,9 @@
       <span class="l3">For your craft.</span>
     </h1>
     <p class="hero-sub">
-      Lake Salt designs and fabricates mobile bars to spec — coffee, cocktail, mocktail, dirty soda, multi-purpose.
-      Battery + outlet capability. Custom branding. Modern wood, industrial, or moody-black finishes.
-      Built by the same team that runs Utah's premier mobile bar service.
+      Lake Salt builds mobile bars to your spec — beverage bars, coffee carts, custom-branded bars.
+      You upload an AI mockup of what you want, we build it exactly to that vision. Built in Las Vegas,
+      shipped in a wood crate to your home or business anywhere in the continental US.
     </p>
     <div class="hero-cta-row">
       <a href="#waitlist" class="btn btn-primary">
@@ -912,9 +978,9 @@
       </a>
     </div>
     <div class="hero-stats">
-      <div class="hero-stat"><div class="num">100%</div><div class="lbl">Built to Spec</div></div>
-      <div class="hero-stat"><div class="num">6–10wk</div><div class="lbl">Build Window</div></div>
-      <div class="hero-stat"><div class="num">12V</div><div class="lbl">Battery + Outlet</div></div>
+      <div class="hero-stat"><div class="num">100%</div><div class="lbl">Built to your mockup</div></div>
+      <div class="hero-stat"><div class="num">6–10wk</div><div class="lbl">Build window</div></div>
+      <div class="hero-stat"><div class="num">Vegas</div><div class="lbl">Built &amp; shipped from</div></div>
     </div>
   </div>
 </section>
@@ -922,13 +988,13 @@
 <!-- ═══════════════ MARQUEE ═══════════════ -->
 <div class="marq" aria-hidden="true">
   <div class="marq-track">
-    <span>Custom branding</span><span>Battery + outlet</span><span>Modern wood</span>
-    <span>Industrial steel</span><span>Cold storage</span><span>USB charging</span>
-    <span>LED lighting</span><span>Locking storage</span><span>Built in Utah</span>
+    <span>Built to your mockup</span><span>Custom branding</span><span>Cold storage</span>
+    <span>USB charging</span><span>LED lighting</span><span>Locking storage</span>
+    <span>Battery-ready</span><span>One-person liftable</span><span>Built in Las Vegas</span>
     <!-- duplicate for seamless loop -->
-    <span>Custom branding</span><span>Battery + outlet</span><span>Modern wood</span>
-    <span>Industrial steel</span><span>Cold storage</span><span>USB charging</span>
-    <span>LED lighting</span><span>Locking storage</span><span>Built in Utah</span>
+    <span>Built to your mockup</span><span>Custom branding</span><span>Cold storage</span>
+    <span>USB charging</span><span>LED lighting</span><span>Locking storage</span>
+    <span>Battery-ready</span><span>One-person liftable</span><span>Built in Las Vegas</span>
   </div>
 </div>
 
@@ -937,16 +1003,16 @@
   <div class="section-inner">
     <div class="reveal">
       <span class="eyebrow">What You Can Build</span>
-      <h2 class="section-title">Six bars, <em>one craftsman.</em></h2>
-      <p class="section-sub">Each build starts as a conversation about what you'll serve and where you'll serve it. Then we engineer the bar around it.</p>
+      <h2 class="section-title">A bar, <em>built to your mockup.</em></h2>
+      <p class="section-sub">Whatever you'll serve, we build the bar around it. Tell us what you have in mind and upload an AI image — we build exactly to that vision.</p>
     </div>
     <div class="builds-grid">
       <div class="build-card reveal">
         <span class="build-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16l-7 9v6"/><path d="M9 19h6"/><path d="M7 8h10"/></svg>
         </span>
-        <h3>Cocktail Bar</h3>
-        <p>Speed-rail, glassware storage, ice well, garnish station — the classic full-service mobile bar.</p>
+        <h3>Beverage Bar</h3>
+        <p>Cocktail, mocktail, or dirty soda — same core build. Speed rail, ice well, glassware storage, garnish station.</p>
       </div>
       <div class="build-card reveal">
         <span class="build-icon" aria-hidden="true">
@@ -957,31 +1023,17 @@
       </div>
       <div class="build-card reveal">
         <span class="build-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l-1 5H7L6 3z"/><path d="M7 8v9a3 3 0 0 0 3 3h4a3 3 0 0 0 3-3V8"/><path d="M10 13h4"/></svg>
+          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>
         </span>
-        <h3>Mocktail / NA Bar</h3>
-        <p>Premium NA mixers, syrups, citrus prep — a full bar experience, zero alcohol.</p>
-      </div>
-      <div class="build-card reveal">
-        <span class="build-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2h8l-1 4H9L8 2z"/><path d="M7 6h10v12a3 3 0 0 1-3 3h-4a3 3 0 0 1-3-3V6z"/><path d="M10 11l2 2 2-2"/></svg>
-        </span>
-        <h3>Dirty Soda Cart</h3>
-        <p>Soda fountains, cream pumps, syrup rail, big-cup storage — a Utah staple, custom built.</p>
-      </div>
-      <div class="build-card reveal">
-        <span class="build-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11l7-7 7 7"/><path d="M6 11v9h12v-9"/><path d="M10 20v-5h4v5"/></svg>
-        </span>
-        <h3>Tasting / Wine</h3>
-        <p>Stem storage, marble or stone top, locking cellar, wine bucket cutout. For brands and venues.</p>
+        <h3>Custom-Branded</h3>
+        <p>Logo paneling, brand colors, hidden cable channels. For venues, caterers, and event vendors.</p>
       </div>
       <div class="build-card reveal">
         <span class="build-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="11" rx="1.5"/><path d="M3 10h18"/><path d="M9 13.5h.01M12 13.5h.01M15 13.5h.01"/></svg>
         </span>
         <h3>Multi-Purpose</h3>
-        <p>Modular insert system — swap a coffee bay for a cocktail bay. One bar, every event you book.</p>
+        <p>Modular insert system — swap a coffee bay for a beverage bay. One bar, every event you book.</p>
       </div>
     </div>
   </div>
@@ -992,29 +1044,29 @@
   <div class="section-inner">
     <div class="reveal">
       <span class="eyebrow">How It Works</span>
-      <h2 class="section-title">From a sketch to <em>a bar that's yours.</em></h2>
-      <p class="section-sub">Four steps. Roughly 6–10 weeks from approved concept to delivery.</p>
+      <h2 class="section-title">Upload your mockup. <em>We build it.</em></h2>
+      <p class="section-sub">Four steps. Roughly 6–10 weeks from approved mockup to your door.</p>
     </div>
     <div class="process-grid">
       <div class="process-step reveal">
         <span class="process-num">01</span>
         <h4>Brief</h4>
-        <p>You join the waitlist. Tell us what you'll serve, the look you want, where it'll live, and whether you'll need power.</p>
+        <p>Join the waitlist. Tell us what you'll serve, the capabilities you need, and where the bar will live.</p>
       </div>
       <div class="process-step reveal">
         <span class="process-num">02</span>
-        <h4>Concept</h4>
-        <p>We sketch a footprint, finishes, internal storage. You approve or iterate. Bring an AI mockup if you have one.</p>
+        <h4>Mockup</h4>
+        <p>You generate an AI image of the bar you want — ChatGPT, Gemini, Midjourney. We build to that exact image. No back-and-forth.</p>
       </div>
       <div class="process-step reveal">
         <span class="process-num">03</span>
         <h4>Build</h4>
-        <p>Lake Salt fabricates locally. Real wood, real welding, real wiring. Photo updates throughout.</p>
+        <p>Built in our Las Vegas shop. Real wood, real welding, real wiring. Quick photo confirmation when it's done.</p>
       </div>
       <div class="process-step reveal">
         <span class="process-num">04</span>
-        <h4>Delivery</h4>
-        <p>You pick up at our Saratoga Springs shop, or we deliver locally. We walk you through every drawer.</p>
+        <h4>Ship</h4>
+        <p>Crated in custom wood crating and shipped to your home or business. Local Vegas? Pickup is on us. Shipping cost is paid at order.</p>
       </div>
     </div>
   </div>
@@ -1030,18 +1082,18 @@
     <div class="pillars-grid">
       <div class="pillar reveal">
         <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3h-4a2 2 0 0 0-2 2v3h8V5a2 2 0 0 0-2-2z"/><rect x="6" y="8" width="12" height="13" rx="2"/><path d="M11 13l-1.5 3h2L10 19"/></svg>
-        <h4>Power, On Demand</h4>
-        <p>12V battery + AC outlet capability. Run a blender, a fountain, an espresso machine — no extension cords across the venue.</p>
+        <h4>Power-Ready</h4>
+        <p>Internal wiring routed for an outlet so you can plug in a portable battery (Jackery, EcoFlow, Goal Zero). Run a blender, an espresso machine, LED strips — no extension cords across the venue.</p>
       </div>
       <div class="pillar reveal">
         <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h7l3-9 4 18 3-9h1"/></svg>
-        <h4>Built for Movement</h4>
-        <p>Lockable wheels, balanced weight distribution, handle cutouts. One person can roll it, two can lift it.</p>
+        <h4>One-Person Liftable</h4>
+        <p>Lockable wheels, balanced weight distribution, handle cutouts. Light enough that one person can lift and load — no crew required.</p>
       </div>
       <div class="pillar reveal">
         <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>
         <h4>Yours, Branded</h4>
-        <p>Custom finishes, hidden cable channels, branded face panels, optional marble or stone tops. It looks like your bar — because it is.</p>
+        <p>Custom finishes, hidden cable channels, branded face panels, your logo where you want it. It looks like your bar — because it is.</p>
       </div>
     </div>
   </div>
@@ -1148,8 +1200,8 @@
             <circle cx="12" cy="12" r="3"/>
           </svg>
           <div>
-            <h5>Have an idea but can't sketch it?</h5>
-            <p>Use <a href="https://chat.openai.com" target="_blank" rel="noopener"><strong>ChatGPT</strong></a>, <a href="https://gemini.google.com" target="_blank" rel="noopener"><strong>Google Gemini</strong></a>, or any image model to generate a mockup — describe the wood, the finish, the shape, the vibe — then drop the image below. It speeds the design call by a mile.</p>
+            <h5>Generate a mockup with AI — we build exactly to that image.</h5>
+            <p>This is how the build happens — <strong>no design iteration, no back-and-forth.</strong> Describe what you want to <a href="https://chat.openai.com" target="_blank" rel="noopener"><strong>ChatGPT</strong></a>, <a href="https://gemini.google.com" target="_blank" rel="noopener"><strong>Gemini</strong></a>, or another image model — wood tone, finish, shape, layout, capabilities, branding. Generate until you love it. Then upload the image below and we build to that vision exactly. Keeps cost down and turnaround fast.</p>
           </div>
         </div>
 
