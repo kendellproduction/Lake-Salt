@@ -584,6 +584,158 @@
       box-shadow: 0 0 0 4px rgba(212,175,106,0.14);
     }
 
+    /* ─── Price Builder (interactive picker + live total) ─── */
+    .builder {
+      display: flex; flex-direction: column;
+      border: 1px solid var(--line-strong);
+      border-radius: 14px;
+      background: rgba(245,241,232,0.03);
+      overflow: hidden;
+    }
+    .builder-row {
+      display: flex; align-items: center; gap: 1rem;
+      padding: 1rem 1.2rem;
+      border-bottom: 1px solid var(--line);
+      transition: background 0.25s ease;
+    }
+    .builder-row:last-child { border-bottom: none; }
+    .builder-row:hover { background: rgba(245,241,232,0.025); }
+    .builder-row.selected {
+      background: linear-gradient(90deg, rgba(212,175,106,0.10), rgba(212,175,106,0.04));
+    }
+    .builder-info {
+      flex: 1;
+      display: flex; flex-direction: column; gap: 0.15rem;
+      min-width: 0;
+    }
+    .builder-info .t {
+      font-size: 0.98rem; font-weight: 500; color: var(--text);
+    }
+    .builder-info .s {
+      font-size: 0.78rem; color: var(--text-muted);
+    }
+    .builder-price {
+      flex: 0 0 auto;
+      font-family: 'Italiana', serif;
+      font-size: 1.05rem;
+      color: var(--aurum);
+      letter-spacing: 0.01em;
+      min-width: 60px; text-align: right;
+    }
+    .builder-toggle {
+      flex: 1;
+      display: flex; align-items: center; gap: 1rem;
+      cursor: pointer;
+    }
+    .builder-toggle input { position: absolute; opacity: 0; pointer-events: none; }
+    .builder-check {
+      flex: 0 0 auto;
+      width: 22px; height: 22px; border-radius: 6px;
+      border: 1.5px solid var(--line-strong);
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: all 0.2s ease;
+      background: rgba(245,241,232,0.04);
+    }
+    .builder-check svg {
+      width: 13px; height: 13px;
+      stroke: var(--obsidian); fill: none; stroke-width: 3;
+      stroke-linecap: round; stroke-linejoin: round;
+      opacity: 0; transition: opacity 0.2s ease;
+    }
+    .builder-toggle:has(input:checked) .builder-check {
+      background: var(--aurum); border-color: var(--aurum);
+    }
+    .builder-toggle:has(input:checked) .builder-check svg { opacity: 1; }
+    /* Stepper */
+    .stepper {
+      flex: 0 0 auto;
+      display: inline-flex; align-items: center;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(245,241,232,0.04);
+    }
+    .stepper-btn {
+      width: 38px; height: 38px;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-size: 1.2rem; font-weight: 400;
+      cursor: pointer;
+      transition: background 0.18s ease, color 0.18s ease;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .stepper-btn:hover:not(:disabled) {
+      background: rgba(212,175,106,0.18);
+      color: var(--aurum);
+    }
+    .stepper-btn:disabled { opacity: 0.32; cursor: not-allowed; }
+    .stepper-val {
+      min-width: 32px; text-align: center;
+      font-family: 'Italiana', serif;
+      font-size: 1.15rem; color: var(--text);
+    }
+    /* "Need more than 5?" hint when at limit */
+    .limit-note {
+      margin-top: 0.6rem;
+      padding: 0.65rem 0.9rem;
+      background: rgba(111,227,214,0.05);
+      border: 1px solid rgba(111,227,214,0.22);
+      border-radius: 8px;
+      font-size: 0.82rem;
+      color: var(--text);
+      display: none;
+    }
+    .limit-note.show { display: block; animation: rise 0.4s var(--ease-out); }
+    .limit-note a { color: var(--iridescent); border-bottom: 1px dotted rgba(111,227,214,0.5); }
+
+    /* Total readout */
+    .total-card {
+      margin-top: 0.5rem;
+      padding: 1.5rem 1.6rem;
+      background: linear-gradient(135deg, rgba(212,175,106,0.10), rgba(182,118,74,0.08));
+      border: 1px solid rgba(212,175,106,0.32);
+      border-radius: 14px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      column-gap: 1rem;
+      row-gap: 0.25rem;
+    }
+    .t-label {
+      grid-column: 1;
+      font-size: 0.7rem; letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--aurum); font-weight: 600;
+    }
+    .t-amount {
+      grid-column: 2; grid-row: 1 / span 2;
+      font-family: 'Italiana', serif;
+      font-size: clamp(2rem, 4vw, 2.6rem);
+      line-height: 1;
+      color: var(--aurum);
+      letter-spacing: -0.01em;
+    }
+    .t-amount small {
+      font-size: 0.55em; font-family: 'Inter', sans-serif;
+      color: var(--text-muted); margin-left: 0.3rem;
+      font-style: normal;
+    }
+    .t-detail {
+      grid-column: 1;
+      font-size: 0.82rem; color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    @media (max-width: 560px) {
+      .builder-row { padding: 0.85rem 0.95rem; gap: 0.7rem; }
+      .builder-price { font-size: 0.95rem; min-width: 56px; }
+      .builder-info .t { font-size: 0.92rem; }
+      .builder-info .s { font-size: 0.72rem; }
+      .stepper-btn { width: 34px; height: 34px; font-size: 1.1rem; }
+      .total-card { padding: 1.15rem 1.2rem; grid-template-columns: 1fr; }
+      .t-amount { grid-column: 1; grid-row: auto; }
+    }
+
     .submit-btn {
       align-self: flex-start;
       padding: 1.15rem 2.4rem;
@@ -891,15 +1043,15 @@
         </div>
         <div class="r-body">
           <h3>Bundle: Bar + Tables + Chairs</h3>
-          <div class="r-price-sub">From</div>
-          <div class="r-price">$200<small>/day, bundle starting</small></div>
+          <div class="r-price-sub">Save</div>
+          <div class="r-price">10%<small>off when you bundle all three</small></div>
           <ul class="r-features">
-            <li>Mobile bar + up to 5 tables + up to 30 chairs</li>
+            <li>Mobile bar + tables + chairs in one trip</li>
             <li>Single delivery, single pickup</li>
-            <li>Best value for full event setup</li>
-            <li>Custom quote on exact mix</li>
+            <li>Automatic 10% discount applied in the calculator</li>
+            <li>Pick exact quantities below — total updates live</li>
           </ul>
-          <a href="#inquiry" class="r-cta" onclick="prefillForm('bundle')">Request Bundle Quote →</a>
+          <a href="#inquiry" class="r-cta" onclick="prefillForm('bundle')">Build a Bundle →</a>
         </div>
       </div>
     </div>
@@ -944,31 +1096,82 @@
         </div>
 
         <div class="field">
-          <label for="r-type">What are you renting? <span class="req">*</span></label>
-          <select id="r-type" name="rentalType" required>
-            <option value="">Pick one…</option>
-            <option value="bar">Mobile Bar</option>
-            <option value="tables">Folding Tables</option>
-            <option value="chairs">Folding Chairs</option>
-            <option value="bundle">Bundle (Bar + Tables + Chairs)</option>
-            <option value="other">Other / Multiple</option>
-          </select>
+          <label>Build your rental <span class="req">*</span></label>
+          <div class="field-help" style="margin-bottom:0.6rem;">Pick what you need. Total updates as you go.</div>
+          <div class="builder">
+            <!-- Mobile bar toggle -->
+            <div class="builder-row" id="row-bar">
+              <label class="builder-toggle">
+                <input type="checkbox" id="r-include-bar" name="includeBar" value="1" />
+                <span class="builder-check"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-11"/></svg></span>
+                <div class="builder-info">
+                  <span class="t">Mobile Wood Bar</span>
+                  <span class="s">70×34×40", the Lake Salt original</span>
+                </div>
+              </label>
+              <span class="builder-price">$150<span style="font-size:0.7em;color:var(--text-muted);">/day</span></span>
+            </div>
+
+            <!-- Tables stepper -->
+            <div class="builder-row" id="row-tables">
+              <div class="builder-info">
+                <span class="t">6' Folding Tables</span>
+                <span class="s">$8/day · up to 5</span>
+              </div>
+              <div class="stepper" data-stepper="tables">
+                <button type="button" class="stepper-btn" data-step="-1" aria-label="Fewer tables">−</button>
+                <span class="stepper-val" id="r-tables-val">0</span>
+                <button type="button" class="stepper-btn" data-step="1" aria-label="More tables">+</button>
+              </div>
+              <input type="hidden" id="r-tables" name="tableCount" value="0" />
+            </div>
+
+            <!-- Chairs stepper -->
+            <div class="builder-row" id="row-chairs">
+              <div class="builder-info">
+                <span class="t">Folding Chairs</span>
+                <span class="s">$2/day · up to 30 (6 per table)</span>
+              </div>
+              <div class="stepper" data-stepper="chairs">
+                <button type="button" class="stepper-btn" data-step="-1" aria-label="Fewer chairs">−</button>
+                <span class="stepper-val" id="r-chairs-val">0</span>
+                <button type="button" class="stepper-btn" data-step="1" aria-label="More chairs">+</button>
+              </div>
+              <input type="hidden" id="r-chairs" name="chairCount" value="0" />
+            </div>
+
+            <!-- Delivery toggle -->
+            <div class="builder-row" id="row-delivery">
+              <label class="builder-toggle">
+                <input type="checkbox" id="r-delivery" name="delivery" value="1" />
+                <span class="builder-check"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-11"/></svg></span>
+                <div class="builder-info">
+                  <span class="t">Local Wasatch Front Delivery</span>
+                  <span class="s">Drop-off &amp; pickup at your address (otherwise free pickup in Saratoga Springs)</span>
+                </div>
+              </label>
+              <span class="builder-price">+$10</span>
+            </div>
+          </div>
+
+          <!-- Limit hint -->
+          <div class="limit-note" id="limit-note">
+            Need more than 5 tables or 30 chairs? Email <a href="mailto:contact@lakesalt.us">contact@lakesalt.us</a> — that's our current inventory cap, but we can stretch for bigger requests.
+          </div>
+
+          <!-- Total readout -->
+          <div class="total-card" style="margin-top:1rem;">
+            <span class="t-label">Estimated Total</span>
+            <span class="t-amount" id="r-total">$0<small>/day</small></span>
+            <span class="t-detail" id="r-breakdown">Pick something above to see your total.</span>
+          </div>
+          <input type="hidden" id="r-subtotal" name="subtotal" value="0" />
+          <input type="hidden" id="r-type" name="rentalType" value="" />
         </div>
 
-        <div class="form-row">
-          <div class="field">
-            <label for="r-tables">How many tables?</label>
-            <input id="r-tables" name="tableCount" type="number" min="0" max="10" placeholder="0–10" />
-          </div>
-          <div class="field">
-            <label for="r-chairs">How many chairs?</label>
-            <input id="r-chairs" name="chairCount" type="number" min="0" placeholder="0+" />
-          </div>
-        </div>
-
-        <div class="field">
-          <label for="r-location">Pickup or delivery location</label>
-          <input id="r-location" name="location" type="text" placeholder="City, or full address for delivery" />
+        <div class="field" id="address-field" style="display:none;">
+          <label for="r-location">Delivery address <span class="req">*</span></label>
+          <input id="r-location" name="location" type="text" placeholder="Street, city, ZIP" />
         </div>
 
         <div class="field">
@@ -992,7 +1195,7 @@
     <div class="faq-list">
       <details class="faq-item reveal">
         <summary>What's your delivery radius?</summary>
-        <p>Local Wasatch Front delivery is available — Salt Lake City, Saratoga Springs, Lehi, Draper, Provo, Park City, and surrounding areas. Pickup from our Saratoga Springs location is always free. Delivery beyond 30 miles incurs a per-mile fee.</p>
+        <p>We deliver across the Wasatch Front — Salt Lake City, Saratoga Springs, Lehi, Draper, Provo, Park City, and surrounding areas. Local delivery is a flat $10. Pickup from our Saratoga Springs location is always free. Beyond 30 miles, we charge a per-mile add-on on top of the $10 flat — just ask in your inquiry.</p>
       </details>
       <details class="faq-item reveal">
         <summary>Do I need to put down a deposit?</summary>
@@ -1012,7 +1215,11 @@
       </details>
       <details class="faq-item reveal">
         <summary>Why are tables limited to 5 and chairs to 30?</summary>
-        <p>These are sized for small private gatherings — backyard birthdays, baby showers, intimate receptions, work get-togethers up to 30 guests. Most local rental companies charge $9–$10 per table and $2.25–$3 per chair; we're slightly below average so a 5-table / 30-chair setup with us runs about <strong>$100/day</strong> vs $114 elsewhere. Need more? We can usually flex up — ask in your inquiry.</p>
+        <p>That's all the inventory we have for now. We're testing demand before we buy more — if rentals take off, we'll expand. Need more than 5 tables or 30 chairs for your event? Email <a href="mailto:contact@lakesalt.us">contact@lakesalt.us</a> and we'll figure something out (we can sometimes source from partners). For context, most local companies charge $9–$10/table and $2.25–$3/chair; our $8 / $2 lands the same 5-table / 30-chair setup at <strong>~$100/day</strong> vs ~$114 elsewhere.</p>
+      </details>
+      <details class="faq-item reveal">
+        <summary>How does delivery work?</summary>
+        <p>Pickup at our Saratoga Springs location is always free. Local Wasatch Front delivery is a <strong>flat $10</strong> for the bundle (Salt Lake City, Saratoga Springs, Lehi, Draper, Provo, Park City, and surrounding areas). Beyond 30 miles, we charge a per-mile fee on top — just ask in your inquiry and we'll quote it.</p>
       </details>
       <details class="faq-item reveal">
         <summary>How far in advance should I book?</summary>
@@ -1129,16 +1336,118 @@
     document.querySelectorAll('.reveal').forEach(el => io.observe(el));
   })();
 
-  /* ─── Form prefill from URL hash + card click ─── */
+  /* ─── Interactive price builder ───
+     Pricing: bar $150, table $8, chair $2, delivery flat +$10.
+     Caps: 5 tables, 30 chairs. */
+  const PRICES = { bar: 150, table: 8, chair: 2, delivery: 10 };
+  const LIMITS = { tables: 5, chairs: 30 };
+
+  const $ = (id) => document.getElementById(id);
+
+  function recalc() {
+    const includeBar = $('r-include-bar').checked;
+    const tables = parseInt($('r-tables').value || '0', 10);
+    const chairs = parseInt($('r-chairs').value || '0', 10);
+    const delivery = $('r-delivery').checked;
+
+    // Compute
+    let subtotal = 0;
+    const parts = [];
+    if (includeBar) { subtotal += PRICES.bar; parts.push(`Bar $${PRICES.bar}`); }
+    if (tables > 0) { subtotal += tables * PRICES.table; parts.push(`${tables} table${tables>1?'s':''} $${tables*PRICES.table}`); }
+    if (chairs > 0) { subtotal += chairs * PRICES.chair; parts.push(`${chairs} chair${chairs>1?'s':''} $${chairs*PRICES.chair}`); }
+    if (delivery) { subtotal += PRICES.delivery; parts.push(`Delivery $${PRICES.delivery}`); }
+
+    // Apply bundle discount: if bar + tables + chairs all selected → 10% off
+    // (simple incentive; gross bundle still beats competitor avg)
+    let discount = 0;
+    if (includeBar && tables > 0 && chairs > 0) {
+      discount = Math.round(subtotal * 0.10);
+      subtotal -= discount;
+      parts.push(`Bundle 10% off −$${discount}`);
+    }
+
+    // Update DOM
+    $('r-total').innerHTML = subtotal > 0
+      ? `$${subtotal}<small>/day</small>`
+      : `$0<small>/day</small>`;
+    $('r-breakdown').textContent = parts.length
+      ? parts.join(' · ')
+      : 'Pick something above to see your total.';
+    $('r-subtotal').value = subtotal;
+
+    // Selected rows visual state
+    $('row-bar').classList.toggle('selected', includeBar);
+    $('row-tables').classList.toggle('selected', tables > 0);
+    $('row-chairs').classList.toggle('selected', chairs > 0);
+    $('row-delivery').classList.toggle('selected', delivery);
+
+    // Limit hint
+    const atLimit = (tables >= LIMITS.tables) || (chairs >= LIMITS.chairs);
+    $('limit-note').classList.toggle('show', atLimit);
+
+    // Auto-derive rentalType for analytics + CRM (no dropdown anymore)
+    let type = 'other';
+    const hasBar = includeBar, hasTables = tables > 0, hasChairs = chairs > 0;
+    if (hasBar && (hasTables || hasChairs)) type = 'bundle';
+    else if (hasBar) type = 'bar';
+    else if (hasTables && hasChairs) type = 'tables-and-chairs';
+    else if (hasTables) type = 'tables';
+    else if (hasChairs) type = 'chairs';
+    $('r-type').value = type;
+
+    // Address visibility / required state
+    const addrField = $('address-field');
+    const addrInput = $('r-location');
+    if (delivery) {
+      addrField.style.display = '';
+      addrInput.setAttribute('required', '');
+    } else {
+      addrField.style.display = 'none';
+      addrInput.removeAttribute('required');
+    }
+  }
+
+  /* Stepper button handlers — wire +/- for tables and chairs */
+  document.querySelectorAll('.stepper-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const stepperEl = btn.closest('.stepper');
+      const kind = stepperEl.dataset.stepper; // 'tables' or 'chairs'
+      const step = parseInt(btn.dataset.step, 10);
+      const max  = LIMITS[kind];
+      const input = $('r-' + kind);
+      const valEl = $('r-' + kind + '-val');
+      const cur = parseInt(input.value || '0', 10);
+      const next = Math.max(0, Math.min(max, cur + step));
+      input.value = next;
+      valEl.textContent = next;
+      recalc();
+    });
+  });
+
+  /* Toggle handlers */
+  $('r-include-bar').addEventListener('change', recalc);
+  $('r-delivery').addEventListener('change', recalc);
+
+  /* ─── Hash + card click prefill ─── */
   function prefillForm(type) {
-    const sel = document.getElementById('r-type');
-    if (sel) sel.value = type;
+    if (type === 'bar' || type === 'bundle') $('r-include-bar').checked = true;
+    if (type === 'tables' || type === 'bundle') {
+      $('r-tables').value = 2; $('r-tables-val').textContent = 2;
+    }
+    if (type === 'chairs' || type === 'bundle') {
+      $('r-chairs').value = 12; $('r-chairs-val').textContent = 12;
+    }
+    recalc();
+    // Scroll the inquiry into view
+    document.getElementById('inquiry').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
   window.addEventListener('DOMContentLoaded', () => {
+    recalc(); // initial state
     const hash = window.location.hash;
-    if (hash === '#bar') prefillForm('bar');
+    if (hash === '#bar')     prefillForm('bar');
     if (hash === '#tables' || hash === '#tables-chairs') prefillForm('tables');
-    if (hash === '#chairs') prefillForm('chairs');
+    if (hash === '#chairs')  prefillForm('chairs');
   });
 
   /* ─── Submit ─── */
@@ -1146,21 +1455,36 @@
     e.preventDefault();
     const btn = document.getElementById('rental-submit');
     const orig = btn.textContent;
+
+    const includeBar = $('r-include-bar').checked;
+    const tables = parseInt($('r-tables').value || '0', 10);
+    const chairs = parseInt($('r-chairs').value || '0', 10);
+    const delivery = $('r-delivery').checked;
+    const subtotal = parseInt($('r-subtotal').value || '0', 10);
+
+    if (!includeBar && tables === 0 && chairs === 0) {
+      alert('Please pick at least one rental (bar, tables, or chairs).');
+      return false;
+    }
+
     btn.disabled = true; btn.textContent = 'Sending…';
 
     const data = {
       intent:     'rental',
       stage:      'New Lead',
       source:     'rentals.html',
-      name:       document.getElementById('r-name').value.trim(),
-      email:      document.getElementById('r-email').value.trim(),
-      phone:      document.getElementById('r-phone').value.trim(),
-      eventDate:  document.getElementById('r-date').value,
-      rentalType: document.getElementById('r-type').value,
-      tableCount: parseInt(document.getElementById('r-tables').value || '0', 10),
-      chairCount: parseInt(document.getElementById('r-chairs').value || '0', 10),
-      location:   document.getElementById('r-location').value.trim(),
-      notes:      document.getElementById('r-notes').value.trim(),
+      name:       $('r-name').value.trim(),
+      email:      $('r-email').value.trim(),
+      phone:      $('r-phone').value.trim(),
+      eventDate:  $('r-date').value,
+      rentalType: $('r-type').value,
+      includeBar,
+      tableCount: tables,
+      chairCount: chairs,
+      delivery,
+      subtotal,
+      location:   $('r-location').value.trim(),
+      notes:      $('r-notes').value.trim(),
       createdAt:  (window.firebase && firebase.firestore && firebase.firestore.FieldValue)
                     ? firebase.firestore.FieldValue.serverTimestamp()
                     : new Date().toISOString()
@@ -1170,11 +1494,23 @@
       if (window._db) await window._db.collection('leads').add(data);
       try {
         if (typeof window.lsTrack === 'function') {
-          window.lsTrack('rental_inquiry_submitted', { rentalType: data.rentalType || 'unknown' });
+          window.lsTrack('rental_inquiry_submitted', {
+            rentalType: data.rentalType || 'unknown',
+            subtotal,
+            includeBar,
+            tableCount: tables,
+            chairCount: chairs,
+            delivery,
+          });
         }
       } catch (_) {}
       document.getElementById('rental-success').classList.add('show');
       document.getElementById('rental-form').reset();
+      // reset builder state too
+      $('r-tables-val').textContent = '0';
+      $('r-chairs-val').textContent = '0';
+      $('r-tables').value = 0; $('r-chairs').value = 0;
+      recalc();
       btn.textContent = '✓ Sent — talk soon';
       btn.style.background = '#22c55e';
       window.scrollTo({ top: document.getElementById('rental-success').offsetTop - 100, behavior: 'smooth' });
