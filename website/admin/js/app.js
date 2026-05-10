@@ -19,6 +19,7 @@ const MODULES = {
   expenses:   () => renderExpenses(),
   inventory:  () => renderInventory(),
   funnel:     () => renderFunnel(),
+  expo:       () => renderExpo(),
   'event-day': () => renderEventDay(),
   marketing:   () => renderMarketing(),
   notes:       () => renderNotes()
