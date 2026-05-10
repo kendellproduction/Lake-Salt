@@ -45,6 +45,7 @@
       window._db = firebase.firestore();
     }
   </script>
+  <script src="analytics.js" defer></script>
 
   <style>
     :root {
@@ -332,25 +333,41 @@
 <script>
   async function submitWaitlist(e) {
     e.preventDefault();
+    const btn = document.querySelector('#sales-form .submit-btn');
+    const orig = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = 'Joining…'; }
+
     const data = {
-      intent: 'bar-sale',
-      source: 'sales.html',
-      name: document.getElementById('s-name').value.trim(),
-      email: document.getElementById('s-email').value.trim(),
-      phone: document.getElementById('s-phone').value.trim(),
+      intent:     'bar-sale-waitlist',
+      stage:      'Waitlist',
+      source:     'Bar Build Waitlist',
+      name:       document.getElementById('s-name').value.trim(),
+      email:      document.getElementById('s-email').value.trim(),
+      phone:      document.getElementById('s-phone').value.trim(),
       primaryUse: document.getElementById('s-use').value,
-      vision: document.getElementById('s-vision').value.trim(),
-      budget: document.getElementById('s-budget').value.trim(),
-      createdAt: new Date().toISOString()
+      vision:     document.getElementById('s-vision').value.trim(),
+      budget:     document.getElementById('s-budget').value.trim(),
+      createdAt:  (window.firebase && firebase.firestore && firebase.firestore.FieldValue)
+                    ? firebase.firestore.FieldValue.serverTimestamp()
+                    : new Date().toISOString()
     };
+
     try {
       if (window._db) {
         await window._db.collection('leads').add(data);
       }
+      // Conversion event (via lsTrack from analytics.js if loaded)
+      try {
+        if (typeof window.lsTrack === 'function') {
+          window.lsTrack('bar_build_waitlist_submitted', { primaryUse: data.primaryUse || 'unknown' });
+        }
+      } catch (_) {}
       document.getElementById('sales-success').classList.add('show');
       document.getElementById('sales-form').reset();
+      if (btn) { btn.textContent = '✓ You\'re on the list'; btn.style.background = '#22c55e'; }
     } catch (err) {
       console.error(err);
+      if (btn) { btn.disabled = false; btn.textContent = orig; }
       alert('Something went wrong. Please email hello@lakesalt.us and we\'ll add you manually.');
     }
     return false;

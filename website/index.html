@@ -4537,7 +4537,7 @@
         <span style="font-family:'Cormorant Garamond',serif;font-size:1.35rem;">Rent the Bar · Tables · Chairs</span>
         <span style="font-size:0.85rem;opacity:0.85;">Mobile bar from <strong>$150/day</strong> · folding tables &amp; chairs available. Inquiry-based.</span>
       </a>
-      <a href="sales.html" style="background:var(--navy);color:var(--ivory);border-radius:14px;padding:1.5rem 1.5rem;text-decoration:none;display:flex;flex-direction:column;gap:0.4rem;border:1px solid var(--champagne);">
+      <a href="sales.html#waitlist" style="background:var(--navy);color:var(--ivory);border-radius:14px;padding:1.5rem 1.5rem;text-decoration:none;display:flex;flex-direction:column;gap:0.4rem;border:1px solid var(--champagne);">
         <span style="font-size:0.72rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--champagne);">Custom Builds — Coming Soon</span>
         <span style="font-family:'Cormorant Garamond',serif;font-size:1.35rem;">Buy a Custom Mobile Bar</span>
         <span style="font-size:0.85rem;opacity:0.85;">Custom-built to your spec. Join the waitlist for our launch.</span>
@@ -5906,10 +5906,10 @@ function openRentalFlow(type) {
   window.location.href = 'rentals.html' + hash;
 }
 
-/* ─── OPEN CUSTOM-BAR SALE FLOW (stub — routes to dedicated sales page until multi-step questionnaire is built) ─── */
+/* ─── OPEN CUSTOM-BAR SALE FLOW — deep-links to waitlist form ─── */
 function openSaleFlow() {
   trackEvent('intent_sale_clicked', {});
-  window.location.href = 'sales.html';
+  window.location.href = 'sales.html#waitlist';
 }
 
 /* ─── OPEN BARTENDING QUOTE FLOW from the inline intent section ─── */
