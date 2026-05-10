@@ -5,6 +5,104 @@ None of them block the expo. Tackle them the week of May 11 in priority order.
 
 ---
 
+## 🚦 Priority 0c — Mobile-first expense capture (the "I'm at the store, just log it" tool)
+
+**The need:** "When I'm on my phone I dont think to use it. How can we make it so stupid easy I can actually use it. Like if it was a widget on my screen or a icon when I slide down my top of phone."
+
+### Three layers, all worth shipping
+1. **iOS Shortcut** with a 3-field form (amount, category, vendor → submit). Accessible from:
+   - Home screen icon (one tap, opens the shortcut)
+   - Control Center (the slide-down panel) — Apple supports custom Shortcuts there in iOS 17+
+   - Siri ("Hey Siri, log expense $42 at Costco for raffle prizes")
+   - Widget on home screen (mid-size widget shows last 3 expenses + a big "+ Add" button)
+   - Lock screen widget (iOS 16+)
+2. **PWA install** — install lakesalt.us/admin as a home-screen app for fullscreen access without browser chrome.
+3. **Backend endpoint** — new Cloud Function `addExpense({amount, category, vendor, description, receipt})` that the iOS Shortcut posts to. Writes to Firestore `expenses` collection.
+
+### Build effort
+- iOS Shortcut + Cloud Function endpoint: ~2 hours
+- PWA manifest + service worker: ~1 hour
+- Custom widget: would require a SwiftUI native iOS app (~1 week — too much for the marginal benefit)
+
+**Recommendation:** ship iOS Shortcut + PWA. Skip native widget. Total ~3 hours.
+
+---
+
+## 🚦 Priority 0d — Bank-account auto-categorize agent (Plaid integration)
+
+**The need:** "If an agent can monitor our bank account and see when charges are entered, and then automatically add then, categorize them that would be awesome."
+
+### How it works
+- **Plaid Link** — Plaid is the standard for bank-account API access in the US. Free for low-volume use; ~$0.50/connected-account/month past the free tier.
+- Lake Salt connects its Chase business account once via Plaid Link
+- A Cloud Function runs nightly via Cloud Scheduler, calls Plaid's `/transactions/sync` endpoint
+- New transactions get auto-categorized using a hybrid rules + LLM approach:
+  - **Rules first** (cheap, fast): if vendor matches a known pattern (Costco → "Supplies", Square*Lake Salt → "Revenue ignore", etc.), assign category
+  - **LLM fallback**: for unknown vendors, ask Claude/GPT to guess category given the vendor name + amount + Lake Salt context
+- All transactions land in Firestore `expenses` (or `revenue` for incoming) with `categorized: true|false` and `confidence: 0..1` scores
+- Admin gets a daily digest email with newly-categorized items + low-confidence items needing review
+
+### Build effort
+- Plaid Link setup + Cloud Function: ~6 hours
+- Categorization rules + LLM: ~4 hours
+- Digest email + admin review UI: ~3 hours
+- Total: 12-15 hours
+
+### What it replaces
+- Manual expense entry on phone (no need to remember; bank does it for you)
+- Scrolling through Chase statements at month-end
+- Tax-prep transaction sorting
+
+---
+
+## 🚦 Priority 0e — Instagram follower + inbox monitor
+
+**The need:** "We only had 22 new IG followers after the event. Can you monitor our IG follower count and stuff? Can you monitor our IG inbox too?"
+
+### Two separate features
+
+**1. Follower count tracking (~3 hours)**
+- Daily snapshot of @lakesaltbartending follower count via Instagram Graph API (requires IG Business account + Facebook app — Lake Salt likely already has this for the Knot integration)
+- Stored in Firestore `ig_snapshots` with `{ date, followers, following, posts }`
+- Plotted in a new admin chart: 30-day follower delta + per-event spikes
+- Per-expo: tag the expo date so the Expo Overview can show "This expo brought +22 IG followers"
+
+**2. Inbox monitoring + auto-routing (~6 hours)**
+- Webhook subscription to IG message events (Meta Webhooks for Instagram)
+- New messages land in Firestore `ig_inbox` collection
+- Auto-classifier: is this a wedding inquiry? a partnership? spam? a fan?
+- If wedding inquiry: create a CRM lead (or update existing if email/phone matches), tag `source: 'Instagram DM'`, alert Kendell via push
+- Admin UI: `/admin#ig-inbox` shows unread DMs with quick-reply buttons
+
+### Combined Phase 2 effort
+- ~9 hours for both follower tracking + inbox monitoring
+- Best paired with the existing `lake-salt-comms` agent — let it draft DM replies for review
+
+---
+
+## 🚦 Priority 0f — Admin theme switcher (color-scheme picker)
+
+**The need:** "Add a feature to the settings page of the dashboard to change the color scheme for the entire admin backend. I want easy click color options."
+
+### Build
+- New Settings module at `/admin#settings` (nav entry under Operations)
+- Theme picker: 6-8 preset color schemes as click-to-apply tiles:
+  - Current: Navy + Champagne (default)
+  - Lake Salt Cream (light theme — ivory bg, navy text, champagne accents)
+  - Midnight (true black bg, gold text)
+  - Forest (deep green bg, copper accents)
+  - Burgundy + Rose (warm dark theme)
+  - Slate (neutral gray)
+- Each theme = a CSS variable override JSON: `{ --bg-card, --bg, --text, --gold, --border, ... }`
+- Selected theme stored in `localStorage` → applied via `:root` CSS variable update on load
+- Optional: per-admin (stored in `admins/{uid}.theme`) so different users get their preferred theme
+- Live preview as user hovers over each tile
+
+### Build effort
+- ~3 hours total
+
+---
+
 ## 🚦 Priority 0a — Expo registration monitor agent
 
 **The need:** "Eventually set up a agent that can monitor for the day these expo registration go live. I want to sign up the day of because of early bird discounts."

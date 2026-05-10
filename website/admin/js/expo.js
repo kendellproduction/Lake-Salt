@@ -27,12 +27,16 @@ const EXPOS = [
     id: 'wedding-expo-2026-05-09',
     name: 'Salt Lake City Bridal & Wedding Expo',
     venue: 'Mountain America Expo Center, Sandy UT',
-    date: '2026-05-09',
+    date: '2026-05-09',                  // the actual day-of expo (used for hourly traffic chart)
+    eventDayStartHour: 12,               // 12pm Mountain — expo doors open
+    eventDayEndHour:   19,               // 7pm Mountain — expo doors close
     status: 'completed',                 // upcoming | prepping | active | completed | archived
     campaign: 'WeddingExpo2026-05-09',   // matches lead/page_event campaign tag
-    eventStart: '2026-05-08T00:00:00',   // for traffic window
+    eventStart: '2026-05-08T00:00:00',   // 4-day capture window for sessions
     eventEnd:   '2026-05-12T00:00:00',
-    cost: 1200,                           // booth + travel + samples
+    /* Cost is the local default. The Firestore expos/{id} doc may override it
+     * via a 'costOverride' field saved from the editable UI. */
+    cost: 1200,
     expectedNextRegistration: '2026-11-01', // when next year's signup opens (estimate)
   },
   // Future expos go here — same shape:
@@ -197,25 +201,81 @@ async function renderTabOverview(expo) {
   const bookSess = new Set(events.filter(e => (e.page||'').includes('book')).map(e => e.sessionId));
   const conv = bookSess.size ? Math.round((raffSess.size / bookSess.size) * 100) : 0;
 
+  /* Cache lead arrays for drill-down on each stat card */
+  _expoState._drill = {
+    total: { title: 'All entries · ' + leads.length, leads: leads, blurb: 'Every raffle / call / info-only submission tagged with this expo\'s campaign.' },
+    near:  { title: 'Near-term pipeline · ' + near, leads: [...buckets['0-3'], ...buckets['3-6']], blurb: 'Brides whose wedding is within 6 months of today (' + new Date().toLocaleDateString() + ').' },
+    ig:    { title: 'Brides who checked the IG-follow box · ' + ig, leads: leads.filter(l => l.instagramFollowed), blurb: 'Self-reported on the raffle form. Actual @lakesaltbartending follower count is tracked separately on Instagram. Per Kendell: ~22 NEW followers gained around the expo.' },
+  };
+
   document.getElementById('ov-stats').innerHTML = `
-    <div class="stat-card gold"><div class="stat-label">Total entries</div><div class="stat-value">${leads.length}</div><div class="stat-sub">${leadsSnap.size - leads.length} test rows excluded</div></div>
-    <div class="stat-card teal"><div class="stat-label">IG follow %</div><div class="stat-value">${pct(ig, leads.length)}</div></div>
-    <div class="stat-card" style="border-left:3px solid var(--green)"><div class="stat-label">Near-term pipeline</div><div class="stat-value" style="color:var(--green)">${near}</div><div class="stat-sub">brides ≤ 6 mo out</div></div>
-    <div class="stat-card"><div class="stat-label">Sessions</div><div class="stat-value">${sessions.size}</div><div class="stat-sub">${events.length} events</div></div>
-    <div class="stat-card"><div class="stat-label">Raffle conv.</div><div class="stat-value">${conv}%</div><div class="stat-sub">${raffSess.size}/${bookSess.size} /book sessions</div></div>
+    <div class="stat-card gold drill" data-drill="total" style="cursor:pointer">
+      <div class="stat-label" title="Every raffle, call, or info-only submission tagged with this expo's campaign.">Total entries</div>
+      <div class="stat-value">${leads.length}</div>
+      <div class="stat-sub">${leadsSnap.size - leads.length} test rows excluded · click to view list</div>
+    </div>
+    <div class="stat-card drill" data-drill="ig" style="cursor:pointer;border-left:3px solid #C9A84C">
+      <div class="stat-label" title="Self-reported via the IG-follow checkbox during raffle entry. Not a true new-follower count — for that, monitor Instagram directly.">IG opt-in (self-reported)</div>
+      <div class="stat-value">${ig} <span style="font-size:14px;color:var(--text-muted);font-weight:400">/${leads.length}</span></div>
+      <div class="stat-sub">~22 actual new IG followers (per Kendell)</div>
+    </div>
+    <div class="stat-card drill" data-drill="near" style="cursor:pointer;border-left:3px solid var(--green)">
+      <div class="stat-label" title="Wedding date is within 6 months of today.">Near-term pipeline</div>
+      <div class="stat-value" style="color:var(--green)">${near}</div>
+      <div class="stat-sub">brides ≤ 6 mo out · click to view</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label" title="An anonymous browser session that visited /book at any point during the campaign window. One bride may have multiple sessions if she came back later.">/book sessions</div>
+      <div class="stat-value">${sessions.size}</div>
+      <div class="stat-sub">${events.length} events captured</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label" title="Of the sessions that landed on /book, what percent completed a raffle entry. Higher = the page is converting well.">Raffle conv.</div>
+      <div class="stat-value">${conv}%</div>
+      <div class="stat-sub">${raffSess.size} of ${bookSess.size} /book sessions</div>
+    </div>
   `;
+
+  /* Wire drill-down clicks */
+  document.querySelectorAll('#ov-stats .drill').forEach(card => {
+    card.addEventListener('click', () => openExpoDrill(card.dataset.drill));
+  });
 
   /* Cache for analytics tab */
   _expoState.leads = leads;
   _expoState.events = events;
   _expoState.buckets = buckets;
 
+  /* Cost: pull override from Firestore if user edited it */
+  let costNow = expo.cost;
+  try {
+    const d = await db.collection('expos').doc(expo.id).get();
+    if (d.exists && typeof d.data().costOverride === 'number') costNow = d.data().costOverride;
+  } catch (e) { /* ignore */ }
+
   document.getElementById('ov-snapshot').innerHTML = `
     <div><strong>Status:</strong> ${escapeHtml(expo.status)}</div>
-    <div><strong>Cost:</strong> ${expo.cost ? '$' + expo.cost : '—'}</div>
-    <div><strong>Campaign tag:</strong> <code style="background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px">${escapeHtml(expo.campaign)}</code></div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <strong>Total cost:</strong>
+      <input type="number" id="ov-cost" value="${costNow || 0}" style="width:100px;background:rgba(255,255,255,0.04);border:1.5px solid var(--border);border-radius:6px;color:var(--text);padding:4px 8px;font-family:inherit;font-size:14px" />
+      <button class="btn btn-secondary" id="ov-cost-save" style="font-size:11px;padding:4px 12px">Save</button>
+      <a href="#expenses" style="font-size:12px;color:var(--gold);text-decoration:none">Track itemized expenses →</a>
+    </div>
+    <div style="font-size:12px;color:var(--text-muted)">Total includes booth fee, samples, prizes, travel, signage, etc. Add itemized entries via the Expenses module above for full P&amp;L tracking.</div>
+    <div style="margin-top:6px"><strong>Campaign tag:</strong> <code style="background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px">${escapeHtml(expo.campaign)}</code></div>
     ${expo.expectedNextRegistration ? `<div><strong>Next-year registration window:</strong> est. ${formatDate(expo.expectedNextRegistration)} (Phase 2 agent will monitor)</div>` : ''}
   `;
+
+  document.getElementById('ov-cost-save').addEventListener('click', async () => {
+    const v = parseFloat(document.getElementById('ov-cost').value);
+    if (isNaN(v)) return showToast('Invalid number', 'warn');
+    try {
+      await db.collection('expos').doc(expo.id).set({ costOverride: v, expoId: expo.id }, { merge: true });
+      showToast('Cost saved');
+    } catch (e) {
+      showToast('Save failed: ' + e.message, 'error');
+    }
+  });
 
   /* Quick links — moved here from the main Dashboard so the dashboard stays clean. */
   const linksCard = document.createElement('div');
@@ -378,18 +438,49 @@ function paintAnalyticsTraffic() {
   }
 
   if (document.getElementById('ana-hourly')) {
+    /* Filter to ONLY the day-of-expo (e.g. May 9) and bin by Mountain-time hour.
+     * Without this filter the chart aggregates across the 4-day capture window
+     * and the hours look meaningless (e.g. 24-hour totals). */
+    const expo = EXPOS.find(e => e.id === _expoState.activeId) || EXPOS[0];
+    const expoDayStr = expo.date; // YYYY-MM-DD
     const hours = new Array(24).fill(0);
+    /* en-US time formatter pinned to America/Denver — works regardless of
+     * the admin user's browser timezone. */
+    const hourFmt = new Intl.DateTimeFormat('en-US', { hour: '2-digit', hour12: false, timeZone: 'America/Denver' });
+    const dayFmt  = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'America/Denver' });
+
     events.forEach(e => {
       if (!e.timestamp) return;
       const dt = e.timestamp.toDate ? e.timestamp.toDate() : new Date(e.timestamp);
-      hours[dt.getHours()]++;
+      const dayMt = dayFmt.format(dt); // 'YYYY-MM-DD' in Mountain time
+      if (dayMt !== expoDayStr) return;
+      const h = parseInt(hourFmt.format(dt), 10);
+      if (!isNaN(h)) hours[h]++;
     });
+
     if (_expoState.charts.hourly) try { _expoState.charts.hourly.destroy(); } catch(e){}
     _expoState.charts.hourly = new Chart(document.getElementById('ana-hourly'), {
       type: 'bar',
-      data: { labels: hours.map((_,i) => i + ':00'), datasets: [{ label: 'Events', data: hours, backgroundColor: '#C9A84C', borderRadius: 4 }] },
+      data: {
+        labels: hours.map((_,i) => {
+          const ampm = i === 0 ? '12am' : i < 12 ? i + 'am' : i === 12 ? '12pm' : (i - 12) + 'pm';
+          return ampm;
+        }),
+        datasets: [{ label: 'Events', data: hours, backgroundColor: '#C9A84C', borderRadius: 4 }]
+      },
       options: chartOpts({ legend: false }),
     });
+    /* Update the card subtitle so it's clear what we're showing */
+    const subEl = document.querySelector('#expo-tab-content .card-header .card-title');
+    /* find the hourly card and add a sub */
+    const hourlyCard = document.getElementById('ana-hourly').closest('.card');
+    if (hourlyCard) {
+      const hdr = hourlyCard.querySelector('.card-header');
+      if (hdr && !hdr.querySelector('.hourly-sub')) {
+        hdr.insertAdjacentHTML('beforeend',
+          `<span class="hourly-sub text-muted" style="font-size:12px">${expoDayStr} · Mountain time</span>`);
+      }
+    }
   }
 }
 
@@ -656,6 +747,50 @@ function chartOpts(opts) {
       y: { ticks: { color: text }, grid: { color: grid } }
     },
   };
+}
+
+/* ─── Drill-down modal ────────────────────────────────────────────────── */
+function openExpoDrill(key) {
+  const drill = (_expoState._drill || {})[key];
+  if (!drill) return;
+  /* Remove any existing drill modal */
+  const old = document.getElementById('expo-drill-modal');
+  if (old) old.remove();
+
+  const m = document.createElement('div');
+  m.id = 'expo-drill-modal';
+  m.style = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:flex-start;justify-content:center;padding:60px 20px;overflow-y:auto';
+  m.onclick = (e) => { if (e.target === m) m.remove(); };
+
+  const list = drill.leads || [];
+  m.innerHTML = `
+    <div style="background:var(--bg-card,#1a1a1f);border:1px solid var(--border);border-radius:14px;max-width:720px;width:100%;padding:24px;max-height:80vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.4)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:14px">
+        <div>
+          <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500;color:var(--text);line-height:1.2">${escapeHtml(drill.title)}</div>
+          <div class="text-muted" style="font-size:13px;margin-top:4px;line-height:1.5">${escapeHtml(drill.blurb || '')}</div>
+        </div>
+        <button onclick="document.getElementById('expo-drill-modal').remove()" style="background:transparent;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;padding:4px 8px">×</button>
+      </div>
+      ${list.length ? `
+        <div style="font-size:13px">
+          ${list.map(l => `
+            <div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:12px;cursor:pointer" onclick="document.getElementById('expo-drill-modal').remove();(typeof openLeadModal === 'function') ? openLeadModal('${l.id}') : (window.location.hash = '#crm');">
+              <div style="flex:1">
+                <strong style="color:var(--text)">${escapeHtml(l.name||'(no name)')}</strong>
+                <span class="text-muted"> · ${escapeHtml(l.email||'')}</span>
+              </div>
+              <div class="text-muted" style="text-align:right;flex-shrink:0">
+                ${escapeHtml(l.eventDate||'no date')} <span style="color:var(--gold);margin-left:8px">→</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        <div style="margin-top:14px;font-size:12px;color:var(--text-muted)">Click any row to open the lead's CRM card.</div>
+      ` : `<div class="text-muted" style="padding:24px;text-align:center">No matching leads.</div>`}
+    </div>
+  `;
+  document.body.appendChild(m);
 }
 
 function escapeHtml(s) {
