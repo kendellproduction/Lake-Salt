@@ -190,10 +190,15 @@ engaged with the business as customers. Expo attendees who tasted samples
 do not qualify. Review asks come AFTER a wedding is actually booked + the
 event has happened. Phase 2 has a separate post-event automation for that.
 
-You CAN include an Instagram tag/share ask in Tiers 2-5:
-  "If our drinks made the day a little better, tag us
-  @lakesaltbartending in your stories — best way to support a small
-  business."
+You CAN include an Instagram **follow** ask in Tiers 2-5 (Kendell's direction:
+expo attendees aren't likely to post about us, but asking them to follow if
+they haven't already is reasonable):
+  "P.S. If you're not already following us, we'd love to have you on
+  Instagram @lakesaltbartending — that's where we post recipes,
+  behind-the-scenes from weddings, and seasonal menus."
+
+Do NOT ask them to tag us in stories, post about us, or share our content.
+That's asking too much from someone who only sampled drinks.
 
 ## EMAIL TEMPLATES (personalize per lead before staging)
 
@@ -262,8 +267,9 @@ Body:
   (https://lakesalt.us/index.html#pricing-packages), but every wedding
   is custom-quoted to your guest count, hours, and drinks.
 
-  P.S. If our drinks made an impression Saturday, tagging us
-  @lakesaltbartending in your stories means the world to us.
+  P.S. If you're not already following us, we'd love to have you on
+  Instagram @lakesaltbartending — that's where we post recipes,
+  behind-the-scenes from weddings, and seasonal menus.
 
   P.P.S. Got a friend planning a Utah wedding? We'd love an
   introduction — word-of-mouth from someone like you means more to
@@ -458,6 +464,65 @@ When Cowork shows you the first 3 Tier 1 drafts:
 
 If Cowork tries to send before you approve, paste this:
 > "Stop. Re-read the HARD CONSTRAINT block. Do NOT send anything without my explicit 'APPROVED — send Tier N' line. Show me drafts only."
+
+## Amazon e-gift card delivery (separate task — winner emails)
+
+This Cowork prompt handles the 89-bride NURTURE campaign. The 4 raffle
+winners get a different treatment — handle them yourself, not via Cowork.
+
+**The flow:**
+
+1. **Draw winners in the admin UI** — `/admin#expo` → Overview tab → click
+   "🎲 Draw winners" (defaults to 4). Each winner has a "⭐ Mark as winner"
+   button that stamps their CRM card automatically.
+
+2. **Send the gift card via Amazon**:
+   - amazon.com → top right "Account & Lists" → "Send a gift card"
+   - Pick **Email gift card**, amount $50
+   - Recipient email (from the winner card)
+   - From: "Lake Salt Bartending"
+   - **Personal message (keep this short):** Amazon's note field is small.
+     Write something like: "Congrats on winning Lake Salt's raffle! 🎉
+     A full email is coming from us separately — Kendell"
+   - Schedule: Send now → done
+
+3. **Send the REAL winner email from your Gmail** (this is the personal
+   touch, sent separately from Gmail to contact@lakesalt.us so replies
+   come to you):
+
+   Subject: You won the Lake Salt $50 raffle — and your wedding's coming up 🎉
+
+   Body:
+     Hi [NAME],
+
+     Congrats — you're one of our 4 winners from the Wedding Expo raffle
+     on Saturday. Your $50 Amazon gift card just landed in your inbox
+     (separate email straight from Amazon).
+
+     Real quick — your wedding on [DATE] is closer than you think, and
+     we'd love to be the bar at it. No pressure, no obligation: hit
+     reply with three things and I'll send a custom quote within 48
+     hours.
+
+     1. Approximate guest count
+     2. Venue (or "still deciding")
+     3. Drinks vibe — full cocktails, mocktails, beer & wine, themed?
+
+     P.S. If you're not already following us, we'd love to have you on
+     Instagram @lakesaltbartending — that's where we post recipes,
+     behind-the-scenes from weddings, and seasonal menus.
+
+     Either way, congratulations again and thanks for entering.
+
+     — Kendell & Maddie
+     Lake Salt — Utah women-owned bar service
+     lakesalt.us · @lakesaltbartending
+
+**The TL;DR:** two emails per winner — short note from Amazon (the actual
+gift card) + the full personal email from you (the soft-pitch + IG follow).
+Don't combine them; the Amazon email is automatic and brief.
+
+---
 
 ## Phase 2 — what to add to nurture later
 

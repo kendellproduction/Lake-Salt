@@ -277,6 +277,33 @@ async function renderTabOverview(expo) {
     }
   });
 
+  /* Raffle draw section */
+  const drawCard = document.createElement('div');
+  drawCard.className = 'card';
+  drawCard.style.marginTop = '18px';
+  drawCard.innerHTML = `
+    <div class="card-header">
+      <span class="card-title">🎲 Raffle winner draw</span>
+      <span class="text-muted" style="font-size:12px">Crypto-grade fair random — spin as many times as you want</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <label style="font-size:13px;color:var(--text-muted)">Winners to draw:</label>
+      <input type="number" id="raffle-count" value="4" min="1" max="20" style="width:70px;background:rgba(255,255,255,0.04);border:1.5px solid var(--border);border-radius:6px;color:var(--text);padding:4px 8px;font-family:inherit;font-size:14px">
+      <button class="btn btn-primary" id="raffle-draw-btn" style="font-size:13px">🎲 Draw winner${'(s)'}</button>
+      <button class="btn btn-secondary" id="raffle-redraw-btn" style="font-size:13px">↺ Spin again</button>
+      <span class="text-muted" id="raffle-pool-info" style="font-size:12px"></span>
+    </div>
+    <div id="raffle-results"></div>
+  `;
+  document.getElementById('expo-tab-content').appendChild(drawCard);
+
+  /* Cache for raffle drawing */
+  _expoState._raffleLeads = leads;
+
+  document.getElementById('raffle-pool-info').textContent = `Pool: ${leads.length} eligible (test rows excluded)`;
+  document.getElementById('raffle-draw-btn').addEventListener('click', () => drawRaffleWinners(expo));
+  document.getElementById('raffle-redraw-btn').addEventListener('click', () => drawRaffleWinners(expo));
+
   /* Quick links — moved here from the main Dashboard so the dashboard stays clean. */
   const linksCard = document.createElement('div');
   linksCard.className = 'card';
@@ -358,6 +385,17 @@ function renderTabAnalytics(expo) {
         <div style="position:relative;height:220px;width:100%"><canvas id="ana-source"></canvas></div>
       </div>
     </div>
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-header">
+        <span class="card-title">Wizard step dropoff</span>
+        <span class="text-muted" id="ana-dropoff-sub" style="font-size:12px"></span>
+      </div>
+      <div style="position:relative;height:220px;width:100%"><canvas id="ana-dropoff"></canvas></div>
+      <div class="text-muted" style="font-size:12px;margin-top:8px">
+        Steps 2-9 are the call-booking wizard (date, guests, venue, drinks, budget, notes, contact, slot picker).
+        Step 11 is the raffle quick-form. Step 10 is the success / confirmation screen.
+      </div>
+    </div>
   `;
 
   /* Live subscriptions (auto-update if events stream in) */
@@ -435,6 +473,56 @@ function paintAnalyticsTraffic() {
       options: chartOpts({ legend: false, indexAxis: 'y' }),
     });
     document.getElementById('ana-funnel-sub').textContent = `${totalSubs} subs · ${pct(totalSubs, bookSess.size)} of /book`;
+  }
+
+  /* Wizard step dropoff chart */
+  if (document.getElementById('ana-dropoff')) {
+    const STEP_LABELS = {
+      0: 'Welcome',
+      2: 'Date',
+      3: 'Guests',
+      4: 'Venue',
+      5: 'Drinks',
+      6: 'Budget',
+      7: 'Notes',
+      8: 'Contact',
+      9: 'Slot picker',
+      10: 'Confirmation ✓',
+      11: 'Raffle form',
+    };
+    /* Count UNIQUE sessions reaching each step (not total step views — those inflate from back-clicks) */
+    const sessionsByStep = {};
+    events.forEach(e => {
+      if (e.event !== 'wizard_step_view') return;
+      const s = e.props && e.props.step;
+      if (s == null) return;
+      if (!sessionsByStep[s]) sessionsByStep[s] = new Set();
+      sessionsByStep[s].add(e.sessionId);
+    });
+    const stepOrder = [0, 2, 3, 4, 5, 6, 7, 8, 9, 11, 10];
+    const labels = stepOrder.map(s => STEP_LABELS[s] || ('Step ' + s));
+    const counts = stepOrder.map(s => (sessionsByStep[s] && sessionsByStep[s].size) || 0);
+    if (_expoState.charts.dropoff) try { _expoState.charts.dropoff.destroy(); } catch(e){}
+    _expoState.charts.dropoff = new Chart(document.getElementById('ana-dropoff'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Sessions reached',
+          data: counts,
+          backgroundColor: counts.map((_, i) => {
+            const colors = ['#94a3b8','#3b82f6','#3b82f6','#3b82f6','#3b82f6','#3b82f6','#3b82f6','#3b82f6','#3b82f6','#22c55e','#a855f7'];
+            return colors[i] || '#94a3b8';
+          }),
+          borderRadius: 6,
+        }]
+      },
+      options: chartOpts({ legend: false }),
+    });
+    const submitSess = counts[counts.length - 1]; // confirmation
+    const startSess  = counts[0]; // welcome
+    const sub = document.getElementById('ana-dropoff-sub');
+    if (sub) sub.textContent = `${startSess} sessions reached step 0 → ${submitSess} completed (${startSess ? Math.round((submitSess/startSess)*100) : 0}% completion)`;
   }
 
   if (document.getElementById('ana-hourly')) {
@@ -747,6 +835,81 @@ function chartOpts(opts) {
       y: { ticks: { color: text }, grid: { color: grid } }
     },
   };
+}
+
+/* ─── Raffle winner draw ──────────────────────────────────────────────── */
+function drawRaffleWinners(expo) {
+  const pool = (_expoState._raffleLeads || []).filter(l => l.email);
+  const count = Math.min(parseInt(document.getElementById('raffle-count').value, 10) || 4, pool.length);
+  if (!pool.length) return showToast('No eligible entries', 'warn');
+
+  /* Fisher–Yates shuffle using crypto-grade randomness */
+  const shuffled = [...pool];
+  const buf = new Uint32Array(shuffled.length);
+  crypto.getRandomValues(buf);
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = buf[i] % (i + 1);
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  const winners = shuffled.slice(0, count);
+
+  document.getElementById('raffle-results').innerHTML = `
+    <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:6px">
+      <div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:10px">
+        ${count} winner${count === 1 ? '' : 's'} · drawn ${new Date().toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' })}
+      </div>
+      ${winners.map((w, i) => `
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;margin-bottom:8px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.3);border-radius:10px">
+          <div style="flex:1;font-size:14px">
+            <strong style="color:var(--text)">#${i+1} · ${escapeHtml(w.name||'(no name)')}</strong>
+            <span class="text-muted"> · ${escapeHtml(w.email||'')}</span>
+            <div class="text-muted" style="font-size:12px">${escapeHtml(w.phone||'')}${w.eventDate ? ' · wedding ' + escapeHtml(w.eventDate) : ''}</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="btn btn-secondary" onclick="markRaffleWinnerLead('${w.id}', '${escapeHtml(expo.id)}', this)" style="font-size:11px;padding:5px 10px">⭐ Mark as winner</button>
+            <button class="btn btn-secondary" onclick="(typeof openLeadModal==='function') ? openLeadModal('${w.id}') : (window.location.hash='#crm')" style="font-size:11px;padding:5px 10px">View card</button>
+          </div>
+        </div>
+      `).join('')}
+      <div class="text-muted" style="font-size:12px;margin-top:8px">
+        ↺ Click "Spin again" for a fresh draw. "Mark as winner" stamps the lead's CRM card with raffle-winner status and timestamp.
+      </div>
+    </div>
+  `;
+}
+
+async function markRaffleWinnerLead(leadId, expoId, btn) {
+  try {
+    btn.disabled = true;
+    btn.textContent = '… saving';
+    const now = firebase.firestore.FieldValue.serverTimestamp();
+    /* Append a note + flag the lead as a raffle winner */
+    const ref = db.collection('leads').doc(leadId);
+    const doc = await ref.get();
+    const existing = (doc.exists && doc.data().notes) || [];
+    const note = {
+      text: '⭐ Drawn as raffle winner ($50 Amazon gift card) — Wedding Expo ' + expoId,
+      author: 'System',
+      time: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+    };
+    await ref.update({
+      raffleWinner: true,
+      raffleWinnerOfExpo: expoId,
+      raffleWinnerDrawnAt: now,
+      raffleWinnerPrize: '$50 Amazon gift card',
+      notes: [...existing, note],
+      updatedAt: now,
+    });
+    btn.textContent = '✓ Saved to CRM';
+    btn.style.background = 'rgba(34,197,94,0.18)';
+    btn.style.borderColor = 'rgba(34,197,94,0.4)';
+    btn.style.color = '#4ade80';
+    showToast('Marked as raffle winner — note added to lead card');
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = '⭐ Mark as winner';
+    showToast('Save failed: ' + e.message, 'error');
+  }
 }
 
 /* ─── Drill-down modal ────────────────────────────────────────────────── */
