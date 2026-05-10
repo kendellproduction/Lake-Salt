@@ -5,7 +5,33 @@ None of them block the expo. Tackle them the week of May 11 in priority order.
 
 ---
 
-## 🚦 Priority 0 — Recipe automation for SEO (the biggest organic-traffic lever)
+## 🚦 Priority 0a — Expo registration monitor agent
+
+**The need:** "Eventually set up a agent that can monitor for the day these expo registration go live. I want to sign up the day of because of early bird discounts."
+
+### What it does
+A scheduled agent that polls a list of known expo websites (Salt Lake Bridal Expo, Utah Bridal Showcase, Park City Wedding Expo, etc.) and alerts Kendell the moment next-year's registration window opens.
+
+### Build
+- New Firestore collection `expo_watch` with: `{ name, registrationUrl, lastChecked, lastStatus, alertedAt, registrationDetected, expectedWindow }`
+- Cloud Scheduler cron runs every 6 hours
+- For each watched expo:
+  1. Fetch the registration URL via Firecrawl/HTTP
+  2. Check for trigger phrases ("Register now", "Open for vendors", "2027 booth", price changes from $0 to $X)
+  3. If detected: write `registrationDetected: true` and send Kendell an SMS + email + Slack alert
+- Admin UI in `/admin#expo` → list of watched expos with manual add + status
+
+### Estimated effort
+- ~6 hours for the scaffolding (Firestore collection, Cloud Function, scheduled trigger)
+- ~2 hours per expo to configure each URL + trigger heuristics
+- Total: 8-10 hours for v1 with 5 watched expos
+
+### Why later not now
+The May 9 expo just happened. Next year's registration window probably opens November 2026 (most expos open ~6 months ahead). We have time to build this properly.
+
+---
+
+## 🚦 Priority 0b — Recipe automation for SEO (the biggest organic-traffic lever)
 
 **Why this matters most**: Lake Salt's Wedding Expo cohort showed 35% of brides are 12+ months out from their wedding. The single best way to capture them later is to be the top organic result when they finally Google "wedding bartender utah." Recipe content is the cheapest, fastest path there.
 

@@ -49,5 +49,10 @@ service cloud.firestore {
       allow read:   if isAdmin();
       allow update, delete: if false;
     }
+
+    // ── Expos: per-expo notes, learnings, prep checklists. Admin-only.
+    match /expos/{id} {
+      allow read, write: if isAdmin();
+    }
   }
 }
