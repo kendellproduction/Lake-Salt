@@ -600,13 +600,9 @@
       <p class="welcome-sub">Pick whichever fits — start anywhere.</p>
 
       <div style="display:flex;flex-direction:column;gap:12px;max-width:340px;margin:0 auto">
-        <button class="btn-next" id="path-raffle" style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:14px;line-height:1.2">
-          <span style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;opacity:0.85">~30 seconds</span>
-          <span style="font-size:18px;font-weight:700">Enter the $50 Amazon raffle 🎉</span>
-        </button>
-        <button id="path-call" style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:14px;line-height:1.2;width:100%;min-height:60px;background:rgba(250,248,244,0.06);border:1.5px solid var(--border-strong);border-radius:14px;color:var(--ivory);font-family:inherit;cursor:pointer;transition:background 0.18s,border-color 0.18s">
-          <span style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--champagne-lt);opacity:0.85">~90 seconds</span>
-          <span style="font-size:16px;font-weight:600">Book a 15-min call to lock my date</span>
+        <button class="btn-next" id="path-call" style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:14px;line-height:1.2">
+          <span style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;opacity:0.85">~90 seconds</span>
+          <span style="font-size:18px;font-weight:700">Book a 15-min call to lock my date</span>
         </button>
         <button id="path-quote" style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px;line-height:1.2;width:100%;min-height:54px;background:transparent;border:1px solid var(--border);border-radius:14px;color:var(--muted-strong);font-family:inherit;cursor:pointer;transition:color 0.18s,border-color 0.18s">
           <span style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;opacity:0.7">~90 seconds · no call</span>
@@ -622,41 +618,13 @@
     </div>
   </section>
 
-  <!-- ═══ STEP 11 — Raffle quick-form (single screen) ═══ -->
+  <!-- ═══ STEP 11 — Raffle (CLOSED) ═══ -->
   <section class="step" data-step="11">
     <div class="step-inner">
-      <span class="eyebrow">$50 Amazon Raffle Entry</span>
-      <h1 class="q">Almost <em>in</em>.</h1>
-      <p class="sub">4 winners drawn Sunday May 10. We'll email all winners that night.</p>
-
-      <div class="input-group">
-        <label class="input-label" for="r-name">Your name *</label>
-        <input type="text" class="input" id="r-name" placeholder="First and last" autocomplete="name" />
-      </div>
-      <div class="input-group">
-        <label class="input-label" for="r-email">Email *</label>
-        <input type="email" class="input" id="r-email" placeholder="you@email.com" autocomplete="email" inputmode="email" />
-      </div>
-      <div class="input-group">
-        <label class="input-label" for="r-phone">Phone *</label>
-        <input type="tel" class="input" id="r-phone" placeholder="(801) 555-1234" autocomplete="tel" inputmode="tel" />
-      </div>
-      <div class="input-group">
-        <label class="input-label" for="r-date">Wedding date</label>
-        <input type="date" class="input" id="r-date" />
-      </div>
-
-      <label for="r-ig" style="display:flex;align-items:flex-start;gap:12px;padding:14px;background:rgba(201,169,110,0.1);border:1.5px solid rgba(201,169,110,0.35);border-radius:14px;cursor:pointer;user-select:none;margin-top:6px">
-        <input type="checkbox" id="r-ig" style="width:22px;height:22px;flex-shrink:0;accent-color:var(--champagne);margin-top:1px" />
-        <span style="font-size:14px;font-weight:500;line-height:1.4;color:var(--ivory)">
-          I followed @lakesaltbartending on Instagram <span style="color:var(--red);font-weight:700">*</span>
-          <small style="display:block;color:var(--muted);font-weight:400;font-size:12px;margin-top:3px">Honor system — required to enter, we trust you 💝</small>
-        </span>
-      </label>
-
-      <p style="font-size:11px;color:var(--muted);margin-top:12px;line-height:1.55;text-align:center">
-        By entering you'll get one email from Lake Salt about your event. Reply STOP to opt out anytime.
-      </p>
+      <span class="eyebrow">Raffle Closed</span>
+      <h1 class="q">The raffle is <em>closed</em>.</h1>
+      <p class="sub">Winners were drawn Sunday May 10 and notified by email. Thanks to everyone who entered!</p>
+      <button type="button" class="btn-next" onclick="goTo(0)" style="margin-top:18px">← Back to start</button>
     </div>
   </section>
 
@@ -1149,22 +1117,7 @@
 
   /* ─── Event handlers ─── */
 
-  /* Welcome → either raffle or full call-booking wizard. */
-  document.getElementById('path-raffle').addEventListener('click', () => {
-    goTo(11);
-    /* Pre-fill from URL if present */
-    if (state.name)  document.getElementById('r-name').value  = state.name;
-    if (state.email) document.getElementById('r-email').value = state.email;
-    if (state.phone) document.getElementById('r-phone').value = state.phone;
-    if (state.eventDate) document.getElementById('r-date').value = state.eventDate;
-    /* Live-validate */
-    ['r-name','r-email','r-phone','r-ig'].forEach(id => {
-      const el = document.getElementById(id);
-      el.addEventListener('input', refreshNextButton);
-      el.addEventListener('change', refreshNextButton);
-    });
-    refreshNextButton();
-  });
+  /* Welcome → full call-booking wizard. (Raffle path retired May 10, 2026.) */
   document.getElementById('path-call').addEventListener('click', () => {
     state.infoOnly = false;
     goTo(FIRST_QUESTION_STEP); /* skips removed event-type step, starts at date */
