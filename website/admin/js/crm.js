@@ -158,9 +158,26 @@ function leadCardHTML(l) {
 }
 
 // ── Open Lead Detail Modal ──
-function openLeadModal(id) {
-  const l = crmLeads[id];
-  if (!l) return;
+async function openLeadModal(id) {
+  // Fall back to a direct fetch when the lead isn't in the in-memory cache.
+  // crmLeads only populates after visiting the CRM page, so dashboard taps
+  // (Upcoming Calls banner, expo drills, etc.) need to hydrate on demand.
+  let l = crmLeads[id];
+  if (!l) {
+    try {
+      const doc = await db.collection('leads').doc(id).get();
+      if (!doc.exists) {
+        alert('That lead no longer exists — it may have been deleted.');
+        return;
+      }
+      l = { id: doc.id, ...doc.data() };
+      crmLeads[id] = l;
+    } catch (e) {
+      console.error('Failed to fetch lead:', e);
+      alert('Could not load the lead — see console for details.');
+      return;
+    }
+  }
 
   openModal(`Lead: ${l.name || 'Unknown'}`, `
     <div class="lead-modal-grid">
