@@ -144,7 +144,7 @@ function fmtDateInput(ts) {
 
 /* ─── Upcoming calls banner ─── Renders 1-3 next /book call bookings at the
  *    top of the Dashboard. Highlights anything happening today or tomorrow.
- *    Row body opens the linked lead. The × button cancels the booking. */
+ *    Tap a row to open the lead card (where the cancel-booking button lives). */
 function renderUpcomingCalls(callsSnap) {
   const el = document.getElementById('upcoming-calls');
   if (!el || !callsSnap || callsSnap.empty) {
@@ -176,21 +176,17 @@ function renderUpcomingCalls(callsSnap) {
           const border = isUrgent ? 'rgba(201,168,76,0.35)' : 'var(--border)';
           const leadId = c.leadId || '';
           return `
-            <div class="upcoming-call-row" data-id="${c.id}" style="display:flex;align-items:stretch;gap:0;background:${bg};border:1px solid ${border};border-radius:10px;overflow:hidden">
-              <button type="button" class="upcoming-call-open" data-lead-id="${leadId}" aria-label="Open lead ${escapeHtmlSafe(c.name || '')}" style="flex:1;min-width:0;background:none;border:0;color:inherit;text-align:left;cursor:pointer;padding:12px 14px;display:flex;align-items:center;gap:14px;min-height:56px">
-                <div style="flex-shrink:0;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:${isUrgent ? 'var(--gold)' : 'var(--text-muted)'};min-width:80px;line-height:1.35">
-                  ${dayLabel}<br><span style="color:var(--text);font-weight:600;letter-spacing:0;text-transform:none">${timeLabel}</span>
+            <button type="button" class="upcoming-call-open" data-lead-id="${leadId}" aria-label="Open lead ${escapeHtmlSafe(c.name || '')}" style="background:${bg};border:1px solid ${border};color:inherit;text-align:left;cursor:pointer;padding:12px 14px;border-radius:10px;display:flex;align-items:center;gap:14px;min-height:56px;width:100%">
+              <div style="flex-shrink:0;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:${isUrgent ? 'var(--gold)' : 'var(--text-muted)'};min-width:80px;line-height:1.35">
+                ${dayLabel}<br><span style="color:var(--text);font-weight:600;letter-spacing:0;text-transform:none">${timeLabel}</span>
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtmlSafe(c.name || '(no name)')}</div>
+                <div class="text-muted" style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                  ${escapeHtmlSafe(c.eventType || 'Wedding')}${c.eventDate ? ' · ' + escapeHtmlSafe(c.eventDate) : ''}${c.email ? ' · ' + escapeHtmlSafe(c.email) : ''}
                 </div>
-                <div style="flex:1;min-width:0">
-                  <div style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtmlSafe(c.name || '(no name)')}</div>
-                  <div class="text-muted" style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                    ${escapeHtmlSafe(c.eventType || 'Wedding')}${c.eventDate ? ' · ' + escapeHtmlSafe(c.eventDate) : ''}${c.email ? ' · ' + escapeHtmlSafe(c.email) : ''}
-                  </div>
-                </div>
-                <div style="flex-shrink:0;color:var(--gold);font-size:18px">→</div>
-              </button>
-              <button type="button" class="upcoming-call-cancel" data-id="${c.id}" data-name="${escapeHtmlSafe(c.name || '')}" aria-label="Cancel this call" title="Cancel this call" style="flex-shrink:0;background:none;border:0;border-left:1px solid ${border};color:var(--text-muted);cursor:pointer;width:44px;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;transition:background 0.15s,color 0.15s">×</button>
-            </div>
+              </div>
+            </button>
           `;
         }).join('')}
       </div>
@@ -198,7 +194,6 @@ function renderUpcomingCalls(callsSnap) {
     </div>
   `;
 
-  // Wire up clicks (delegated to keep markup tidy)
   el.querySelectorAll('.upcoming-call-open').forEach(btn => {
     btn.addEventListener('click', () => {
       const leadId = btn.getAttribute('data-lead-id');
@@ -209,41 +204,34 @@ function renderUpcomingCalls(callsSnap) {
       }
     });
   });
-  el.querySelectorAll('.upcoming-call-cancel').forEach(btn => {
-    btn.addEventListener('mouseover', () => {
-      btn.style.background = 'rgba(224,82,82,0.12)';
-      btn.style.color = '#E05252';
-    });
-    btn.addEventListener('mouseout', () => {
-      btn.style.background = 'none';
-      btn.style.color = 'var(--text-muted)';
-    });
-    btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      const id = btn.getAttribute('data-id');
-      const name = btn.getAttribute('data-name') || 'this call';
-      if (!confirmAction(`Cancel the call with ${name}?\n\nThis hides it from the dashboard but keeps the lead.`)) return;
-      btn.disabled = true;
-      try {
-        await db.collection('call_bookings').doc(id).update({
-          status: 'cancelled',
-          cancelledAt: TS(),
-          cancelledBy: currentUser?.displayName || 'Admin'
-        });
-        logActivity('cancel', 'call_bookings', id, `Cancelled call with ${name}`);
-        // Refresh — fetch fresh upcoming list and re-render
-        const nowTs = firebase.firestore.Timestamp.now();
-        const fresh = await db.collection('call_bookings')
-          .where('slotStart', '>=', nowTs).orderBy('slotStart', 'asc').limit(5).get();
-        renderUpcomingCalls(fresh);
-      } catch (err) {
-        console.error('Cancel failed:', err);
-        alert('Could not cancel — see console for details.');
-        btn.disabled = false;
-      }
-    });
-  });
 }
+
+/* ─── Cancel a call booking (used from the lead modal) ─── */
+async function cancelCallBooking(bookingId, leadName) {
+  if (!bookingId) return;
+  if (!confirmAction(`Cancel the scheduled call with ${leadName || 'this lead'}?\n\nThe booking is marked cancelled but the lead stays in your CRM.`)) return;
+  try {
+    await db.collection('call_bookings').doc(bookingId).update({
+      status: 'cancelled',
+      cancelledAt: TS(),
+      cancelledBy: currentUser?.displayName || 'Admin'
+    });
+    logActivity('cancel', 'call_bookings', bookingId, `Cancelled call with ${leadName || ''}`.trim());
+    // Refresh dashboard banner if it's currently visible
+    if (document.getElementById('upcoming-calls')) {
+      const nowTs = firebase.firestore.Timestamp.now();
+      const fresh = await db.collection('call_bookings')
+        .where('slotStart', '>=', nowTs).orderBy('slotStart', 'asc').limit(5).get();
+      renderUpcomingCalls(fresh);
+    }
+    // Close the modal so the user lands back on the dashboard
+    if (typeof closeModal === 'function') closeModal();
+  } catch (err) {
+    console.error('Cancel booking failed:', err);
+    alert('Could not cancel the booking — see console for details.');
+  }
+}
+window.cancelCallBooking = cancelCallBooking;
 function escapeHtmlSafe(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }

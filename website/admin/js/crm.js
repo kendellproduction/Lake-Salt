@@ -166,6 +166,7 @@ function openLeadModal(id) {
     <div class="lead-modal-grid">
       <!-- Left: info + stage -->
       <div class="lead-modal-section">
+        <div id="lead-call-booking-${id}"></div>
         <div class="form-section-title">Contact Info</div>
         <div class="lead-info-item"><span class="lead-info-label">Name</span><span class="lead-info-value">${l.name||'—'}</span></div>
         <div class="lead-info-item"><span class="lead-info-label">Email</span><span class="lead-info-value">${l.email||'—'}</span></div>
@@ -219,6 +220,39 @@ function openLeadModal(id) {
       </div>
     </div>`,
   { wide: true });
+
+  loadLeadCallBooking(id, l.name);
+}
+
+/* Look up any active call_booking for this lead and render a panel with the
+ * slot time + a Cancel button. Silent if there's no active booking. */
+async function loadLeadCallBooking(leadId, leadName) {
+  const slot = document.getElementById(`lead-call-booking-${leadId}`);
+  if (!slot) return;
+  try {
+    const snap = await db.collection('call_bookings').where('leadId', '==', leadId).get();
+    const active = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(c => c.status !== 'cancelled')
+      .sort((a, b) => (a.slotStart?.toMillis?.() || 0) - (b.slotStart?.toMillis?.() || 0));
+    if (!active.length) { slot.innerHTML = ''; return; }
+
+    slot.innerHTML = active.map(c => {
+      const t = c.slotStart && c.slotStart.toDate ? c.slotStart.toDate() : null;
+      const when = t
+        ? t.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Denver' })
+        : 'time unknown';
+      return `
+        <div style="background:rgba(201,168,76,0.10);border:1px solid rgba(201,168,76,0.35);border-radius:10px;padding:12px 14px;margin-bottom:14px">
+          <div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:var(--gold);margin-bottom:4px">📞 Scheduled call</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px">${when}</div>
+          <button class="btn btn-danger btn-sm" onclick="cancelCallBooking('${c.id}', ${JSON.stringify(leadName || '').replace(/"/g,'&quot;')})">Cancel booking</button>
+        </div>`;
+    }).join('');
+  } catch (err) {
+    console.warn('Could not load call booking:', err);
+    slot.innerHTML = '';
+  }
 }
 
 function renderTaskList(tasks, leadId) {
