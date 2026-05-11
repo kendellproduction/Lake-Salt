@@ -157,9 +157,10 @@ exports.bookCallSlot = onCall(async (request) => {
   const slotStartTs = admin.firestore.Timestamp.fromDate(slotStartDate);
   const slotEndDate = new Date(slotStartMs + CALL_DURATION_MINUTES * 60 * 1000);
 
-  /* Atomic check-and-book transaction. */
+  /* Atomic check-and-book transaction.
+   * All reads MUST happen before writes (Firestore transaction rule). */
   const result = await db.runTransaction(async (tx) => {
-    /* Look for any existing booking with this exact slotStart. */
+    /* READ 1: Look for any existing booking with this exact slotStart. */
     const conflictSnap = await tx.get(
       db.collection('call_bookings').where('slotStart', '==', slotStartTs).limit(1)
     );
@@ -170,10 +171,39 @@ exports.bookCallSlot = onCall(async (request) => {
       );
     }
 
+    /* READ 2: Look for an existing lead with this email — so we don't
+     * duplicate the raffle/info-only lead. If found, we'll append to it
+     * instead of creating a new one. */
+    let existingLeadRef = null;
+    let existingLeadData = null;
+    if (email && email.trim()) {
+      const existing = await tx.get(
+        db.collection('leads').where('email', '==', email.trim()).limit(1)
+      );
+      if (!existing.empty) {
+        existingLeadRef = existing.docs[0].ref;
+        existingLeadData = existing.docs[0].data();
+      }
+    }
+
     const now = admin.firestore.FieldValue.serverTimestamp();
     const callRef = db.collection('call_bookings').doc();
-    const leadRef = db.collection('leads').doc();
+    const leadRef = existingLeadRef || db.collection('leads').doc();
     const followupRef = db.collection('kendell_followups').doc();
+
+    /* Human-readable timeline note for the lead card. */
+    const slotHuman = slotStartDate.toLocaleString('en-US', {
+      weekday: 'short', month: 'short', day: 'numeric',
+      hour: 'numeric', minute: '2-digit', timeZone: 'America/Denver'
+    });
+    const noteEntry = {
+      text: '📞 Booked a 15-min call for ' + slotHuman + ' MT' +
+            (eventDate ? ' · wedding ' + eventDate : '') +
+            (guestCount ? ' · ' + guestCount : '') +
+            (venue ? ' · ' + venue : ''),
+      author: 'System',
+      time: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+    };
 
     const callPayload = {
       slotStart: slotStartTs,
@@ -197,31 +227,63 @@ exports.bookCallSlot = onCall(async (request) => {
       createdAt: now,
     };
 
-    const leadPayload = {
-      name: name.trim(),
-      email: email.trim(),
-      phone: phone.trim(),
-      eventDate,
-      eventType,
-      guestCount,
-      venue,
-      drinks,
-      drinkDetail,
-      budget,
-      hasBuiltInBar,
-      message: notes,
-      stage: 'Call Scheduled',
-      source,
-      campaign,
-      instagramFollowed,
-      raffleEntered,
-      callBookingId: callRef.id,
-      callSlot: slotStartTs,
-      capturedByEmail,
-      capturedByName,
-      createdAt: now,
-      updatedAt: now,
-    };
+    if (existingLeadRef) {
+      /* APPEND to existing lead — don't downgrade stage if already advanced,
+       * don't overwrite fields that already have values. Add note + call link. */
+      const existingNotes = Array.isArray(existingLeadData.notes) ? existingLeadData.notes : [];
+      const ADVANCED_STAGES = ['Call Scheduled', 'Contacted', 'Proposal Sent', 'Booked-Tentative', 'Booked', 'Completed'];
+      const currentStage = existingLeadData.stage || 'New Lead';
+      const newStage = ADVANCED_STAGES.includes(currentStage) ? currentStage : 'Call Scheduled';
+
+      const updatePayload = {
+        stage: newStage,
+        callBookingId: callRef.id,
+        callSlot: slotStartTs,
+        /* Only fill empty fields — never overwrite existing ones */
+        eventDate: existingLeadData.eventDate || eventDate,
+        eventType: existingLeadData.eventType || eventType,
+        guestCount: existingLeadData.guestCount || guestCount,
+        venue: existingLeadData.venue || venue,
+        drinks: (existingLeadData.drinks && existingLeadData.drinks.length) ? existingLeadData.drinks : drinks,
+        drinkDetail: existingLeadData.drinkDetail || drinkDetail,
+        budget: existingLeadData.budget || budget,
+        hasBuiltInBar: existingLeadData.hasBuiltInBar || hasBuiltInBar,
+        /* Append note to existing notes array */
+        notes: [...existingNotes, noteEntry],
+        lastContactedAt: now,
+        updatedAt: now,
+      };
+      tx.update(existingLeadRef, updatePayload);
+    } else {
+      /* CREATE new lead with the call info + first note */
+      const leadPayload = {
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        eventDate,
+        eventType,
+        guestCount,
+        venue,
+        drinks,
+        drinkDetail,
+        budget,
+        hasBuiltInBar,
+        message: notes,
+        stage: 'Call Scheduled',
+        source,
+        campaign,
+        instagramFollowed,
+        raffleEntered,
+        callBookingId: callRef.id,
+        callSlot: slotStartTs,
+        capturedByEmail,
+        capturedByName,
+        notes: [noteEntry],
+        createdAt: now,
+        updatedAt: now,
+      };
+      tx.set(leadRef, leadPayload);
+    }
 
     const followupPayload = {
       leadId: leadRef.id,
@@ -239,16 +301,20 @@ exports.bookCallSlot = onCall(async (request) => {
     };
 
     tx.set(callRef, callPayload);
-    tx.set(leadRef, leadPayload);
     tx.set(followupRef, followupPayload);
 
-    return { callBookingId: callRef.id, leadId: leadRef.id };
+    return {
+      callBookingId: callRef.id,
+      leadId: leadRef.id,
+      mergedIntoExistingLead: !!existingLeadRef,
+    };
   });
 
   return {
     success: true,
     leadId: result.leadId,
     callBookingId: result.callBookingId,
+    mergedIntoExistingLead: result.mergedIntoExistingLead,
     slotStartISO: slotStartDate.toISOString(),
   };
 });
@@ -284,10 +350,53 @@ exports.savePublicLead = onCall(async (request) => {
     throw new HttpsError('invalid-argument', 'Name and email are required.');
   }
 
+  const trimmedEmail = email.trim();
   const now = admin.firestore.FieldValue.serverTimestamp();
+
+  /* Look for an existing lead with this email. If found, append a note to
+   * their card instead of creating a duplicate. */
+  let existingSnap = null;
+  try {
+    existingSnap = await db.collection('leads').where('email', '==', trimmedEmail).limit(1).get();
+  } catch (e) { /* if the query fails for any reason, fall through to create */ }
+
+  const noteEntry = {
+    text: '📧 Submitted info-only form (' + source + ')' +
+          (eventDate ? ' · wedding ' + eventDate : '') +
+          (guestCount ? ' · ' + guestCount : ''),
+    author: 'System',
+    time: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  };
+
+  if (existingSnap && !existingSnap.empty) {
+    /* APPEND to existing lead — don't downgrade stage, don't overwrite filled fields */
+    const doc = existingSnap.docs[0];
+    const existing = doc.data();
+    const existingNotes = Array.isArray(existing.notes) ? existing.notes : [];
+    await doc.ref.update({
+      /* Only fill empty fields */
+      eventDate: existing.eventDate || eventDate,
+      eventType: existing.eventType || eventType,
+      guestCount: existing.guestCount || guestCount,
+      venue: existing.venue || venue,
+      drinks: (existing.drinks && existing.drinks.length) ? existing.drinks : drinks,
+      drinkDetail: existing.drinkDetail || drinkDetail,
+      budget: existing.budget || budget,
+      hasBuiltInBar: existing.hasBuiltInBar || hasBuiltInBar,
+      message: existing.message || notes,
+      phone: existing.phone || phone.trim(),
+      /* Append note + bump timestamps */
+      notes: [...existingNotes, noteEntry],
+      updatedAt: now,
+      lastContactedAt: now,
+    });
+    return { success: true, leadId: doc.id, mergedIntoExistingLead: true };
+  }
+
+  /* CREATE new lead */
   const leadRef = await db.collection('leads').add({
     name: name.trim(),
-    email: email.trim(),
+    email: trimmedEmail,
     phone: phone.trim(),
     eventDate,
     eventType,
@@ -305,11 +414,12 @@ exports.savePublicLead = onCall(async (request) => {
     raffleEntered,
     capturedByEmail,
     capturedByName,
+    notes: [noteEntry],
     createdAt: now,
     updatedAt: now,
   });
 
-  return { success: true, leadId: leadRef.id };
+  return { success: true, leadId: leadRef.id, mergedIntoExistingLead: false };
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════

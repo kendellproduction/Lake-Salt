@@ -103,6 +103,30 @@ None of them block the expo. Tackle them the week of May 11 in priority order.
 
 ---
 
+## 🚦 Priority 0g — Cohort-based discount codes (raffle-attendee discount)
+
+**The need:** "We should set up a discount or something, if we have trouble closing deals. Then if you are on our list of raffle people we will give you 10% off."
+
+### What it does
+A bride who entered the May 9 raffle (or any future expo cohort) gets a special discount code if she books with us within a certain window. Helps close deals on people who already know we exist + tasted the drinks.
+
+### Build
+- New Firestore collection `discount_codes` with: `{ code, scope: 'campaign:WeddingExpo2026-05-09', percent: 10, expiresAt, maxUses, usedCount, leadIds: [] }`
+- Cloud Function `createCohortDiscount(campaign, percent, expiresAt)` admin-only — generates a unique 6-char code, stores it
+- In nurture emails (Cowork prompt), inject the code as a merge field: `Use code SALT10 for 10% off your wedding bar — expires June 30, 2026`
+- New CRM action: "Apply discount to this lead's quote" — bakes the discount into the next quote email
+- Track redemption: when Kendell marks a lead as Booked, ask "did they use a discount code?" and increment the counter
+
+### Variants worth considering
+- **First-mover discount** — only the first 10 brides to book within 30 days of expo get 10% off (creates urgency)
+- **Tiered discount** — book within 30 days → 10%; 60 days → 5%
+- **Referral discount** — they get 10% off their booking if a friend ALSO books through their referral
+
+### Build effort
+~6 hours for v1 with single flat-discount-per-cohort
+
+---
+
 ## 🚦 Priority 0a — Expo registration monitor agent
 
 **The need:** "Eventually set up a agent that can monitor for the day these expo registration go live. I want to sign up the day of because of early bird discounts."
