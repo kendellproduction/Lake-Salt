@@ -22,8 +22,12 @@ const MODULES = {
   expo:       () => renderExpo(),
   'event-day': () => renderEventDay(),
   marketing:   () => renderMarketing(),
-  notes:       () => renderNotes()
+  notes:       () => renderNotes(),
+  settings:    () => renderSettings()
 };
+
+/* Apply the saved theme (from settings.js) before any module renders. */
+if (typeof initTheme === 'function') initTheme();
 
 // ── Load a module ──
 function loadModule(name) {
@@ -138,6 +142,59 @@ function fmtDateInput(ts) {
   return d.toISOString().split('T')[0];
 }
 
+/* ─── Upcoming calls banner ─── Renders 1-3 next /book call bookings at the
+ *    top of the Dashboard. Highlights anything happening today or tomorrow. */
+function renderUpcomingCalls(callsSnap) {
+  const el = document.getElementById('upcoming-calls');
+  if (!el || !callsSnap || callsSnap.empty) {
+    if (el) el.innerHTML = '';
+    return;
+  }
+  const calls = callsSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => c.status !== 'cancelled');
+  if (!calls.length) { el.innerHTML = ''; return; }
+
+  const now = new Date();
+  const todayDay = now.toDateString();
+  const tomorrowDay = new Date(now.getTime() + 86400000).toDateString();
+
+  el.innerHTML = `
+    <div class="card" style="margin-bottom:16px;background:linear-gradient(135deg, rgba(201,168,76,0.12), rgba(139,155,126,0.10));border:1px solid rgba(201,168,76,0.35)">
+      <div class="card-header" style="margin-bottom:8px">
+        <span class="card-title">📞 Upcoming calls</span>
+        <span class="text-muted" style="font-size:12px">${calls.length} scheduled</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${calls.slice(0, 3).map(c => {
+          const t = c.slotStart && c.slotStart.toDate ? c.slotStart.toDate() : new Date();
+          const dayLabel = t.toDateString() === todayDay ? 'TODAY' :
+                           t.toDateString() === tomorrowDay ? 'TOMORROW' :
+                           t.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+          const timeLabel = t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Denver' });
+          const isUrgent = t.toDateString() === todayDay || t.toDateString() === tomorrowDay;
+          return `
+            <div onclick="(typeof openLeadModal==='function' && '${c.leadId}') ? openLeadModal('${c.leadId}') : (window.location.hash='#crm');" style="cursor:pointer;display:flex;align-items:center;gap:14px;padding:10px 12px;background:${isUrgent ? 'rgba(201,168,76,0.10)' : 'rgba(255,255,255,0.03)'};border:1px solid ${isUrgent ? 'rgba(201,168,76,0.35)' : 'var(--border)'};border-radius:10px;transition:background 0.15s" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='${isUrgent ? 'rgba(201,168,76,0.10)' : 'rgba(255,255,255,0.03)'}'">
+              <div style="flex-shrink:0;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:${isUrgent ? 'var(--gold)' : 'var(--text-muted)'};min-width:80px">
+                ${dayLabel}<br><span style="color:var(--text);font-weight:600;letter-spacing:0;text-transform:none">${timeLabel}</span>
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtmlSafe(c.name || '(no name)')}</div>
+                <div class="text-muted" style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                  ${escapeHtmlSafe(c.eventType || 'Wedding')}${c.eventDate ? ' · ' + escapeHtmlSafe(c.eventDate) : ''} · ${escapeHtmlSafe(c.email || '')}
+                </div>
+              </div>
+              <div style="flex-shrink:0;color:var(--gold);font-size:18px">→</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      ${calls.length > 3 ? `<div class="text-muted" style="font-size:12px;text-align:center;margin-top:8px">+ ${calls.length - 3} more upcoming</div>` : ''}
+    </div>
+  `;
+}
+function escapeHtmlSafe(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
 function stageColor(stage) {
   const map = {
     'New Lead':         '#1A9E8F',
@@ -233,6 +290,7 @@ async function renderDashboard() {
         <div class="page-subtitle">Welcome back, ${currentUser?.displayName?.split(' ')[0] || 'Kendell'}</div>
       </div>
     </div>
+    <div id="upcoming-calls"></div>
     <div class="stat-grid" id="dash-stats">
       ${[1,2,3,4,5].map(()=>`<div class="stat-card"><div class="skeleton skeleton-line w-1/4" style="height:11px;margin-bottom:10px;"></div><div class="skeleton skeleton-line w-1/2" style="height:28px;"></div></div>`).join('')}
     </div>
@@ -247,15 +305,20 @@ async function renderDashboard() {
       </div>
     </div>`;
 
-  // Fetch stats in parallel
-  const [leadsSnap, eventsSnap, expensesSnap, paymentsSnap, bartSnap, activitySnap] = await Promise.all([
+  // Fetch stats in parallel — added call_bookings for the upcoming-calls banner
+  const nowTs = firebase.firestore.Timestamp.now();
+  const [leadsSnap, eventsSnap, expensesSnap, paymentsSnap, bartSnap, activitySnap, callsSnap] = await Promise.all([
     db.collection('leads').get(),
     db.collection('events').get(),
     db.collection('expenses').get(),
     db.collection('payments').get(),
     db.collection('bartenders').where('status','==','Active').get(),
-    db.collection('activity').orderBy('createdAt','desc').limit(15).get()
+    db.collection('activity').orderBy('createdAt','desc').limit(15).get(),
+    db.collection('call_bookings').where('slotStart', '>=', nowTs).orderBy('slotStart', 'asc').limit(5).get()
   ]);
+
+  /* Render the upcoming-calls banner ABOVE the stat grid so it can't be missed. */
+  renderUpcomingCalls(callsSnap);
 
   const revenue   = eventsSnap.docs.reduce((s, d) => s + (d.data().revenue || 0), 0);
   const totalExp  = expensesSnap.docs.reduce((s, d) => s + (d.data().amount || 0), 0);

@@ -1108,3 +1108,32 @@ td { padding: 11px 12px; font-size: 12.5px; }
   .notes-module-grid { grid-template-columns: 1fr; }
   .content-tools-grid { grid-template-columns: 1fr; }
 }
+
+/* ─── Mobile UX pass ─────────────────────────────────────────────────────
+ * Tweaks that make the admin actually usable on a phone:
+ *  • Stat-grid wraps to 1 col under 480px (2 cards side-by-side is too tight)
+ *  • Dashboard-grid (recent leads + activity) stacks under 768px
+ *  • All buttons + nav-items get larger touch targets (≥44px tappable)
+ *  • Tables in CRM/Funnel become horizontally scrollable instead of crammed
+ *  • Page headers shrink so the content gets more room
+ * ──────────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .dashboard-grid { grid-template-columns: 1fr !important; }
+  .stat-grid { gap: 8px; margin-bottom: 16px; }
+  .page-header { flex-direction: column; align-items: stretch; gap: 10px; }
+  .page-header .btn { width: 100%; }
+  .filter-bar { flex-wrap: wrap; gap: 8px; }
+  .filter-bar > * { min-width: 100%; }
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-wrap table { min-width: 600px; }
+  .btn, .nav-item, .filter-select, .search-input { min-height: 44px; }
+  .card { padding: 14px; }
+  .card-header { flex-wrap: wrap; gap: 6px; }
+  .page-title { font-size: 22px !important; }
+  .page-subtitle { font-size: 13px !important; }
+}
+@media (max-width: 480px) {
+  .stat-grid { grid-template-columns: 1fr !important; }
+  .stat-card { padding: 14px; }
+  .stat-value { font-size: 24px !important; }
+}
