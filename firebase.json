@@ -8,15 +8,9 @@
     ],
     "headers": [
       {
-        "source": "**/*.html",
+        "source": "**/*.@(png|jpg|jpeg|gif|svg|ico|woff|woff2|webp)",
         "headers": [
-          { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
-        ]
-      },
-      {
-        "source": "/admin/**",
-        "headers": [
-          { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
+          { "key": "Cache-Control", "value": "public, max-age=86400" }
         ]
       },
       {
@@ -26,9 +20,15 @@
         ]
       },
       {
-        "source": "**/*.@(png|jpg|jpeg|gif|svg|ico|woff|woff2|webp)",
+        "source": "**/*.html",
         "headers": [
-          { "key": "Cache-Control", "value": "public, max-age=86400" }
+          { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
+        ]
+      },
+      {
+        "source": "/admin/**",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
         ]
       }
     ]
