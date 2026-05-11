@@ -3650,6 +3650,15 @@
 </head>
 <body id="site-body">
 
+<script>
+  // Capture ?ref=expo (or any ref) on page load so it survives in-site navigation
+  // and is stamped onto the lead's source field at submit time.
+  try {
+    const r = new URLSearchParams(location.search).get('ref');
+    if (r) sessionStorage.setItem('ls-ref', r);
+  } catch (e) {}
+</script>
+
 <!-- Custom Cursor -->
 <div id="cursor-dot"></div>
 <div id="cursor-ring"></div>
@@ -6317,7 +6326,13 @@ function handleSubmit(e) {
     message:        form.querySelector('[name="message"]')?.value || '',
     budget:         form.querySelector('[name="budget"]')?.value || '',
     stage:          'New Lead',
-    source:         'Website Form',
+    source:         (function(){
+      try {
+        const ref = new URLSearchParams(location.search).get('ref') || sessionStorage.getItem('ls-ref');
+        if (ref) { sessionStorage.setItem('ls-ref', ref); return 'Website Form · ref=' + ref; }
+      } catch(e) {}
+      return 'Website Form';
+    })(),
     createdAt:      firebase.firestore.FieldValue.serverTimestamp()
   };
 

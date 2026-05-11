@@ -2,9 +2,16 @@
   "hosting": {
     "public": "website",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "cleanUrls": true,
+    "trailingSlash": false,
+    "redirects": [
+      { "source": "/book", "destination": "/?ref=expo#contact", "type": 301 },
+      { "source": "/book.html", "destination": "/?ref=expo#contact", "type": 301 },
+      { "source": "/expo", "destination": "/?ref=expo#contact", "type": 301 },
+      { "source": "/expo.html", "destination": "/?ref=expo#contact", "type": 301 }
+    ],
     "rewrites": [
-      { "source": "/book", "destination": "/book.html" },
-      { "source": "/expo", "destination": "/book.html" }
+      { "source": "/recipes", "destination": "/recipes.html" }
     ],
     "headers": [
       {
