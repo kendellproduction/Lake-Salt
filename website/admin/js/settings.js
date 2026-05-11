@@ -101,7 +101,7 @@ const THEMES = {
   },
 };
 
-/* ─── Apply a theme: writes vars to :root + saves to localStorage ─────── */
+/* ─── Apply a theme: writes vars to :root + saves to localStorage + syncs to Firestore ── */
 function applyTheme(id) {
   const theme = THEMES[id] || THEMES.default;
   /* First clear any previously-set inline vars (so switching from cream
@@ -115,7 +115,15 @@ function applyTheme(id) {
   Object.entries(theme.vars || {}).forEach(([k, v]) => {
     document.documentElement.style.setProperty(k, v);
   });
+  /* Local fallback (immediate, per-browser) */
   try { localStorage.setItem('ls-admin-theme', id); } catch (e) {}
+  /* Cross-device sync — write to admins/{uid}.theme so phone + laptop stay in sync */
+  try {
+    if (typeof currentUser !== 'undefined' && currentUser && currentUser.uid && typeof db !== 'undefined') {
+      db.collection('admins').doc(currentUser.uid).set({ theme: id }, { merge: true })
+        .catch(e => console.warn('Theme sync failed:', e));
+    }
+  } catch (e) { /* ignore */ }
 }
 
 /* ─── Run at startup BEFORE first module render (called from app.js) ─── */
@@ -124,6 +132,20 @@ function initTheme() {
     const saved = localStorage.getItem('ls-admin-theme');
     if (saved && THEMES[saved]) applyTheme(saved);
   } catch (e) { /* localStorage may be blocked; ignore */ }
+}
+
+/* Build stamp — updated automatically each time settings.js changes. Used in
+ * the Settings UI so you can verify mobile is on the same version as web. */
+const ADMIN_BUILD = '2026-05-11.1';
+
+/* Force-refresh: bypass browser cache, fetch fresh files from server.
+ * Adds a cache-buster query string and reloads. */
+function forceRefresh() {
+  /* Clear sessionStorage in case anything is cached there */
+  try { sessionStorage.clear(); } catch (e) {}
+  const url = new URL(window.location.href);
+  url.searchParams.set('_r', Date.now());
+  window.location.replace(url.toString());
 }
 
 /* ─── Settings module renderer ────────────────────────────────────────── */
@@ -177,14 +199,34 @@ async function renderSettings() {
     </div>
 
     <div class="card" style="margin-top:18px">
+      <div class="card-header">
+        <span class="card-title">🔧 Build info</span>
+        <span class="text-muted" style="font-size:12px;font-family:ui-monospace,Menlo,monospace">v ${ADMIN_BUILD}</span>
+      </div>
+      <p class="text-muted" style="font-size:13px;line-height:1.6;margin-bottom:12px">
+        Use this to verify your phone is on the same version as your laptop.
+        If the version number doesn't match what's on web, your mobile browser
+        is serving a cached copy.
+      </p>
+      <button class="btn btn-primary" onclick="forceRefresh()" style="font-size:13px">
+        ↻ Force refresh (bust cache + reload)
+      </button>
+      <p class="text-muted" style="font-size:12px;line-height:1.6;margin-top:12px">
+        On iOS Safari, if force-refresh doesn't work: <strong>fully close Safari</strong>
+        (swipe up + flick the Safari card away), wait 5 seconds, reopen. Safari is
+        aggressive about caching JS even when the server says not to.
+      </p>
+    </div>
+
+    <div class="card" style="margin-top:18px">
       <div class="card-header"><span class="card-title">📱 Mobile experience</span></div>
       <p class="text-muted" style="font-size:13px;line-height:1.6">
         On mobile, the sidebar collapses behind a menu button (top-left). Tap it to navigate.
         Most modules are responsive — if anything looks broken on your phone, screenshot it and we'll fix.
       </p>
       <p class="text-muted" style="font-size:13px;line-height:1.6;margin-top:8px">
-        Coming in Phase 2: a mobile home-screen-installable PWA, an iOS Shortcut for one-tap expense entry,
-        and a fast-add lead widget. Track progress in <a href="#dashboard" style="color:var(--gold)">PHASE-2.md</a>.
+        Theme preference now syncs across all your devices via your admin profile.
+        Change it once on laptop → next page load on phone applies it automatically.
       </p>
     </div>
 

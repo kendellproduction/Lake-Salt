@@ -33,6 +33,11 @@ function initAuth() {
       if (adminDoc.exists) {
         currentUser = user;
         currentRole = adminDoc.data().role || 'manager';
+        /* Apply cross-device theme preference if saved on this admin's doc.
+         * Falls back to localStorage (handled by settings.js initTheme()). */
+        if (typeof applyTheme === 'function' && adminDoc.data().theme) {
+          applyTheme(adminDoc.data().theme);
+        }
         onAuthed(user, currentRole);
       } else if (user.email === OWNER_EMAIL) {
         // Auto-provision owner on first login
