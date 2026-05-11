@@ -143,7 +143,8 @@ function fmtDateInput(ts) {
 }
 
 /* ─── Upcoming calls banner ─── Renders 1-3 next /book call bookings at the
- *    top of the Dashboard. Highlights anything happening today or tomorrow. */
+ *    top of the Dashboard. Highlights anything happening today or tomorrow.
+ *    Row body opens the linked lead. The × button cancels the booking. */
 function renderUpcomingCalls(callsSnap) {
   const el = document.getElementById('upcoming-calls');
   if (!el || !callsSnap || callsSnap.empty) {
@@ -158,12 +159,12 @@ function renderUpcomingCalls(callsSnap) {
   const tomorrowDay = new Date(now.getTime() + 86400000).toDateString();
 
   el.innerHTML = `
-    <div class="card" style="margin-bottom:16px;background:linear-gradient(135deg, rgba(201,168,76,0.12), rgba(139,155,126,0.10));border:1px solid rgba(201,168,76,0.35)">
+    <div class="card upcoming-calls-card" style="margin-bottom:16px;background:linear-gradient(135deg, rgba(201,168,76,0.12), rgba(139,155,126,0.10));border:1px solid rgba(201,168,76,0.35)">
       <div class="card-header" style="margin-bottom:8px">
         <span class="card-title">📞 Upcoming calls</span>
         <span class="text-muted" style="font-size:12px">${calls.length} scheduled</span>
       </div>
-      <div style="display:flex;flex-direction:column;gap:8px">
+      <div class="upcoming-calls-list" style="display:flex;flex-direction:column;gap:8px">
         ${calls.slice(0, 3).map(c => {
           const t = c.slotStart && c.slotStart.toDate ? c.slotStart.toDate() : new Date();
           const dayLabel = t.toDateString() === todayDay ? 'TODAY' :
@@ -171,18 +172,24 @@ function renderUpcomingCalls(callsSnap) {
                            t.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
           const timeLabel = t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Denver' });
           const isUrgent = t.toDateString() === todayDay || t.toDateString() === tomorrowDay;
+          const bg = isUrgent ? 'rgba(201,168,76,0.10)' : 'rgba(255,255,255,0.03)';
+          const border = isUrgent ? 'rgba(201,168,76,0.35)' : 'var(--border)';
+          const leadId = c.leadId || '';
           return `
-            <div onclick="(typeof openLeadModal==='function' && '${c.leadId}') ? openLeadModal('${c.leadId}') : (window.location.hash='#crm');" style="cursor:pointer;display:flex;align-items:center;gap:14px;padding:10px 12px;background:${isUrgent ? 'rgba(201,168,76,0.10)' : 'rgba(255,255,255,0.03)'};border:1px solid ${isUrgent ? 'rgba(201,168,76,0.35)' : 'var(--border)'};border-radius:10px;transition:background 0.15s" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='${isUrgent ? 'rgba(201,168,76,0.10)' : 'rgba(255,255,255,0.03)'}'">
-              <div style="flex-shrink:0;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:${isUrgent ? 'var(--gold)' : 'var(--text-muted)'};min-width:80px">
-                ${dayLabel}<br><span style="color:var(--text);font-weight:600;letter-spacing:0;text-transform:none">${timeLabel}</span>
-              </div>
-              <div style="flex:1;min-width:0">
-                <div style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtmlSafe(c.name || '(no name)')}</div>
-                <div class="text-muted" style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                  ${escapeHtmlSafe(c.eventType || 'Wedding')}${c.eventDate ? ' · ' + escapeHtmlSafe(c.eventDate) : ''} · ${escapeHtmlSafe(c.email || '')}
+            <div class="upcoming-call-row" data-id="${c.id}" style="display:flex;align-items:stretch;gap:0;background:${bg};border:1px solid ${border};border-radius:10px;overflow:hidden">
+              <button type="button" class="upcoming-call-open" data-lead-id="${leadId}" aria-label="Open lead ${escapeHtmlSafe(c.name || '')}" style="flex:1;min-width:0;background:none;border:0;color:inherit;text-align:left;cursor:pointer;padding:12px 14px;display:flex;align-items:center;gap:14px;min-height:56px">
+                <div style="flex-shrink:0;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:${isUrgent ? 'var(--gold)' : 'var(--text-muted)'};min-width:80px;line-height:1.35">
+                  ${dayLabel}<br><span style="color:var(--text);font-weight:600;letter-spacing:0;text-transform:none">${timeLabel}</span>
                 </div>
-              </div>
-              <div style="flex-shrink:0;color:var(--gold);font-size:18px">→</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtmlSafe(c.name || '(no name)')}</div>
+                  <div class="text-muted" style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                    ${escapeHtmlSafe(c.eventType || 'Wedding')}${c.eventDate ? ' · ' + escapeHtmlSafe(c.eventDate) : ''}${c.email ? ' · ' + escapeHtmlSafe(c.email) : ''}
+                  </div>
+                </div>
+                <div style="flex-shrink:0;color:var(--gold);font-size:18px">→</div>
+              </button>
+              <button type="button" class="upcoming-call-cancel" data-id="${c.id}" data-name="${escapeHtmlSafe(c.name || '')}" aria-label="Cancel this call" title="Cancel this call" style="flex-shrink:0;background:none;border:0;border-left:1px solid ${border};color:var(--text-muted);cursor:pointer;width:44px;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;transition:background 0.15s,color 0.15s">×</button>
             </div>
           `;
         }).join('')}
@@ -190,6 +197,52 @@ function renderUpcomingCalls(callsSnap) {
       ${calls.length > 3 ? `<div class="text-muted" style="font-size:12px;text-align:center;margin-top:8px">+ ${calls.length - 3} more upcoming</div>` : ''}
     </div>
   `;
+
+  // Wire up clicks (delegated to keep markup tidy)
+  el.querySelectorAll('.upcoming-call-open').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const leadId = btn.getAttribute('data-lead-id');
+      if (leadId && typeof openLeadModal === 'function') {
+        openLeadModal(leadId);
+      } else {
+        window.location.hash = '#crm';
+      }
+    });
+  });
+  el.querySelectorAll('.upcoming-call-cancel').forEach(btn => {
+    btn.addEventListener('mouseover', () => {
+      btn.style.background = 'rgba(224,82,82,0.12)';
+      btn.style.color = '#E05252';
+    });
+    btn.addEventListener('mouseout', () => {
+      btn.style.background = 'none';
+      btn.style.color = 'var(--text-muted)';
+    });
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = btn.getAttribute('data-id');
+      const name = btn.getAttribute('data-name') || 'this call';
+      if (!confirmAction(`Cancel the call with ${name}?\n\nThis hides it from the dashboard but keeps the lead.`)) return;
+      btn.disabled = true;
+      try {
+        await db.collection('call_bookings').doc(id).update({
+          status: 'cancelled',
+          cancelledAt: TS(),
+          cancelledBy: currentUser?.displayName || 'Admin'
+        });
+        logActivity('cancel', 'call_bookings', id, `Cancelled call with ${name}`);
+        // Refresh — fetch fresh upcoming list and re-render
+        const nowTs = firebase.firestore.Timestamp.now();
+        const fresh = await db.collection('call_bookings')
+          .where('slotStart', '>=', nowTs).orderBy('slotStart', 'asc').limit(5).get();
+        renderUpcomingCalls(fresh);
+      } catch (err) {
+        console.error('Cancel failed:', err);
+        alert('Could not cancel — see console for details.');
+        btn.disabled = false;
+      }
+    });
+  });
 }
 function escapeHtmlSafe(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

@@ -1137,3 +1137,26 @@ td { padding: 11px 12px; font-size: 12.5px; }
   .stat-card { padding: 14px; }
   .stat-value { font-size: 24px !important; }
 }
+
+/* Upcoming-calls banner — phone layout: stack the date/time label above the
+ * name, give the cancel × a generous tap target, drop the right-arrow chevron
+ * since the whole row tap is obvious on mobile. */
+@media (max-width: 540px) {
+  .upcoming-call-open {
+    flex-wrap: wrap !important;
+    gap: 4px 12px !important;
+    padding: 10px 12px !important;
+  }
+  .upcoming-call-open > div:first-child {
+    min-width: 0 !important;
+    flex-basis: 100% !important;
+    font-size: 10px !important;
+  }
+  .upcoming-call-open > div:first-child br { display: none; }
+  .upcoming-call-open > div:first-child > span {
+    margin-left: 8px;
+    font-size: 13px;
+  }
+  .upcoming-call-open > div:last-child { display: none; } /* drop the → */
+  .upcoming-call-cancel { width: 52px !important; font-size: 22px !important; }
+}
