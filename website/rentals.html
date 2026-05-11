@@ -16,7 +16,6 @@
 
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
   <!-- Service structured data for rentals -->
   <script type="application/ld+json">
@@ -35,18 +34,19 @@
       "name": "Lake Salt Rentals",
       "itemListElement": [
         { "@type": "Offer", "name": "Mobile Bar Rental", "price": "150", "priceCurrency": "USD",
-          "description": "Modern wood mobile bar, no bartender. Pickup or local delivery." },
-        { "@type": "Offer", "name": "6ft Folding Table Rental (white)",
-          "description": "White 6-foot folding tables. Up to 10 available per event. Inquiry-based pricing." },
-        { "@type": "Offer", "name": "White Folding Chair Rental",
-          "description": "White folding chairs. Quantities to match table needs. Inquiry-based pricing." }
+          "description": "Modern wood mobile bar, 70x34x40 inches, fits in a larger SUV with seats down. No bartender included. Pickup or local Wasatch Front delivery." },
+        { "@type": "Offer", "name": "6ft Folding Table Rental (white)", "price": "8", "priceCurrency": "USD",
+          "description": "Standard 6-foot white folding tables. Up to 5 per event." },
+        { "@type": "Offer", "name": "White Folding Chair Rental", "price": "2", "priceCurrency": "USD",
+          "description": "White folding chairs. Up to 6 per table, 30 total per event." }
       ]
     }
   }
   </script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=Italiana&display=swap" rel="stylesheet" />
 
   <!-- Firebase (lead capture) -->
   <script src="firebase-config.js"></script>
@@ -58,472 +58,1192 @@
       window._db = firebase.firestore();
     }
   </script>
+  <script src="analytics.js" defer></script>
 
   <style>
+    /* ─────────────────────────────────────────
+       PALETTE — matches /sales.html for consistent luxe feel */
     :root {
-      --navy: #0C1526;
-      --navy-mid: #172038;
-      --navy-light: #243057;
-      --champagne: #C9A96E;
-      --champagne-lt: #DFC08A;
-      --ivory: #FAF8F4;
-      --cream: #F2EDE0;
-      --white: #FFFFFF;
+      --obsidian:    #000000;
+      --ink:         #0B0E18;
+      --plum:        #14111F;
+      --shadow:      #000000;
+      --aurum:       #D4AF6A;
+      --aurum-lt:    #E8C988;
+      --copper:      #B6764A;
+      --iridescent:  #6FE3D6;
+      --rose:        #E29CB7;
+      --cream:       #F4ECDD;
+      --bone:        #F8F1E2;
+      --text:        #F5F1E8;
+      --text-muted:  rgba(245,241,232,0.62);
+      --line:        rgba(245,241,232,0.10);
+      --line-strong: rgba(245,241,232,0.22);
+
+      --shadow-lg: 0 30px 80px rgba(0,0,0,0.55), 0 0 60px rgba(212,175,106,0.06);
+      --ease:      cubic-bezier(0.22, 0.61, 0.36, 1);
+      --ease-out:  cubic-bezier(0.16, 1, 0.3, 1);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
     body {
       font-family: 'Inter', sans-serif;
-      color: var(--navy);
-      background: var(--ivory);
+      background: var(--obsidian);
+      color: var(--text);
       line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
     }
     a { color: inherit; text-decoration: none; }
-    .navbar {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 1.25rem 2rem;
-      background: rgba(12,21,38,0.92);
-      backdrop-filter: blur(10px);
-      color: var(--ivory);
-    }
-    .nav-logo { font-family: 'Cormorant Garamond', serif; font-size: 1.4rem; font-weight: 600; letter-spacing: 0.05em; }
-    .nav-logo span { color: var(--champagne); font-style: italic; }
-    .nav-links { display: flex; gap: 1.75rem; list-style: none; font-size: 0.86rem; }
-    .nav-links a:hover { color: var(--champagne); }
-    .nav-cta {
-      background: var(--champagne); color: var(--navy);
-      padding: 0.6rem 1.2rem; border-radius: 999px;
-      font-size: 0.82rem; font-weight: 500; letter-spacing: 0.04em;
-      transition: background 0.2s;
-    }
-    .nav-cta:hover { background: var(--champagne-lt); }
-    @media (max-width: 720px) { .nav-links { display: none; } }
+    img { max-width: 100%; display: block; }
+    ::selection { background: var(--aurum); color: var(--obsidian); }
 
-    .hero {
-      min-height: 60vh;
-      padding: 9rem 2rem 4rem;
+    /* ── Starfield (canvas, drifts upward — matches /sales + /book) ── */
+    .starfield {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
       background:
-        linear-gradient(135deg, rgba(12,21,38,0.85), rgba(36,48,87,0.7)),
-        url('https://images.unsplash.com/photo-1543007630-9710e4a00a20?w=1600&q=70&fit=crop') center/cover;
-      color: var(--ivory);
+        radial-gradient(ellipse 80% 50% at 50% 100%, rgba(212,175,106,0.10), transparent 70%),
+        radial-gradient(ellipse 100% 60% at 50% 0%, rgba(20,20,40,0.6), transparent 60%);
+    }
+    #starfield-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .nav, .hero, .marq, .section, .knot-strip, .footer { position: relative; z-index: 5; }
+    .nav { z-index: 50; }
+
+    /* ── Film-grain overlay ── */
+    body::before {
+      content: ''; position: fixed; inset: 0; z-index: 100; pointer-events: none;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.32 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+      opacity: 0.4;
+      mix-blend-mode: overlay;
+    }
+
+    /* ── NAV ── */
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1.1rem 2rem;
+      background: rgba(0,0,0,0.72);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--line);
+    }
+    .nav-logo {
+      font-family: 'Cormorant Garamond', serif; font-size: 1.45rem; font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .nav-logo span { color: var(--aurum); font-style: italic; }
+    .nav-links { display: flex; gap: 2rem; list-style: none; }
+    .nav-links a {
+      font-size: 0.78rem; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--text-muted); transition: color 0.25s ease;
+    }
+    .nav-links a:hover { color: var(--aurum); }
+    .nav-cta {
+      background: var(--aurum); color: var(--obsidian);
+      padding: 0.65rem 1.3rem; border-radius: 999px;
+      font-size: 0.74rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase;
+      transition: transform 0.25s var(--ease), box-shadow 0.25s ease, background 0.25s ease;
+    }
+    .nav-cta:hover {
+      background: var(--aurum-lt); transform: translateY(-1px);
+      box-shadow: 0 12px 32px rgba(212,175,106,0.32);
+    }
+    @media (max-width: 760px) { .nav-links { display: none; } }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 95vh;
+      padding: 8rem 2rem 5rem;
       display: flex; flex-direction: column; justify-content: center;
-      text-align: center;
+      overflow: hidden; isolation: isolate;
     }
-    .hero-badge {
-      display: inline-block; align-self: center;
-      padding: 0.4rem 1rem; border: 1px solid var(--champagne);
-      border-radius: 999px; font-size: 0.72rem; letter-spacing: 0.15em; text-transform: uppercase;
-      color: var(--champagne); margin-bottom: 1.5rem;
+    .hero::before {
+      content: ''; position: absolute; inset: -10%; z-index: -2;
+      background:
+        radial-gradient(60% 50% at 18% 30%, rgba(111,227,214,0.12), transparent 65%),
+        radial-gradient(45% 45% at 82% 70%, rgba(212,175,106,0.16), transparent 65%),
+        radial-gradient(60% 60% at 50% 110%, rgba(226,156,183,0.07), transparent 60%);
+      filter: blur(6px);
+      animation: aurora-drift 24s ease-in-out infinite;
     }
-    .hero h1 {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 500;
-      line-height: 1.05; margin-bottom: 1.25rem;
+    .hero::after {
+      content: ''; position: absolute; inset: 0; z-index: -1;
+      background-image:
+        linear-gradient(to right,  rgba(245,241,232,0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(245,241,232,0.04) 1px, transparent 1px);
+      background-size: 80px 80px;
+      mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%);
+      -webkit-mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%);
     }
-    .hero h1 em { color: var(--champagne); font-style: italic; font-weight: 400; }
-    .hero p { max-width: 680px; margin: 0 auto; font-size: 1.05rem; opacity: 0.92; }
-    .hero-actions { margin-top: 2rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
-    .btn-primary, .btn-secondary {
-      display: inline-block; padding: 0.95rem 1.85rem; border-radius: 999px;
-      font-size: 0.9rem; font-weight: 500; letter-spacing: 0.04em;
-      transition: transform 0.15s ease, background 0.2s;
+    @keyframes aurora-drift {
+      0%,100% { transform: translate(0,0) scale(1); }
+      50%     { transform: translate(2%, -1%) scale(1.06); }
     }
-    .btn-primary { background: var(--champagne); color: var(--navy); }
-    .btn-primary:hover { background: var(--champagne-lt); transform: translateY(-1px); }
-    .btn-secondary { background: transparent; color: var(--ivory); border: 1px solid rgba(255,255,255,0.4); }
-    .btn-secondary:hover { border-color: var(--champagne); color: var(--champagne); }
 
-    .section { padding: 5rem 2rem; }
-    .section-inner { max-width: 1100px; margin: 0 auto; }
-    .eyebrow {
-      display: inline-block; font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase;
-      color: var(--champagne); margin-bottom: 0.6rem;
+    .hero-inner { max-width: 1200px; margin: 0 auto; width: 100%; }
+    .hero-meta {
+      display: inline-flex; align-items: center; gap: 0.7rem;
+      padding: 0.5rem 0.95rem; border-radius: 999px;
+      background: rgba(212,175,106,0.08);
+      border: 1px solid rgba(212,175,106,0.32);
+      font-size: 0.7rem; letter-spacing: 0.24em; text-transform: uppercase;
+      color: var(--aurum);
+      margin-bottom: 2rem;
+      animation: rise 0.9s var(--ease-out) 0.1s backwards;
     }
-    .section-title {
-      font-family: 'Cormorant Garamond', serif; font-weight: 500;
-      font-size: clamp(1.8rem, 3.6vw, 2.8rem); line-height: 1.15;
-      margin-bottom: 0.6rem;
+    .hero-meta::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--aurum); box-shadow: 0 0 12px rgba(212,175,106,0.7);
+      animation: pulse 2.4s ease-in-out infinite;
     }
-    .section-title em { color: var(--champagne); font-style: italic; font-weight: 400; }
-    .section-sub { color: var(--navy-light); max-width: 640px; margin-bottom: 2.5rem; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-    .rental-grid {
-      display: grid; gap: 1.5rem;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    .hero-title {
+      font-family: 'Italiana', 'Cormorant Garamond', serif;
+      font-weight: 400;
+      font-size: clamp(3rem, 8.5vw, 7.5rem);
+      line-height: 0.94;
+      letter-spacing: -0.025em;
+      margin-bottom: 1.5rem;
     }
-    .rental-card {
-      background: var(--white); border-radius: 16px;
-      border: 1px solid rgba(12,21,38,0.08); padding: 2rem 1.75rem;
-      display: flex; flex-direction: column;
+    .hero-title .l1, .hero-title .l2 {
+      display: block;
+      animation: rise 1s var(--ease-out) backwards;
     }
-    .rental-card .r-img-wrap {
-      background: var(--cream); height: 200px; border-radius: 12px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 3.5rem; color: var(--champagne); margin-bottom: 1.25rem;
+    .hero-title .l1 { animation-delay: 0.18s; }
+    .hero-title .l2 { animation-delay: 0.32s; font-style: italic; color: var(--aurum); }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(28px); filter: blur(6px); }
+      to   { opacity: 1; transform: none;             filter: none; }
+    }
+
+    .hero-sub {
+      max-width: 620px;
+      font-size: clamp(1rem, 1.5vw, 1.13rem);
+      color: var(--text-muted);
+      line-height: 1.65;
+      margin-bottom: 2.5rem;
+      animation: rise 1s var(--ease-out) 0.6s backwards;
+    }
+
+    .hero-cta-row {
+      display: flex; gap: 1rem; flex-wrap: wrap;
+      animation: rise 1s var(--ease-out) 0.74s backwards;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.7rem;
+      padding: 1rem 1.75rem;
+      border-radius: 999px;
+      font-size: 0.8rem; font-weight: 600;
+      letter-spacing: 0.16em; text-transform: uppercase;
+      cursor: pointer; border: none;
+      transition: transform 0.3s var(--ease), box-shadow 0.3s ease, background 0.3s ease, color 0.3s ease;
       position: relative; overflow: hidden;
     }
-    /* Coming-soon photo: grayscale stock image with dark overlay + label */
-    .rental-card .r-img-wrap.r-photo-soon {
-      background-size: cover; background-position: center;
-      filter: none;
+    .btn-primary {
+      background: linear-gradient(135deg, var(--aurum) 0%, var(--copper) 100%);
+      color: var(--obsidian);
+      box-shadow: 0 16px 40px rgba(212,175,106,0.28), inset 0 1px 0 rgba(255,255,255,0.32);
     }
-    .rental-card .r-img-wrap.r-photo-soon::before {
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 22px 56px rgba(212,175,106,0.38);
+      background: linear-gradient(135deg, var(--aurum-lt) 0%, var(--aurum) 100%);
+    }
+    .btn-ghost {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--line-strong);
+    }
+    .btn-ghost:hover {
+      border-color: var(--aurum);
+      color: var(--aurum);
+      transform: translateY(-2px);
+    }
+    .btn .arrow { transition: transform 0.3s var(--ease); }
+    .btn:hover .arrow { transform: translateX(4px); }
+
+    .hero-stats {
+      display: flex; gap: 3.5rem; flex-wrap: wrap;
+      margin-top: 4rem;
+      padding-top: 2.25rem;
+      border-top: 1px solid var(--line);
+      animation: rise 1s var(--ease-out) 0.92s backwards;
+    }
+    .hero-stat .num {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 600;
+      font-size: clamp(1.85rem, 4vw, 2.6rem);
+      color: var(--aurum); line-height: 1; letter-spacing: -0.01em;
+    }
+    .hero-stat .lbl {
+      font-size: 0.7rem; letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--text-muted); margin-top: 0.5rem;
+    }
+
+    /* ── KNOT STRIP ── */
+    .knot-strip {
+      padding: 1.75rem 1.5rem;
+      text-align: center;
+      background: rgba(255,255,255,0.94);
+      border-top: 1px solid rgba(0,0,0,0.05);
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+    .knot-badge {
+      display: inline-block; line-height: 0;
+      transition: transform 0.18s ease, filter 0.18s;
+    }
+    .knot-badge img {
+      display: block; width: 140px; height: auto;
+      filter: drop-shadow(0 2px 8px rgba(0,0,0,0.12));
+      mix-blend-mode: multiply;
+    }
+    .knot-badge:hover { transform: translateY(-1px); }
+    .knot-badge:hover img { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.2)); }
+
+    /* ── MARQUEE ── */
+    .marq {
+      background: rgba(11,14,24,0.55);
+      backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+      border-block: 1px solid var(--line);
+      overflow: hidden;
+    }
+    .marq-track {
+      display: inline-flex; gap: 3rem;
+      padding: 1.4rem 0;
+      white-space: nowrap;
+      animation: marq 38s linear infinite;
+    }
+    .marq-track span {
+      display: inline-flex; align-items: center; gap: 0.8rem;
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic; font-size: 1.3rem;
+      color: var(--text); opacity: 0.82;
+    }
+    .marq-track span::after {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--aurum);
+    }
+    @keyframes marq { to { transform: translateX(-50%); } }
+
+    /* ── SECTION shells ── */
+    .section { padding: 7rem 2rem; }
+    .section-inner { max-width: 1200px; margin: 0 auto; }
+    .eyebrow {
+      display: inline-block;
+      font-size: 0.7rem; font-weight: 600;
+      letter-spacing: 0.32em; text-transform: uppercase;
+      color: var(--aurum);
+      padding-bottom: 0.85rem; margin-bottom: 1rem;
+      position: relative;
+    }
+    .eyebrow::after {
+      content: ''; position: absolute; bottom: 0; left: 0;
+      width: 32px; height: 1px; background: var(--aurum); opacity: 0.55;
+    }
+    .section-title {
+      font-family: 'Italiana', 'Cormorant Garamond', serif;
+      font-size: clamp(2.2rem, 4.4vw, 3.6rem);
+      font-weight: 400; line-height: 1.05;
+      letter-spacing: -0.018em;
+      max-width: 820px;
+      margin-bottom: 1.1rem;
+    }
+    .section-title em { font-style: italic; color: var(--aurum); }
+    .section-sub {
+      font-size: 1.04rem; color: var(--text-muted);
+      max-width: 620px; line-height: 1.65;
+    }
+
+    /* ── RENTAL CARDS ── */
+    .rental-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+      margin-top: 3rem;
+    }
+    .rental-card {
+      position: relative;
+      background: linear-gradient(180deg, var(--ink) 0%, var(--obsidian) 100%);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: hidden;
+      display: flex; flex-direction: column;
+      transition: transform 0.5s var(--ease-out), border-color 0.5s ease, box-shadow 0.5s ease;
+      isolation: isolate;
+    }
+    .rental-card::before {
+      content: ''; position: absolute; inset: 0; z-index: 0;
+      background: radial-gradient(circle at 10% 0%, rgba(212,175,106,0.16), transparent 60%);
+      opacity: 0; transition: opacity 0.5s ease;
+    }
+    .rental-card > * { position: relative; z-index: 1; }
+    .rental-card:hover {
+      transform: translateY(-8px);
+      border-color: rgba(212,175,106,0.4);
+      box-shadow: 0 24px 60px rgba(0,0,0,0.5), 0 0 40px rgba(212,175,106,0.08);
+    }
+    .rental-card:hover::before { opacity: 1; }
+    .rental-card.featured {
+      border-color: rgba(212,175,106,0.32);
+    }
+    .rental-card.featured::after {
+      content: 'Available Now';
+      position: absolute; top: 14px; right: 14px; z-index: 2;
+      background: rgba(212,175,106,0.16);
+      border: 1px solid rgba(212,175,106,0.45);
+      color: var(--aurum);
+      font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase;
+      padding: 0.3rem 0.7rem; border-radius: 999px;
+    }
+
+    /* Photo placeholder area on each card */
+    .r-img-wrap {
+      position: relative;
+      height: 220px;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+    .r-img-wrap.r-photo-soon {
+      background-size: cover; background-position: center;
+    }
+    .r-img-wrap.r-photo-soon::before {
       content: ''; position: absolute; inset: 0;
       background-image: inherit; background-size: cover; background-position: center;
       filter: grayscale(1) contrast(1.05);
       z-index: 0;
     }
-    .rental-card .r-img-wrap.r-photo-soon::after {
+    .r-img-wrap.r-photo-soon::after {
       content: ''; position: absolute; inset: 0;
-      background: linear-gradient(180deg, rgba(12,21,38,0.35) 0%, rgba(12,21,38,0.65) 100%);
+      background: linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.7) 100%);
       z-index: 1;
     }
-    .rental-card .r-img-wrap.r-photo-soon .r-photo-label {
-      position: relative; z-index: 2; text-align: center; color: var(--ivory);
-      display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
-    }
-    .rental-card .r-img-wrap.r-photo-soon .r-photo-label .r-cs-eyebrow {
-      font-size: 0.65rem; letter-spacing: 0.22em; text-transform: uppercase;
-      opacity: 0.8; font-weight: 500;
-    }
-    .rental-card .r-img-wrap.r-photo-soon .r-photo-label .r-cs-main {
-      font-family: 'Cormorant Garamond', serif; font-size: 1.6rem;
-      font-style: italic; font-weight: 500; line-height: 1;
-    }
-    /* Stock image bg per card — replace with real photos when ready */
-    .rental-card .r-img-wrap.r-photo-bar { background-image: url('https://images.unsplash.com/photo-1572116469696-31de0f17cc34?auto=format&fit=crop&w=800&q=70'); }
+    .rental-card .r-img-wrap.r-photo-bar    { background-image: url('https://images.unsplash.com/photo-1572116469696-31de0f17cc34?auto=format&fit=crop&w=800&q=70'); }
     .rental-card .r-img-wrap.r-photo-tables { background-image: url('https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=800&q=70'); }
     .rental-card .r-img-wrap.r-photo-chairs { background-image: url('https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?auto=format&fit=crop&w=800&q=70'); }
     .rental-card .r-img-wrap.r-photo-bundle { background-image: url('https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=800&q=70'); }
-    .rental-card h3 {
-      font-family: 'Cormorant Garamond', serif; font-size: 1.55rem;
-      font-weight: 600; margin-bottom: 0.4rem;
+
+    .r-photo-label {
+      position: relative; z-index: 2; text-align: center;
+      display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
     }
-    .rental-card .r-price {
-      font-family: 'Cormorant Garamond', serif; font-size: 1.9rem;
-      font-weight: 600; color: var(--navy); line-height: 1;
-      margin: 0.4rem 0;
+    .r-cs-eyebrow {
+      font-size: 0.65rem; letter-spacing: 0.22em; text-transform: uppercase;
+      color: rgba(255,255,255,0.78); font-weight: 500;
     }
-    .rental-card .r-price-sub {
-      font-size: 0.8rem; color: var(--navy-light);
-      text-transform: uppercase; letter-spacing: 0.1em;
-      margin-bottom: 1rem;
-    }
-    .rental-card ul {
-      list-style: none; padding: 0; margin: 0 0 1.5rem;
-      font-size: 0.88rem; line-height: 1.7;
-    }
-    .rental-card .r-cta {
-      margin-top: auto; padding: 0.85rem 1.5rem; border-radius: 999px;
-      background: var(--navy); color: var(--ivory);
-      text-align: center; font-weight: 500; font-size: 0.9rem;
-      transition: background 0.2s;
-    }
-    .rental-card .r-cta:hover { background: var(--navy-light); }
-    .rental-card.featured {
-      border: 2px solid var(--champagne);
-      position: relative;
-    }
-    .rental-card.featured::before {
-      content: 'Available Now'; position: absolute; top: -12px; left: 50%;
-      transform: translateX(-50%); background: var(--champagne); color: var(--navy);
-      font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase;
-      padding: 0.3rem 0.95rem; border-radius: 999px; font-weight: 600;
+    .r-cs-main {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.6rem; font-style: italic; font-weight: 500;
+      color: #FFF; line-height: 1;
     }
 
-    .form-section { background: var(--cream); }
-    form { display: grid; gap: 1rem; max-width: 680px; margin: 0 auto; }
-    form label { font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--navy-light); }
-    form input, form select, form textarea {
-      width: 100%; padding: 0.95rem 1rem;
-      border: 1px solid rgba(12,21,38,0.15); border-radius: 10px;
-      font-family: inherit; font-size: 0.95rem; background: var(--white);
+    .r-body { padding: 2rem 1.85rem 1.85rem; display: flex; flex-direction: column; flex: 1; }
+
+    .r-body h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.55rem; font-weight: 500;
+      letter-spacing: -0.005em;
+      margin-bottom: 0.4rem;
+      color: var(--text);
     }
-    form input:focus, form select:focus, form textarea:focus {
-      outline: 2px solid var(--champagne); border-color: var(--champagne);
+    .r-price-sub {
+      font-size: 0.66rem; font-weight: 600;
+      letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--text-muted); margin-bottom: 0.3rem;
     }
-    form textarea { min-height: 120px; resize: vertical; }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
+    .r-price {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 600;
+      font-size: 2.4rem; line-height: 1; color: var(--aurum);
+      letter-spacing: -0.01em;
+      margin-bottom: 1.3rem;
+    }
+    .r-price small {
+      font-size: 0.85rem; color: var(--text-muted);
+      font-family: 'Inter', sans-serif; font-style: normal;
+      margin-left: 0.3rem;
+    }
+    .r-features { list-style: none; padding: 0; margin: 0 0 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
+    .r-features li {
+      display: flex; align-items: flex-start; gap: 0.55rem;
+      font-size: 0.88rem; color: var(--text-muted); line-height: 1.5;
+    }
+    .r-features li::before {
+      content: ''; flex: 0 0 auto; width: 14px; height: 14px;
+      margin-top: 4px;
+      background: rgba(212,175,106,0.15);
+      border: 1px solid rgba(212,175,106,0.45);
+      border-radius: 50%;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23D4AF6A' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12l5 5 9-11'/></svg>");
+      background-size: 8px;
+      background-repeat: no-repeat; background-position: center;
+    }
+    .r-cta {
+      margin-top: auto;
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+      padding: 0.95rem 1.4rem;
+      background: linear-gradient(135deg, var(--aurum) 0%, var(--copper) 100%);
+      color: var(--obsidian);
+      font-size: 0.78rem; font-weight: 700;
+      letter-spacing: 0.16em; text-transform: uppercase;
+      border-radius: 999px;
+      transition: transform 0.3s var(--ease), box-shadow 0.3s ease;
+      box-shadow: 0 12px 30px rgba(212,175,106,0.22);
+    }
+    .r-cta:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 18px 40px rgba(212,175,106,0.38);
+      background: linear-gradient(135deg, var(--aurum-lt) 0%, var(--aurum) 100%);
+    }
+
+    /* ── INQUIRY FORM (matches /sales.html holographic border) ── */
+    .form-glow-wrap {
+      position: relative; background: var(--ink);
+      border-radius: 28px; overflow: hidden;
+      box-shadow: var(--shadow-lg);
+    }
+    .form-glow-wrap::before {
+      content: '';
+      position: absolute; inset: 0; z-index: 1; pointer-events: none;
+      border-radius: inherit; padding: 2px;
+      background: conic-gradient(
+        from var(--holo-angle, 0deg),
+        rgba(255,60,90,.95) 0%, rgba(255,190,50,.85) 8%,
+        rgba(80,255,120,.85) 16%, rgba(60,180,255,.95) 25%,
+        rgba(140,70,255,.85) 33%, rgba(255,60,90,.3) 40%,
+        rgba(255,190,50,.25) 50%, rgba(80,255,120,.25) 58%,
+        rgba(60,180,255,.3) 66%, rgba(140,70,255,.25) 75%,
+        rgba(255,60,90,.25) 83%, rgba(255,190,50,.3) 91%,
+        rgba(255,60,90,.95) 100%
+      );
+      -webkit-mask:
+        linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
+              mask:
+        linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude;
+      opacity: 0.85; transition: opacity 0.4s;
+    }
+    .form-glow-wrap:hover::before { opacity: 1; }
+    .form-glow-aura {
+      position: absolute; inset: -10px; z-index: -1; pointer-events: none;
+      border-radius: inherit;
+      background: conic-gradient(
+        from var(--holo-angle, 0deg),
+        rgba(255,60,90,.3) 0%, rgba(255,190,50,.2) 8%,
+        rgba(80,255,120,.2) 16%, rgba(60,180,255,.3) 25%,
+        rgba(140,70,255,.2) 33%, rgba(255,60,90,.06) 40%,
+        rgba(255,190,50,.05) 50%, rgba(80,255,120,.05) 58%,
+        rgba(60,180,255,.06) 66%, rgba(140,70,255,.05) 75%,
+        rgba(255,60,90,.05) 83%, rgba(255,190,50,.06) 91%,
+        rgba(255,60,90,.3) 100%
+      );
+      filter: blur(22px); opacity: 0.7;
+    }
+    .form-glow-wrap::after {
+      content: '';
+      position: absolute; inset: 2px; z-index: 2; pointer-events: none;
+      border-radius: inherit;
+      background: var(--ink);
+    }
+
+    .rental-form {
+      position: relative; z-index: 3;
+      padding: 2.75rem 2.75rem 2.5rem;
+      display: flex; flex-direction: column; gap: 1.5rem;
+    }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+    .field { display: flex; flex-direction: column; gap: 0.55rem; }
+    .field label {
+      font-size: 0.66rem; font-weight: 600;
+      letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .field label .req { color: var(--aurum); margin-left: 3px; }
+    .field input, .field select, .field textarea {
+      padding: 0.95rem 1.1rem;
+      background: rgba(245,241,232,0.04);
+      border: 1px solid var(--line-strong);
+      border-radius: 12px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;  /* prevents iOS auto-zoom */
+      transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+      outline: none;
+      width: 100%;
+      min-height: 48px;
+    }
+    .field select {
+      -webkit-appearance: none; appearance: none;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%23D4AF6A' stroke-width='2'><path d='M1 1l5 5 5-5'/></svg>");
+      background-repeat: no-repeat; background-position: right 1rem center;
+      padding-right: 2.5rem;
+    }
+    .field textarea { min-height: 110px; resize: vertical; line-height: 1.55; }
+    .field input::placeholder, .field textarea::placeholder { color: rgba(245,241,232,0.32); }
+    .field input:focus, .field select:focus, .field textarea:focus {
+      border-color: var(--aurum);
+      background: rgba(245,241,232,0.07);
+      box-shadow: 0 0 0 4px rgba(212,175,106,0.14);
+    }
+
+    /* ─── Price Builder (interactive picker + live total) ─── */
+    .builder {
+      display: flex; flex-direction: column;
+      border: 1px solid var(--line-strong);
+      border-radius: 14px;
+      background: rgba(245,241,232,0.03);
+      overflow: hidden;
+    }
+    .builder-row {
+      display: flex; align-items: center; gap: 1rem;
+      padding: 1rem 1.2rem;
+      border-bottom: 1px solid var(--line);
+      transition: background 0.25s ease;
+    }
+    .builder-row:last-child { border-bottom: none; }
+    .builder-row:hover { background: rgba(245,241,232,0.025); }
+    .builder-row.selected {
+      background: linear-gradient(90deg, rgba(212,175,106,0.10), rgba(212,175,106,0.04));
+    }
+    .builder-info {
+      flex: 1;
+      display: flex; flex-direction: column; gap: 0.15rem;
+      min-width: 0;
+    }
+    .builder-info .t {
+      font-size: 0.98rem; font-weight: 500; color: var(--text);
+    }
+    .builder-info .s {
+      font-size: 0.78rem; color: var(--text-muted);
+    }
+    .builder-price {
+      flex: 0 0 auto;
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 600;
+      font-size: 1.15rem;
+      color: var(--aurum);
+      letter-spacing: -0.005em;
+      min-width: 60px; text-align: right;
+    }
+    .builder-toggle {
+      flex: 1;
+      display: flex; align-items: center; gap: 1rem;
+      cursor: pointer;
+    }
+    .builder-toggle input { position: absolute; opacity: 0; pointer-events: none; }
+    .builder-check {
+      flex: 0 0 auto;
+      width: 22px; height: 22px; border-radius: 6px;
+      border: 1.5px solid var(--line-strong);
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: all 0.2s ease;
+      background: rgba(245,241,232,0.04);
+    }
+    .builder-check svg {
+      width: 13px; height: 13px;
+      stroke: var(--obsidian); fill: none; stroke-width: 3;
+      stroke-linecap: round; stroke-linejoin: round;
+      opacity: 0; transition: opacity 0.2s ease;
+    }
+    .builder-toggle:has(input:checked) .builder-check {
+      background: var(--aurum); border-color: var(--aurum);
+    }
+    .builder-toggle:has(input:checked) .builder-check svg { opacity: 1; }
+    /* Stepper */
+    .stepper {
+      flex: 0 0 auto;
+      display: inline-flex; align-items: center;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(245,241,232,0.04);
+    }
+    .stepper-btn {
+      width: 38px; height: 38px;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-size: 1.2rem; font-weight: 400;
+      cursor: pointer;
+      transition: background 0.18s ease, color 0.18s ease;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .stepper-btn:hover:not(:disabled) {
+      background: rgba(212,175,106,0.18);
+      color: var(--aurum);
+    }
+    .stepper-btn:disabled { opacity: 0.32; cursor: not-allowed; }
+    .stepper-val {
+      min-width: 36px; text-align: center;
+      font-family: 'Inter', sans-serif;
+      font-size: 1.1rem; font-weight: 600;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+    /* "Need more than 5?" hint when at limit */
+    .limit-note {
+      margin-top: 0.6rem;
+      padding: 0.65rem 0.9rem;
+      background: rgba(111,227,214,0.05);
+      border: 1px solid rgba(111,227,214,0.22);
+      border-radius: 8px;
+      font-size: 0.82rem;
+      color: var(--text);
+      display: none;
+    }
+    .limit-note.show { display: block; animation: rise 0.4s var(--ease-out); }
+    .limit-note a { color: var(--iridescent); border-bottom: 1px dotted rgba(111,227,214,0.5); }
+
+    /* Total readout */
+    .total-card {
+      margin-top: 0.5rem;
+      padding: 1.5rem 1.6rem;
+      background: linear-gradient(135deg, rgba(212,175,106,0.10), rgba(182,118,74,0.08));
+      border: 1px solid rgba(212,175,106,0.32);
+      border-radius: 14px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      column-gap: 1rem;
+      row-gap: 0.25rem;
+    }
+    .t-label {
+      grid-column: 1;
+      font-size: 0.7rem; letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--aurum); font-weight: 600;
+    }
+    .t-amount {
+      grid-column: 2; grid-row: 1 / span 2;
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 600;
+      font-size: clamp(2rem, 4vw, 2.8rem);
+      line-height: 1;
+      color: var(--aurum);
+      letter-spacing: -0.015em;
+      font-variant-numeric: tabular-nums;
+    }
+    .t-amount small {
+      font-size: 0.55em; font-family: 'Inter', sans-serif;
+      color: var(--text-muted); margin-left: 0.3rem;
+      font-style: normal;
+    }
+    .t-detail {
+      grid-column: 1;
+      font-size: 0.82rem; color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    @media (max-width: 560px) {
+      .builder-row { padding: 0.85rem 0.95rem; gap: 0.7rem; }
+      .builder-price { font-size: 0.95rem; min-width: 56px; }
+      .builder-info .t { font-size: 0.92rem; }
+      .builder-info .s { font-size: 0.72rem; }
+      .stepper-btn { width: 34px; height: 34px; font-size: 1.1rem; }
+      .total-card { padding: 1.15rem 1.2rem; grid-template-columns: 1fr; }
+      .t-amount { grid-column: 1; grid-row: auto; }
+    }
+
     .submit-btn {
-      background: var(--champagne); color: var(--navy);
-      padding: 1.1rem; border: none; border-radius: 999px;
-      font-family: inherit; font-size: 0.95rem; font-weight: 500; letter-spacing: 0.05em;
-      cursor: pointer; transition: background 0.2s;
+      align-self: flex-start;
+      padding: 1.15rem 2.4rem;
+      background: linear-gradient(135deg, var(--aurum) 0%, var(--copper) 100%);
+      color: var(--obsidian);
+      border: none; border-radius: 999px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem; font-weight: 700;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      cursor: pointer;
+      transition: transform 0.3s var(--ease), box-shadow 0.3s ease, background 0.3s ease;
+      box-shadow: 0 16px 40px rgba(212,175,106,0.32);
     }
-    .submit-btn:hover { background: var(--champagne-lt); }
-    .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 24px 56px rgba(212,175,106,0.45);
+    }
+    .submit-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+
     .form-success {
-      background: #dff5e3; color: #1a6b34; padding: 1rem 1.25rem;
-      border-radius: 10px; font-size: 0.92rem; display: none;
+      display: none;
+      padding: 1.25rem 1.5rem;
+      background: rgba(34,197,94,0.10);
+      border: 1px solid rgba(34,197,94,0.32);
+      border-radius: 12px;
+      color: #4ADE80;
+      font-size: 0.95rem;
+      margin-bottom: 1.5rem;
     }
-    .form-success.show { display: block; }
+    .form-success.show { display: block; animation: rise 0.6s var(--ease-out); }
 
-    .faq-rentals {
-      display: grid; gap: 0.85rem; max-width: 800px; margin: 0 auto;
+    /* ── FAQ ── */
+    .faq-list {
+      max-width: 760px; margin: 3rem auto 0;
+      display: flex; flex-direction: column; gap: 0.65rem;
     }
-    .faq-item-r {
-      background: var(--white); border-radius: 10px; padding: 1.2rem 1.4rem;
-      border: 1px solid rgba(12,21,38,0.06);
+    .faq-item {
+      background: rgba(245,241,232,0.03);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      transition: border-color 0.3s ease, background 0.3s ease;
     }
-    .faq-item-r summary {
-      cursor: pointer; font-weight: 500; color: var(--navy);
-      list-style: none; display: flex; justify-content: space-between; align-items: center;
+    .faq-item:hover { border-color: rgba(212,175,106,0.3); }
+    .faq-item summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 1.25rem 1.5rem;
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 1rem;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.2rem; font-weight: 500; color: var(--text);
     }
-    .faq-item-r summary::after { content: '+'; color: var(--champagne); font-size: 1.4rem; }
-    .faq-item-r[open] summary::after { content: '−'; }
-    .faq-item-r p { margin-top: 0.85rem; color: var(--navy-light); font-size: 0.92rem; }
+    .faq-item summary::-webkit-details-marker { display: none; }
+    .faq-item summary::after {
+      content: '+'; flex: 0 0 auto;
+      width: 28px; height: 28px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+      background: rgba(212,175,106,0.1);
+      border: 1px solid rgba(212,175,106,0.32);
+      color: var(--aurum);
+      font-size: 1.2rem;
+      transition: transform 0.3s ease, background 0.3s ease;
+    }
+    .faq-item[open] summary::after {
+      content: '−';
+      background: rgba(212,175,106,0.22);
+      transform: rotate(180deg);
+    }
+    .faq-item p {
+      padding: 0 1.5rem 1.4rem;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.65;
+    }
+    .faq-item p a { color: var(--aurum); border-bottom: 1px dotted rgba(212,175,106,0.5); }
 
-    footer {
-      background: var(--navy); color: var(--ivory);
-      padding: 3rem 2rem 1.5rem; text-align: center;
-    }
-    footer a { color: var(--champagne); }
-    footer .f-copy { font-size: 0.8rem; opacity: 0.7; margin-top: 1rem; }
-
-    /* The Knot "As Seen On" badge — mix-blend-mode hides the white square so only the pink starburst shows */
-    .knot-strip {
-      padding: 1.75rem 1.5rem;
+    /* ── FOOTER ── */
+    .footer {
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+      padding: 3rem 2rem 2rem;
       text-align: center;
-      background: var(--ivory);
-      border-bottom: 1px solid rgba(12,21,38,0.06);
+      border-top: 1px solid var(--line);
     }
-    .knot-strip .knot-eyebrow {
-      display: block;
-      font-size: 0.7rem;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--navy);
-      opacity: 0.55;
-      margin-bottom: 0.85rem;
+    .f-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.6rem; font-weight: 600;
     }
-    .knot-badge {
-      display: inline-block;
-      line-height: 0;
-      transition: transform 0.18s ease, filter 0.18s;
+    .f-logo span { color: var(--aurum); font-style: italic; }
+    .f-links {
+      display: flex; justify-content: center; flex-wrap: wrap;
+      gap: 1.5rem; margin: 1.25rem 0 1rem;
+      font-size: 0.8rem; letter-spacing: 0.14em; text-transform: uppercase;
     }
-    .knot-badge img {
-      display: block;
-      width: 140px;
-      height: auto;
-      mix-blend-mode: multiply;
-      filter: drop-shadow(0 2px 8px rgba(0,0,0,0.12));
+    .f-links a { color: var(--text-muted); transition: color 0.25s; }
+    .f-links a:hover { color: var(--aurum); }
+    .f-copy { font-size: 0.78rem; color: rgba(245,241,232,0.42); }
+
+    /* ── SCROLL REVEAL ── */
+    .reveal {
+      opacity: 0; transform: translateY(28px) scale(0.98);
+      filter: blur(6px);
+      transition: opacity 0.9s var(--ease-out), transform 0.9s var(--ease-out), filter 0.9s ease;
     }
-    .knot-badge:hover { transform: translateY(-1px); }
-    .knot-badge:hover img { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.2)); }
+    .reveal.in { opacity: 1; transform: none; filter: none; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+      .reveal { opacity: 1; transform: none; filter: none; }
+    }
+
+    /* ── MOBILE OPTIMIZATIONS ── */
+    @media (max-width: 720px) {
+      body { font-size: 15px; }
+      .nav { padding: 0.85rem 1.1rem; }
+      .nav-logo { font-size: 1.25rem; }
+      .nav-cta { padding: 0.55rem 0.95rem; font-size: 0.7rem; }
+      .hero { padding: 7rem 1.25rem 4rem; min-height: 90vh; }
+      .hero-stats { gap: 1.75rem; margin-top: 2.5rem; padding-top: 1.5rem; }
+      .hero-stat .num { font-size: 1.65rem; }
+      .hero-stat .lbl { font-size: 0.6rem; letter-spacing: 0.18em; }
+      .marq-track { gap: 1.75rem; padding: 1rem 0; animation-duration: 28s; }
+      .marq-track span { font-size: 1.1rem; }
+      .section { padding: 4.5rem 1.25rem; }
+      .section-title { font-size: clamp(1.85rem, 7vw, 2.4rem); }
+      .rental-grid { grid-template-columns: 1fr; gap: 0.85rem; margin-top: 2.25rem; }
+      .r-img-wrap { height: 180px; }
+      .r-body { padding: 1.6rem 1.4rem 1.5rem; }
+      .form-glow-wrap { border-radius: 22px; }
+      .rental-form { padding: 1.5rem 1.15rem 1.65rem; gap: 1.25rem; }
+      .form-row { grid-template-columns: 1fr; gap: 1rem; }
+      .field label { font-size: 0.6rem; letter-spacing: 0.18em; }
+      .submit-btn { align-self: stretch; text-align: center; padding: 1.1rem 1.5rem; }
+      .form-success { padding: 1rem 1.15rem; font-size: 0.88rem; }
+      .footer { padding: 2.25rem 1.25rem 1.75rem; }
+      .f-links { gap: 1rem; font-size: 0.72rem; }
+      .faq-item summary { padding: 1rem 1.25rem; font-size: 1.05rem; }
+      .faq-item p { padding: 0 1.25rem 1.15rem; font-size: 0.88rem; }
+    }
   </style>
 </head>
 <body>
 
-<nav class="navbar">
+<!-- Floating-upward starfield -->
+<div class="starfield" aria-hidden="true">
+  <canvas id="starfield-canvas"></canvas>
+</div>
+
+<!-- ═══════════════ NAV ═══════════════ -->
+<nav class="nav">
   <a href="index.html" class="nav-logo">Lake <span>Salt</span></a>
   <ul class="nav-links">
     <li><a href="index.html">Home</a></li>
-    <li><a href="index.html#services">Services</a></li>
-    <li><a href="index.html#pricing-packages">Pricing</a></li>
-    <li><a href="rentals.html" style="color:var(--champagne);">Rentals</a></li>
+    <li><a href="rentals.html" style="color:var(--aurum);">Rentals</a></li>
     <li><a href="sales.html">Buy a Bar</a></li>
+    <li><a href="recipes.html">Recipes</a></li>
   </ul>
   <a href="#inquiry" class="nav-cta">Request Rental</a>
 </nav>
 
+<!-- ═══════════════ HERO ═══════════════ -->
 <section class="hero">
-  <div>
-    <span class="hero-badge">Bar · Tables · Chairs</span>
-    <h1>Rent the Bar.<br/><em>Or just the chairs.</em></h1>
-    <p>Bar from <strong>$150/day</strong>. Folding tables &amp; white folding chairs available — <strong>reach out for pricing</strong>. Need our modern wood mobile bar without the bartenders, or just tables and chairs for your event? We&apos;ve got you. Inquiry-based — local Wasatch Front delivery available.</p>
-    <div class="hero-actions">
-      <a href="#bar" class="btn-primary">Bar Rental →</a>
-      <a href="#tables" class="btn-secondary">Tables &amp; Chairs →</a>
+  <div class="hero-inner">
+    <span class="hero-meta">Bar · Tables · Chairs</span>
+    <h1 class="hero-title">
+      <span class="l1">Rent the bar.</span>
+      <span class="l2">Or just the chairs.</span>
+    </h1>
+    <p class="hero-sub">
+      Bar from <strong style="color:var(--text);">$150/day</strong>. Tables <strong style="color:var(--text);">$8/day</strong>, chairs <strong style="color:var(--text);">$2/day</strong> — priced below the Wasatch Front average.
+      Need the bar without bartenders, or just tables and chairs for a small gathering? We've got you. Local Wasatch Front delivery available.
+    </p>
+    <div class="hero-cta-row">
+      <a href="#inquiry" class="btn btn-primary">
+        <span>Request a Rental</span>
+        <svg class="arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+      <a href="#bar" class="btn btn-ghost"><span>See Inventory</span></a>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="num">$150</div><div class="lbl">/ day · mobile bar</div></div>
+      <div class="hero-stat"><div class="num">$8 · $2</div><div class="lbl">table / chair per day</div></div>
+      <div class="hero-stat"><div class="num">SLC</div><div class="lbl">Wasatch Front delivery</div></div>
     </div>
   </div>
 </section>
 
+<!-- ═══════════════ THE KNOT BADGE ═══════════════ -->
 <div class="knot-strip">
   <a class="knot-badge" target="_blank" rel="noopener"
-     href="https://www.theknot.com/marketplace/redirect-2104739?utm_source=vendor_website&amp;utm_medium=banner&amp;utm_term=45570835-6e88-4d3c-ac08-626640836ad2&amp;utm_campaign=vendor_badge_assets">
-    <img alt="As Seen on The Knot" src="https://d13ns7kbjmbjip.cloudfront.net/For_Your_Website/TK-badge_AsSeen.png" width="190" />
+     href="https://www.theknot.com/marketplace/redirect-2104739?utm_source=vendor_website&amp;utm_medium=banner&amp;utm_term=45570835-6e88-4d3c-ac08-626640836ad2&amp;utm_campaign=vendor_badge_assets"
+     aria-label="View Lake Salt on The Knot">
+    <img alt="As Seen on The Knot" src="https://d13ns7kbjmbjip.cloudfront.net/For_Your_Website/TK-badge_AsSeen.png" width="190" loading="lazy" />
   </a>
 </div>
 
+<!-- ═══════════════ MARQUEE ═══════════════ -->
+<div class="marq" aria-hidden="true">
+  <div class="marq-track">
+    <span>Modern wood mobile bar</span><span>White folding tables</span><span>White folding chairs</span>
+    <span>Pickup in Saratoga Springs</span><span>Wasatch Front delivery</span><span>Inquiry-based pricing</span>
+    <span>Wedding-ready</span>
+    <span>Modern wood mobile bar</span><span>White folding tables</span><span>White folding chairs</span>
+    <span>Pickup in Saratoga Springs</span><span>Wasatch Front delivery</span><span>Inquiry-based pricing</span>
+    <span>Wedding-ready</span>
+  </div>
+</div>
+
+<!-- ═══════════════ MOBILE BAR ═══════════════ -->
 <section class="section" id="bar">
   <div class="section-inner">
-    <span class="eyebrow">Mobile Bar</span>
-    <h2 class="section-title">Rent <em>the Bar</em></h2>
-    <p class="section-sub">Our modern wood mobile bar — the same one we use for full-service events. Perfect for clients with their own bartenders, beverage stations, or DIY events.</p>
-
+    <div class="reveal">
+      <span class="eyebrow">Mobile Bar</span>
+      <h2 class="section-title">Rent <em>the Bar.</em></h2>
+      <p class="section-sub">Our modern wood mobile bar — the same one we use for full-service events. Perfect for clients with their own bartenders, beverage stations, or DIY events.</p>
+    </div>
     <div class="rental-grid">
-      <div class="rental-card featured">
-        <div class="r-img-wrap r-photo-soon r-photo-bar"><div class="r-photo-label"><span class="r-cs-eyebrow">Photos</span><span class="r-cs-main">Coming Soon</span></div></div>
-        <h3>Mobile Wood Bar</h3>
-        <div class="r-price-sub">Just</div>
-        <div class="r-price">$150<span style="font-size:0.9rem;color:var(--navy-light);">/day</span></div>
-        <ul>
-          <li>✓ Modern wood mobile bar (the Lake Salt original)</li>
-          <li>✓ Pickup at our Saratoga Springs location</li>
-          <li>✓ Local Wasatch Front delivery available (+fee)</li>
-          <li>✓ Damage deposit applies</li>
-          <li>✓ 1-day rental window (extensions available)</li>
-        </ul>
-        <a href="#inquiry" class="r-cta" onclick="prefillForm('bar')">Request Bar Rental →</a>
+      <div class="rental-card featured reveal">
+        <div class="r-img-wrap r-photo-soon r-photo-bar">
+          <div class="r-photo-label">
+            <span class="r-cs-eyebrow">Photos</span>
+            <span class="r-cs-main">Coming Soon</span>
+          </div>
+        </div>
+        <div class="r-body">
+          <h3>Mobile Wood Bar</h3>
+          <div class="r-price-sub">Just</div>
+          <div class="r-price">$150<small>/day</small></div>
+          <ul class="r-features">
+            <li>Modern wood mobile bar (the Lake Salt original)</li>
+            <li><strong>70" L &times; 34" W &times; 40" H</strong> — fits in a larger SUV with the seats down (40" wide when laid on its side)</li>
+            <li>Pickup at our Saratoga Springs location</li>
+            <li>Local Wasatch Front delivery available (+fee)</li>
+            <li>Damage deposit applies</li>
+            <li>1-day rental window (extensions available)</li>
+          </ul>
+          <a href="#inquiry" class="r-cta" onclick="prefillForm('bar')">Request Bar Rental →</a>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<section class="section" id="tables" style="background: var(--cream);">
+<!-- ═══════════════ TABLES & CHAIRS ═══════════════ -->
+<section class="section" id="tables">
   <div class="section-inner">
-    <span class="eyebrow">Tables &amp; Chairs</span>
-    <h2 class="section-title">Folding <em>Tables &amp; Chairs</em></h2>
-    <p class="section-sub">Standard 6&apos; white folding tables and white folding chairs — the workhorses of every event. Limited inventory, first-come-first-served.</p>
-
+    <div class="reveal">
+      <span class="eyebrow">Tables &amp; Chairs</span>
+      <h2 class="section-title">Folding <em>Tables &amp; Chairs.</em></h2>
+      <p class="section-sub">Standard 6' white folding tables and white folding chairs — sized for small private gatherings (up to 5 tables, 30 chairs). Priced slightly below the Wasatch Front average. Limited inventory, first-come-first-served.</p>
+    </div>
     <div class="rental-grid">
-      <div class="rental-card featured">
-        <div class="r-img-wrap r-photo-soon r-photo-tables"><div class="r-photo-label"><span class="r-cs-eyebrow">Photos</span><span class="r-cs-main">Coming Soon</span></div></div>
-        <h3>6&apos; Folding Tables (White)</h3>
-        <div class="r-price-sub">Just</div>
-        <div class="r-price" style="font-size:1.4rem;">Reach out<span style="font-size:0.9rem;color:var(--navy-light);"> for pricing</span></div>
-        <ul>
-          <li>✓ Standard 6&apos; banquet table</li>
-          <li>✓ White surface, easy to dress</li>
-          <li>✓ <strong>Up to 10 tables</strong> per event</li>
-          <li>✓ Pickup or local delivery</li>
-        </ul>
-        <a href="#inquiry" class="r-cta" onclick="prefillForm('tables')">Request Tables →</a>
+      <div class="rental-card featured reveal">
+        <div class="r-img-wrap r-photo-soon r-photo-tables">
+          <div class="r-photo-label">
+            <span class="r-cs-eyebrow">Photos</span>
+            <span class="r-cs-main">Coming Soon</span>
+          </div>
+        </div>
+        <div class="r-body">
+          <h3>6' Folding Tables (White)</h3>
+          <div class="r-price-sub">Just</div>
+          <div class="r-price">$8<small>/table/day</small></div>
+          <ul class="r-features">
+            <li>Standard 6' plastic banquet table</li>
+            <li>White surface, easy to dress</li>
+            <li>Up to <strong>5 tables</strong> per event</li>
+            <li>Pickup or local delivery</li>
+            <li>Priced below Wasatch Front average</li>
+          </ul>
+          <a href="#inquiry" class="r-cta" onclick="prefillForm('tables')">Request Tables →</a>
+        </div>
       </div>
 
-      <div class="rental-card featured">
-        <div class="r-img-wrap r-photo-soon r-photo-chairs"><div class="r-photo-label"><span class="r-cs-eyebrow">Photos</span><span class="r-cs-main">Coming Soon</span></div></div>
-        <h3>Folding Chairs (White)</h3>
-        <div class="r-price-sub">Just</div>
-        <div class="r-price" style="font-size:1.4rem;">Reach out<span style="font-size:0.9rem;color:var(--navy-light);"> for pricing</span></div>
-        <ul>
-          <li>✓ Classic white folding chair</li>
-          <li>✓ Indoor / outdoor compatible</li>
-          <li>✓ Quantities matched to table count</li>
-          <li>✓ Pickup or local delivery</li>
-        </ul>
-        <a href="#inquiry" class="r-cta" onclick="prefillForm('chairs')">Request Chairs →</a>
+      <div class="rental-card featured reveal">
+        <div class="r-img-wrap r-photo-soon r-photo-chairs">
+          <div class="r-photo-label">
+            <span class="r-cs-eyebrow">Photos</span>
+            <span class="r-cs-main">Coming Soon</span>
+          </div>
+        </div>
+        <div class="r-body">
+          <h3>Folding Chairs (White)</h3>
+          <div class="r-price-sub">Just</div>
+          <div class="r-price">$2<small>/chair/day</small></div>
+          <ul class="r-features">
+            <li>Classic white plastic folding chair</li>
+            <li>Indoor / outdoor compatible</li>
+            <li>Up to <strong>6 chairs per table</strong> (30 total)</li>
+            <li>Pickup or local delivery</li>
+            <li>Below Wasatch Front average</li>
+          </ul>
+          <a href="#inquiry" class="r-cta" onclick="prefillForm('chairs')">Request Chairs →</a>
+        </div>
       </div>
 
-      <div class="rental-card">
-        <div class="r-img-wrap r-photo-soon r-photo-bundle"><div class="r-photo-label"><span class="r-cs-eyebrow">Photos</span><span class="r-cs-main">Coming Soon</span></div></div>
-        <h3>Bundle: Bar + Tables + Chairs</h3>
-        <div class="r-price-sub">Custom</div>
-        <div class="r-price" style="font-size:1.6rem;">Bundle pricing</div>
-        <ul>
-          <li>✓ Bar + up to 10 tables + matching chairs</li>
-          <li>✓ Single delivery, single pickup</li>
-          <li>✓ Best value for full event setup</li>
-          <li>✓ Inquiry-based quote</li>
-        </ul>
-        <a href="#inquiry" class="r-cta" onclick="prefillForm('bundle')">Request Bundle Quote →</a>
+      <div class="rental-card reveal">
+        <div class="r-img-wrap r-photo-soon r-photo-bundle">
+          <div class="r-photo-label">
+            <span class="r-cs-eyebrow">Photos</span>
+            <span class="r-cs-main">Coming Soon</span>
+          </div>
+        </div>
+        <div class="r-body">
+          <h3>Bundle: Bar + Tables + Chairs</h3>
+          <div class="r-price-sub">Save</div>
+          <div class="r-price">10%<small>off when you bundle all three</small></div>
+          <ul class="r-features">
+            <li>Mobile bar + tables + chairs in one trip</li>
+            <li>Single delivery, single pickup</li>
+            <li>Automatic 10% discount applied in the calculator</li>
+            <li>Pick exact quantities below — total updates live</li>
+          </ul>
+          <a href="#inquiry" class="r-cta" onclick="prefillForm('bundle')">Build a Bundle →</a>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<section class="section form-section" id="inquiry">
-  <div class="section-inner">
-    <div style="text-align:center;margin-bottom:2.5rem;">
+<!-- ═══════════════ INQUIRY FORM ═══════════════ -->
+<section class="section" id="inquiry">
+  <div class="section-inner" style="max-width:880px;">
+    <div class="reveal" style="text-align:center;">
       <span class="eyebrow">Inquiry</span>
-      <h2 class="section-title">Tell us <em>what you need</em></h2>
-      <p class="section-sub" style="margin:0 auto;">We respond within 24 hours with availability and a custom quote.</p>
+      <h2 class="section-title" style="margin-left:auto;margin-right:auto;">Tell us <em>what you need.</em></h2>
+      <p class="section-sub" style="margin:0.85rem auto 2.5rem;">We respond within 24 hours with availability and a custom quote.</p>
     </div>
 
-    <div id="rental-success" class="form-success" style="margin-bottom:1.5rem;">
-      Thanks — we got your inquiry. We&apos;ll be in touch within 24 hours.
+    <div id="rental-success" class="form-success">
+      ✓ Thanks — we got your inquiry. We'll be in touch within 24 hours.
     </div>
 
-    <form id="rental-form" onsubmit="return submitRentalInquiry(event)">
-      <div class="form-row">
-        <div>
-          <label for="r-name">Your name</label>
-          <input id="r-name" name="name" required type="text" />
+    <div class="form-glow-wrap" id="holo-form-card">
+      <div class="form-glow-aura"></div>
+      <form id="rental-form" class="rental-form" onsubmit="return submitRentalInquiry(event)">
+        <div class="form-row">
+          <div class="field">
+            <label for="r-name">Your Name <span class="req">*</span></label>
+            <input id="r-name" name="name" required type="text" placeholder="Full name" />
+          </div>
+          <div class="field">
+            <label for="r-email">Email <span class="req">*</span></label>
+            <input id="r-email" name="email" required type="email" placeholder="you@email.com" />
+          </div>
         </div>
-        <div>
-          <label for="r-email">Email</label>
-          <input id="r-email" name="email" required type="email" />
+        <div class="form-row">
+          <div class="field">
+            <label for="r-phone">Phone</label>
+            <input id="r-phone" name="phone" type="tel" placeholder="(801) 555-0000" />
+          </div>
+          <div class="field">
+            <label for="r-date">Event / pickup date <span class="req">*</span></label>
+            <input id="r-date" name="eventDate" type="date" required />
+          </div>
         </div>
-      </div>
-      <div class="form-row">
-        <div>
-          <label for="r-phone">Phone (optional)</label>
-          <input id="r-phone" name="phone" type="tel" />
-        </div>
-        <div>
-          <label for="r-date">Event / pickup date</label>
-          <input id="r-date" name="eventDate" type="date" required />
-        </div>
-      </div>
 
-      <div>
-        <label for="r-type">What are you renting?</label>
-        <select id="r-type" name="rentalType" required>
-          <option value="">Pick one…</option>
-          <option value="bar">Mobile Bar</option>
-          <option value="tables">Folding Tables</option>
-          <option value="chairs">Folding Chairs</option>
-          <option value="bundle">Bundle (Bar + Tables + Chairs)</option>
-          <option value="other">Other / Multiple</option>
-        </select>
-      </div>
+        <div class="field">
+          <label>Build your rental <span class="req">*</span></label>
+          <div class="field-help" style="margin-bottom:0.6rem;">Pick what you need. Total updates as you go.</div>
+          <div class="builder">
+            <!-- Mobile bar toggle -->
+            <div class="builder-row" id="row-bar">
+              <label class="builder-toggle">
+                <input type="checkbox" id="r-include-bar" name="includeBar" value="1" />
+                <span class="builder-check"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-11"/></svg></span>
+                <div class="builder-info">
+                  <span class="t">Mobile Wood Bar</span>
+                  <span class="s">70×34×40", the Lake Salt original</span>
+                </div>
+              </label>
+              <span class="builder-price">$150<span style="font-size:0.7em;color:var(--text-muted);">/day</span></span>
+            </div>
 
-      <div class="form-row">
-        <div>
-          <label for="r-tables">How many tables?</label>
-          <input id="r-tables" name="tableCount" type="number" min="0" max="10" placeholder="0–10" />
+            <!-- Tables stepper -->
+            <div class="builder-row" id="row-tables">
+              <div class="builder-info">
+                <span class="t">6' Folding Tables</span>
+                <span class="s">$8/day · up to 5</span>
+              </div>
+              <div class="stepper" data-stepper="tables">
+                <button type="button" class="stepper-btn" data-step="-1" aria-label="Fewer tables">−</button>
+                <span class="stepper-val" id="r-tables-val">0</span>
+                <button type="button" class="stepper-btn" data-step="1" aria-label="More tables">+</button>
+              </div>
+              <input type="hidden" id="r-tables" name="tableCount" value="0" />
+            </div>
+
+            <!-- Chairs stepper -->
+            <div class="builder-row" id="row-chairs">
+              <div class="builder-info">
+                <span class="t">Folding Chairs</span>
+                <span class="s">$2/day · up to 30 (6 per table)</span>
+              </div>
+              <div class="stepper" data-stepper="chairs">
+                <button type="button" class="stepper-btn" data-step="-1" aria-label="Fewer chairs">−</button>
+                <span class="stepper-val" id="r-chairs-val">0</span>
+                <button type="button" class="stepper-btn" data-step="1" aria-label="More chairs">+</button>
+              </div>
+              <input type="hidden" id="r-chairs" name="chairCount" value="0" />
+            </div>
+
+            <!-- Tablecloths stepper (add-on) -->
+            <div class="builder-row" id="row-cloths">
+              <div class="builder-info">
+                <span class="t">Black Tablecloths</span>
+                <span class="s">$5/cloth/day · plain black polyester, fits a 6' table</span>
+              </div>
+              <div class="stepper" data-stepper="cloths">
+                <button type="button" class="stepper-btn" data-step="-1" aria-label="Fewer cloths">−</button>
+                <span class="stepper-val" id="r-cloths-val">0</span>
+                <button type="button" class="stepper-btn" data-step="1" aria-label="More cloths">+</button>
+              </div>
+              <input type="hidden" id="r-cloths" name="clothCount" value="0" />
+            </div>
+
+            <!-- Delivery toggle -->
+            <div class="builder-row" id="row-delivery">
+              <label class="builder-toggle">
+                <input type="checkbox" id="r-delivery" name="delivery" value="1" />
+                <span class="builder-check"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-11"/></svg></span>
+                <div class="builder-info">
+                  <span class="t">Local Wasatch Front Delivery</span>
+                  <span class="s">Drop-off &amp; pickup at your address (otherwise free pickup in Saratoga Springs)</span>
+                </div>
+              </label>
+              <span class="builder-price">+$10</span>
+            </div>
+          </div>
+
+          <!-- Limit hint -->
+          <div class="limit-note" id="limit-note">
+            Need more than 5 tables or 30 chairs? Email <a href="mailto:contact@lakesalt.us">contact@lakesalt.us</a> — that's our current inventory cap, but we can stretch for bigger requests.
+          </div>
+
+          <!-- Total readout -->
+          <div class="total-card" style="margin-top:1rem;">
+            <span class="t-label">Estimated Total</span>
+            <span class="t-amount" id="r-total">$0<small>/day</small></span>
+            <span class="t-detail" id="r-breakdown">Pick something above to see your total.</span>
+          </div>
+          <input type="hidden" id="r-subtotal" name="subtotal" value="0" />
+          <input type="hidden" id="r-type" name="rentalType" value="" />
         </div>
-        <div>
-          <label for="r-chairs">How many chairs?</label>
-          <input id="r-chairs" name="chairCount" type="number" min="0" placeholder="0+" />
+
+        <div class="field" id="address-field" style="display:none;">
+          <label for="r-location">Delivery address <span class="req">*</span></label>
+          <input id="r-location" name="location" type="text" placeholder="Street, city, ZIP" />
         </div>
-      </div>
 
-      <div>
-        <label for="r-location">Pickup or delivery location</label>
-        <input id="r-location" name="location" type="text" placeholder="City, or full address for delivery" />
-      </div>
+        <div class="field">
+          <label for="r-notes">Anything else we should know?</label>
+          <textarea id="r-notes" name="notes" placeholder="Event type, setup details, timing, questions…"></textarea>
+        </div>
 
-      <div>
-        <label for="r-notes">Anything else we should know?</label>
-        <textarea id="r-notes" name="notes" placeholder="Event type, setup details, timing, questions…"></textarea>
-      </div>
-
-      <button type="submit" class="submit-btn" id="rental-submit">Send Inquiry →</button>
-    </form>
+        <button type="submit" class="submit-btn" id="rental-submit">Send Inquiry →</button>
+      </form>
+    </div>
   </div>
 </section>
 
+<!-- ═══════════════ FAQ ═══════════════ -->
 <section class="section">
   <div class="section-inner">
-    <div style="text-align:center;margin-bottom:2.5rem;">
+    <div class="reveal" style="text-align:center;">
       <span class="eyebrow">FAQ</span>
-      <h2 class="section-title">Rental <em>questions</em></h2>
+      <h2 class="section-title" style="margin-left:auto;margin-right:auto;">Rental <em>questions.</em></h2>
     </div>
-    <div class="faq-rentals">
-      <details class="faq-item-r">
-        <summary>What&apos;s your delivery radius?</summary>
-        <p>Local Wasatch Front delivery is available — Salt Lake City, Saratoga Springs, Lehi, Draper, Provo, Park City, and surrounding areas. Pickup from our Saratoga Springs location is always free. Delivery beyond 30 miles incurs a per-mile fee.</p>
+    <div class="faq-list">
+      <details class="faq-item reveal">
+        <summary>What's your delivery radius?</summary>
+        <p>We deliver across the Wasatch Front — Salt Lake City, Saratoga Springs, Lehi, Draper, Provo, Park City, and surrounding areas. Local delivery is a flat $10. Pickup from our Saratoga Springs location is always free. Beyond 30 miles, we charge a per-mile add-on on top of the $10 flat — just ask in your inquiry.</p>
       </details>
-      <details class="faq-item-r">
+      <details class="faq-item reveal">
         <summary>Do I need to put down a deposit?</summary>
-        <p>Yes — a refundable damage deposit is required for the mobile bar rental. Tables and chairs typically don&apos;t require a deposit unless rented in larger quantities. Final terms are confirmed in your quote.</p>
+        <p>Yes — a refundable damage deposit is required for the mobile bar rental. Tables and chairs typically don't require a deposit unless rented in larger quantities. Final terms are confirmed in your quote.</p>
       </details>
-      <details class="faq-item-r">
+      <details class="faq-item reveal">
         <summary>What happens if something gets damaged?</summary>
-        <p>Light wear from normal event use is expected. Significant damage (cracks, structural damage, deep stains) is deducted from your deposit. We always document the bar&apos;s condition before pickup so there&apos;s zero ambiguity.</p>
+        <p>Light wear from normal event use is expected. Significant damage (cracks, structural damage, deep stains) is deducted from your deposit. We always document the bar's condition before pickup so there's zero ambiguity.</p>
       </details>
-      <details class="faq-item-r">
+      <details class="faq-item reveal">
         <summary>Can I rent the bar with bartenders?</summary>
-        <p>Of course — that&apos;s our core service. Head back to the <a href="index.html#pricing-packages">main pricing page</a> for full-service bartending starting around $995.</p>
+        <p>Of course — that's our core service. Head back to the <a href="index.html#pricing-packages">main pricing page</a> for full-service bartending starting around $650.</p>
       </details>
-      <details class="faq-item-r">
-        <summary>Are tables and chairs really limited to 10?</summary>
-        <p>For now, yes. We&apos;re starting with 10 tables and roughly 80 chairs to gauge demand. If we get traction, we&apos;ll expand inventory. Larger orders may still be possible — ask in your inquiry.</p>
+      <details class="faq-item reveal">
+        <summary>Will the mobile bar fit in my car?</summary>
+        <p>If you have a larger SUV with the seats folded down, yes. The bar is <strong>70" long × 34" wide × 40" tall</strong>. When laid on its side for transport, it's 40" wide — so anything with at least 40" of width and 70" of cargo depth (think Chevy Tahoe, Ford Expedition, Suburban, larger Jeep, full-size pickup) will handle it. Sedan or compact SUV? You'll want our local Wasatch Front delivery instead.</p>
       </details>
-      <details class="faq-item-r">
+      <details class="faq-item reveal">
+        <summary>Why are tables limited to 5 and chairs to 30?</summary>
+        <p>That's all the inventory we have for now. We're testing demand before we buy more — if rentals take off, we'll expand. Need more than 5 tables or 30 chairs for your event? Email <a href="mailto:contact@lakesalt.us">contact@lakesalt.us</a> and we'll figure something out (we can sometimes source from partners). For context, most local companies charge $9–$10/table and $2.25–$3/chair; our $8 / $2 lands the same 5-table / 30-chair setup at <strong>~$100/day</strong> vs ~$114 elsewhere.</p>
+      </details>
+      <details class="faq-item reveal">
+        <summary>How does delivery work?</summary>
+        <p>Pickup at our Saratoga Springs location is always free. Local Wasatch Front delivery is a <strong>flat $10</strong> for the bundle (Salt Lake City, Saratoga Springs, Lehi, Draper, Provo, Park City, and surrounding areas). Beyond 30 miles, we charge a per-mile fee on top — just ask in your inquiry and we'll quote it.</p>
+      </details>
+      <details class="faq-item reveal">
         <summary>How far in advance should I book?</summary>
         <p>For peak wedding season (June–September), 4–8 weeks is ideal. Off-season, 1–2 weeks is usually fine. Inventory is first-come-first-served, so the sooner the better.</p>
       </details>
@@ -531,11 +1251,10 @@
   </div>
 </section>
 
-<footer>
-  <div>
-    <a href="index.html" class="nav-logo">Lake <span>Salt</span></a>
-  </div>
-  <div style="margin-top:1rem;display:flex;justify-content:center;gap:1.5rem;flex-wrap:wrap;font-size:0.85rem;">
+<!-- ═══════════════ FOOTER ═══════════════ -->
+<footer class="footer">
+  <div class="f-logo">Lake <span>Salt</span></div>
+  <div class="f-links">
     <a href="index.html">Home</a>
     <a href="index.html#pricing-packages">Pricing</a>
     <a href="rentals.html">Rentals</a>
@@ -543,63 +1262,293 @@
     <a href="recipes.html">Recipes</a>
     <a href="index.html#contact">Contact</a>
   </div>
-  <p class="f-copy">© 2025 Lake Salt Bartending · All Rights Reserved · Saratoga Springs, UT</p>
+  <p class="f-copy">© 2026 Lake Salt Bartending · All Rights Reserved · Saratoga Springs, UT</p>
 </footer>
 
 <script>
-  function prefillForm(type) {
-    const sel = document.getElementById('r-type');
-    if (sel) sel.value = type;
+  /* ─── Starfield (canvas, drift upward — same as /sales + /book) ─── */
+  (function startCanvasStarfield() {
+    const canvas = document.getElementById('starfield-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d', { alpha: true });
+    let W = 0, H = 0, dpr = 1;
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = canvas.width  = Math.floor(window.innerWidth * dpr);
+      H = canvas.height = Math.floor(window.innerHeight * dpr);
+      canvas.style.width  = window.innerWidth  + 'px';
+      canvas.style.height = window.innerHeight + 'px';
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+    }
+    resize();
+    window.addEventListener('resize', resize);
+    const starCount = 80, stars = [];
+    for (let i = 0; i < starCount; i++) {
+      const tier = Math.random();
+      const size = tier < 0.6 ? 0.5 + Math.random() * 0.6
+                : tier < 0.9 ? 0.9 + Math.random() * 0.8
+                              : 1.4 + Math.random() * 0.8;
+      stars.push({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        r: size,
+        speed: 0.06 + Math.random() * 0.18 + (tier > 0.6 ? 0.1 : 0),
+        baseAlpha: 0.35 + Math.random() * 0.55,
+        twinklePhase: Math.random() * Math.PI * 2,
+        twinkleSpeed: 0.4 + Math.random() * 1.2,
+      });
+    }
+    let lastTime = performance.now();
+    let running = true;
+    function frame(now) {
+      if (!running) return;
+      const dt = Math.min((now - lastTime) / 16.67, 3);
+      lastTime = now;
+      const w = window.innerWidth, h = window.innerHeight;
+      ctx.clearRect(0, 0, w, h);
+      for (const s of stars) {
+        s.y -= s.speed * dt;
+        s.twinklePhase += 0.04 * s.twinkleSpeed * dt;
+        if (s.y < -2) { s.y = h + 2; s.x = Math.random() * w; }
+        const tw = 0.6 + 0.4 * Math.sin(s.twinklePhase);
+        const a = s.baseAlpha * tw;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,' + a.toFixed(3) + ')';
+        ctx.fill();
+      }
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { running = false; }
+      else if (!running)   { running = true; lastTime = performance.now(); requestAnimationFrame(frame); }
+    });
+  })();
+
+  /* ─── Holographic angle driver (matches /index.html + /sales.html) ─── */
+  (function startHoloAngle() {
+    const card = document.getElementById('holo-form-card');
+    if (!card) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let angle = 0, timer = null;
+    const tick = () => { angle = (angle + 2) % 360; card.style.setProperty('--holo-angle', angle + 'deg'); };
+    const start = () => { if (!timer) timer = setInterval(tick, 40); };
+    const stop  = () => { if (timer) { clearInterval(timer); timer = null; } };
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(es => { es[0].isIntersecting ? start() : stop(); }, { rootMargin: '120px' }).observe(card);
+    } else { start(); }
+    document.addEventListener('visibilitychange', () => {
+      document.hidden ? stop() : (card.getBoundingClientRect().bottom > 0 && start());
+    });
+  })();
+
+  /* ─── Scroll reveal ─── */
+  (function() {
+    if (!('IntersectionObserver' in window)) {
+      document.querySelectorAll('.reveal').forEach(el => el.classList.add('in'));
+      return;
+    }
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -10% 0px' });
+    document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+  })();
+
+  /* ─── Interactive price builder ───
+     Pricing: bar $150, table $8, chair $2, delivery flat +$10.
+     Caps: 5 tables, 30 chairs. */
+  const PRICES = { bar: 150, table: 8, chair: 2, cloth: 5, delivery: 10 };
+  const LIMITS = { tables: 5, chairs: 30, cloths: 5 };
+
+  const $ = (id) => document.getElementById(id);
+
+  function recalc() {
+    const includeBar = $('r-include-bar').checked;
+    const tables = parseInt($('r-tables').value || '0', 10);
+    const chairs = parseInt($('r-chairs').value || '0', 10);
+    const cloths = parseInt($('r-cloths').value || '0', 10);
+    const delivery = $('r-delivery').checked;
+
+    // Compute
+    let subtotal = 0;
+    const parts = [];
+    if (includeBar) { subtotal += PRICES.bar; parts.push(`Bar $${PRICES.bar}`); }
+    if (tables > 0) { subtotal += tables * PRICES.table; parts.push(`${tables} table${tables>1?'s':''} $${tables*PRICES.table}`); }
+    if (chairs > 0) { subtotal += chairs * PRICES.chair; parts.push(`${chairs} chair${chairs>1?'s':''} $${chairs*PRICES.chair}`); }
+    if (cloths > 0) { subtotal += cloths * PRICES.cloth; parts.push(`${cloths} cloth${cloths>1?'s':''} $${cloths*PRICES.cloth}`); }
+    if (delivery) { subtotal += PRICES.delivery; parts.push(`Delivery $${PRICES.delivery}`); }
+
+    // Bundle discount: bar + tables + chairs all selected → 10% off
+    let discount = 0;
+    if (includeBar && tables > 0 && chairs > 0) {
+      discount = Math.round(subtotal * 0.10);
+      subtotal -= discount;
+      parts.push(`Bundle 10% off −$${discount}`);
+    }
+
+    // Update DOM
+    $('r-total').innerHTML = subtotal > 0
+      ? `$${subtotal}<small>/day</small>`
+      : `$0<small>/day</small>`;
+    $('r-breakdown').textContent = parts.length
+      ? parts.join(' · ')
+      : 'Pick something above to see your total.';
+    $('r-subtotal').value = subtotal;
+
+    // Selected rows visual state
+    $('row-bar').classList.toggle('selected', includeBar);
+    $('row-tables').classList.toggle('selected', tables > 0);
+    $('row-chairs').classList.toggle('selected', chairs > 0);
+    $('row-cloths').classList.toggle('selected', cloths > 0);
+    $('row-delivery').classList.toggle('selected', delivery);
+
+    // Limit hint
+    const atLimit = (tables >= LIMITS.tables) || (chairs >= LIMITS.chairs);
+    $('limit-note').classList.toggle('show', atLimit);
+
+    // Auto-derive rentalType for analytics + CRM
+    let type = 'other';
+    const hasBar = includeBar, hasTables = tables > 0, hasChairs = chairs > 0;
+    if (hasBar && (hasTables || hasChairs)) type = 'bundle';
+    else if (hasBar) type = 'bar';
+    else if (hasTables && hasChairs) type = 'tables-and-chairs';
+    else if (hasTables) type = 'tables';
+    else if (hasChairs) type = 'chairs';
+    $('r-type').value = type;
+
+    // Address visibility / required state
+    const addrField = $('address-field');
+    const addrInput = $('r-location');
+    if (delivery) {
+      addrField.style.display = '';
+      addrInput.setAttribute('required', '');
+    } else {
+      addrField.style.display = 'none';
+      addrInput.removeAttribute('required');
+    }
   }
 
+  /* Stepper button handlers — wire +/- for tables and chairs */
+  document.querySelectorAll('.stepper-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const stepperEl = btn.closest('.stepper');
+      const kind = stepperEl.dataset.stepper; // 'tables' or 'chairs'
+      const step = parseInt(btn.dataset.step, 10);
+      const max  = LIMITS[kind];
+      const input = $('r-' + kind);
+      const valEl = $('r-' + kind + '-val');
+      const cur = parseInt(input.value || '0', 10);
+      const next = Math.max(0, Math.min(max, cur + step));
+      input.value = next;
+      valEl.textContent = next;
+      recalc();
+    });
+  });
+
+  /* Toggle handlers */
+  $('r-include-bar').addEventListener('change', recalc);
+  $('r-delivery').addEventListener('change', recalc);
+
+  /* ─── Hash + card click prefill ─── */
+  function prefillForm(type) {
+    if (type === 'bar' || type === 'bundle') $('r-include-bar').checked = true;
+    if (type === 'tables' || type === 'bundle') {
+      $('r-tables').value = 2; $('r-tables-val').textContent = 2;
+    }
+    if (type === 'chairs' || type === 'bundle') {
+      $('r-chairs').value = 12; $('r-chairs-val').textContent = 12;
+    }
+    recalc();
+    // Scroll the inquiry into view
+    document.getElementById('inquiry').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  window.addEventListener('DOMContentLoaded', () => {
+    recalc(); // initial state
+    const hash = window.location.hash;
+    if (hash === '#bar')     prefillForm('bar');
+    if (hash === '#tables' || hash === '#tables-chairs') prefillForm('tables');
+    if (hash === '#chairs')  prefillForm('chairs');
+  });
+
+  /* ─── Submit ─── */
   async function submitRentalInquiry(e) {
     e.preventDefault();
     const btn = document.getElementById('rental-submit');
-    btn.disabled = true;
-    btn.textContent = 'Sending…';
+    const orig = btn.textContent;
+
+    const includeBar = $('r-include-bar').checked;
+    const tables = parseInt($('r-tables').value || '0', 10);
+    const chairs = parseInt($('r-chairs').value || '0', 10);
+    const cloths = parseInt($('r-cloths').value || '0', 10);
+    const delivery = $('r-delivery').checked;
+    const subtotal = parseInt($('r-subtotal').value || '0', 10);
+
+    if (!includeBar && tables === 0 && chairs === 0) {
+      alert('Please pick at least one rental (bar, tables, or chairs).');
+      return false;
+    }
+
+    btn.disabled = true; btn.textContent = 'Sending…';
 
     const data = {
-      intent: 'rental',
-      source: 'rentals.html',
-      name: document.getElementById('r-name').value.trim(),
-      email: document.getElementById('r-email').value.trim(),
-      phone: document.getElementById('r-phone').value.trim(),
-      eventDate: document.getElementById('r-date').value,
-      rentalType: document.getElementById('r-type').value,
-      tableCount: parseInt(document.getElementById('r-tables').value || '0', 10),
-      chairCount: parseInt(document.getElementById('r-chairs').value || '0', 10),
-      location: document.getElementById('r-location').value.trim(),
-      notes: document.getElementById('r-notes').value.trim(),
-      createdAt: new Date().toISOString()
+      intent:     'rental',
+      stage:      'New Lead',
+      source:     'rentals.html',
+      name:       $('r-name').value.trim(),
+      email:      $('r-email').value.trim(),
+      phone:      $('r-phone').value.trim(),
+      eventDate:  $('r-date').value,
+      rentalType: $('r-type').value,
+      includeBar,
+      tableCount: tables,
+      chairCount: chairs,
+      clothCount: cloths,
+      delivery,
+      subtotal,
+      location:   $('r-location').value.trim(),
+      notes:      $('r-notes').value.trim(),
+      createdAt:  (window.firebase && firebase.firestore && firebase.firestore.FieldValue)
+                    ? firebase.firestore.FieldValue.serverTimestamp()
+                    : new Date().toISOString()
     };
 
     try {
-      if (window._db) {
-        await window._db.collection('leads').add(data);
-      }
+      if (window._db) await window._db.collection('leads').add(data);
+      try {
+        if (typeof window.lsTrack === 'function') {
+          window.lsTrack('rental_inquiry_submitted', {
+            rentalType: data.rentalType || 'unknown',
+            subtotal,
+            includeBar,
+            tableCount: tables,
+            chairCount: chairs,
+            clothCount: cloths,
+            delivery,
+          });
+        }
+      } catch (_) {}
       document.getElementById('rental-success').classList.add('show');
       document.getElementById('rental-form').reset();
-      btn.textContent = 'Sent ✓';
-      setTimeout(() => {
-        btn.disabled = false;
-        btn.textContent = 'Send Inquiry →';
-      }, 4000);
+      // reset builder state too
+      $('r-tables-val').textContent = '0';
+      $('r-chairs-val').textContent = '0';
+      $('r-cloths-val').textContent = '0';
+      $('r-tables').value = 0; $('r-chairs').value = 0; $('r-cloths').value = 0;
+      recalc();
+      btn.textContent = '✓ Sent — talk soon';
+      btn.style.background = '#22c55e';
+      window.scrollTo({ top: document.getElementById('rental-success').offsetTop - 100, behavior: 'smooth' });
     } catch (err) {
       console.error(err);
-      btn.textContent = 'Error — try again';
-      btn.disabled = false;
+      btn.disabled = false; btn.textContent = orig;
+      alert('Something went wrong. Please email contact@lakesalt.us and we\'ll add you manually.');
     }
     return false;
   }
-
-  // Deep-link: scroll to anchor + prefill if hash present
-  window.addEventListener('DOMContentLoaded', () => {
-    const hash = window.location.hash;
-    if (hash === '#bar') prefillForm('bar');
-    if (hash === '#tables' || hash === '#tables-chairs') prefillForm('tables');
-    if (hash === '#chairs') prefillForm('chairs');
-  });
 </script>
-
 </body>
 </html>

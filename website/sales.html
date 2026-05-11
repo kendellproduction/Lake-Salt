@@ -3,16 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Buy a Custom Mobile Bar — Lake Salt (Coming Soon)</title>
-  <meta name="description" content="Lake Salt is launching custom mobile bar builds. Modern wood mobile bars built to your specs — perfect for venues, caterers, and entrepreneurs starting their own mobile bar business. Join the waitlist." />
-  <meta name="keywords" content="custom mobile bar Utah, buy mobile bar, custom bar builds, wood bar fabrication, mobile bar for sale, start a mobile bar business" />
+  <title>Custom Mobile Bar Builds — Lake Salt (Waitlist Open)</title>
+  <meta name="description" content="Lake Salt builds custom mobile bars to spec — coffee, cocktail, mocktail, dirty soda. Battery + outlet capability, custom branding, modern finishes. Join the waitlist." />
+  <meta name="keywords" content="custom mobile bar Utah, mobile coffee cart, mobile bar for sale, mobile bar fabrication, custom bar builds Salt Lake City, dirty soda cart, mocktail cart" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://lakesalt.us/sales.html" />
 
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://lakesalt.us/sales.html" />
-  <meta property="og:title" content="Buy a Custom Mobile Bar — Lake Salt" />
-  <meta property="og:description" content="Custom-built mobile bars. Coming soon — join the waitlist." />
+  <meta property="og:title" content="Custom Mobile Bar Builds — Lake Salt" />
+  <meta property="og:description" content="Custom-built mobile bars to your spec. Coffee, cocktail, mocktail, dirty soda. Coming soon — join the waitlist." />
 
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -22,7 +22,7 @@
     "@context": "https://schema.org",
     "@type": "Product",
     "name": "Lake Salt Custom Mobile Bar",
-    "description": "Custom-built mobile wood bars made to your specifications. Each build is unique — finishes, branding, footprint, and storage all customized.",
+    "description": "Custom-built mobile bars made to your specifications. Coffee, cocktail, mocktail, or multi-purpose. Battery + outlet capability, custom branding, modern wood or industrial finishes.",
     "brand": { "@type": "Brand", "name": "Lake Salt" },
     "offers": {
       "@type": "Offer",
@@ -34,328 +34,1442 @@
   </script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=Italiana&display=swap" rel="stylesheet" />
 
   <script src="firebase-config.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
   <script>
     if (window.FIREBASE_CONFIG) {
       firebase.initializeApp(window.FIREBASE_CONFIG);
       window._db = firebase.firestore();
+      try { window._storage = firebase.storage(); } catch (_) {}
     }
   </script>
+  <script src="analytics.js" defer></script>
 
   <style>
+    /* ─────────────────────────────────────────
+       PALETTE — richer, warmer, more luxurious
+       (replaces the flat navy + champagne base) */
     :root {
-      --navy: #0C1526;
-      --navy-mid: #172038;
-      --navy-light: #243057;
-      --champagne: #C9A96E;
-      --champagne-lt: #DFC08A;
-      --ivory: #FAF8F4;
-      --cream: #F2EDE0;
-      --white: #FFFFFF;
+      --obsidian:    #000000;   /* pure black — same as /book starfield page */
+      --ink:         #0B0E18;   /* dark mid panel (still near-black) */
+      --plum:        #14111F;   /* warm dark accent */
+      --shadow:      #000000;
+      --aurum:       #D4AF6A;   /* richer gold than champagne */
+      --aurum-lt:    #E8C988;
+      --copper:      #B6764A;   /* warm wood-tone metal */
+      --iridescent:  #6FE3D6;   /* mint/teal pop */
+      --rose:        #E29CB7;   /* secondary highlight */
+      --cream:       #F4ECDD;
+      --bone:        #F8F1E2;
+      --text:        #F5F1E8;
+      --text-muted:  rgba(245,241,232,0.62);
+      --line:        rgba(245,241,232,0.10);
+      --line-strong: rgba(245,241,232,0.22);
+
+      --shadow-lg: 0 30px 80px rgba(0,0,0,0.55), 0 0 60px rgba(212,175,106,0.06);
+      --ease:      cubic-bezier(0.22, 0.61, 0.36, 1);
+      --ease-out:  cubic-bezier(0.16, 1, 0.3, 1);
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
-    body { font-family: 'Inter', sans-serif; color: var(--navy); background: var(--ivory); line-height: 1.6; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--obsidian);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
     a { color: inherit; text-decoration: none; }
+    img { max-width: 100%; display: block; }
+    ::selection { background: var(--aurum); color: var(--obsidian); }
 
-    .navbar {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 1.25rem 2rem;
-      background: rgba(12,21,38,0.92); backdrop-filter: blur(10px); color: var(--ivory);
-    }
-    .nav-logo { font-family: 'Cormorant Garamond', serif; font-size: 1.4rem; font-weight: 600; }
-    .nav-logo span { color: var(--champagne); font-style: italic; }
-    .nav-links { display: flex; gap: 1.75rem; list-style: none; font-size: 0.86rem; }
-    .nav-links a:hover { color: var(--champagne); }
-    .nav-cta {
-      background: var(--champagne); color: var(--navy);
-      padding: 0.6rem 1.2rem; border-radius: 999px;
-      font-size: 0.82rem; font-weight: 500;
-    }
-    @media (max-width: 720px) { .nav-links { display: none; } }
-
-    .hero {
-      min-height: 75vh; padding: 9rem 2rem 4rem;
+    /* ─── Starfield (canvas-driven) — same as /book ───────────────────────
+       ~80 drifting stars rise upward, twinkle, wrap to bottom. Pauses on tab hide. */
+    .starfield {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
       background:
-        linear-gradient(135deg, var(--navy), var(--navy-mid));
-      color: var(--ivory);
-      display: flex; flex-direction: column; justify-content: center; align-items: center;
-      text-align: center;
+        radial-gradient(ellipse 80% 50% at 50% 100%, rgba(212,175,106,0.10), transparent 70%),
+        radial-gradient(ellipse 100% 60% at 50% 0%, rgba(20,20,40,0.6), transparent 60%);
+    }
+    #starfield-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%; height: 100%;
+      display: block;
+    }
+    /* Push all page content above the starfield */
+    .nav, .hero, .marq, .section, .waitlist-section, .footer {
+      position: relative;
+      z-index: 5;
+    }
+    .nav { z-index: 50; }
+
+    /* Subtle film-grain noise overlay — pure CSS, no images */
+    body::before {
+      content: ''; position: fixed; inset: 0; z-index: 100; pointer-events: none;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.32 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+      opacity: 0.4;
+      mix-blend-mode: overlay;
+    }
+
+    /* ─────────────────────────────────────────
+       NAVBAR — minimal, glass */
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1.1rem 2rem;
+      background: rgba(10,15,28,0.72);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--line);
+    }
+    .nav-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.45rem; font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .nav-logo span { color: var(--aurum); font-style: italic; }
+    .nav-links { display: flex; gap: 2rem; list-style: none; }
+    .nav-links a {
+      font-size: 0.78rem; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--text-muted);
+      transition: color 0.25s ease;
+    }
+    .nav-links a:hover { color: var(--aurum); }
+    .nav-cta {
+      background: var(--aurum); color: var(--obsidian);
+      padding: 0.65rem 1.3rem; border-radius: 999px;
+      font-size: 0.74rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase;
+      transition: transform 0.25s var(--ease), box-shadow 0.25s ease, background 0.25s ease;
+    }
+    .nav-cta:hover {
+      background: var(--aurum-lt);
+      transform: translateY(-1px);
+      box-shadow: 0 12px 32px rgba(212,175,106,0.32);
+    }
+    @media (max-width: 760px) { .nav-links { display: none; } }
+
+    /* ─────────────────────────────────────────
+       HERO — editorial, all-type, with animated grid + aurora */
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      padding: 8rem 2rem 6rem;
+      display: flex; flex-direction: column; justify-content: center;
+      overflow: hidden;
+      isolation: isolate;
+    }
+    /* Aurora glows — layered radial gradients drift slowly */
+    .hero::before {
+      content: ''; position: absolute; inset: -10%; z-index: -2;
+      background:
+        radial-gradient(60% 50% at 18% 30%, rgba(111,227,214,0.12), transparent 65%),
+        radial-gradient(45% 45% at 82% 70%, rgba(212,175,106,0.16), transparent 65%),
+        radial-gradient(60% 60% at 50% 110%, rgba(226,156,183,0.07), transparent 60%);
+      filter: blur(6px);
+      animation: aurora-drift 24s ease-in-out infinite;
+    }
+    /* Faint engraved grid */
+    .hero::after {
+      content: ''; position: absolute; inset: 0; z-index: -1;
+      background-image:
+        linear-gradient(to right,  rgba(245,241,232,0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(245,241,232,0.04) 1px, transparent 1px);
+      background-size: 80px 80px;
+      mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%);
+      -webkit-mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%);
+    }
+    @keyframes aurora-drift {
+      0%,100% { transform: translate(0,0) scale(1); }
+      50%     { transform: translate(2%, -1%) scale(1.06); }
+    }
+
+    .hero-inner { max-width: 1200px; margin: 0 auto; width: 100%; }
+    .hero-meta {
+      display: inline-flex; align-items: center; gap: 0.7rem;
+      padding: 0.5rem 0.95rem; border-radius: 999px;
+      background: rgba(212,175,106,0.08);
+      border: 1px solid rgba(212,175,106,0.32);
+      font-size: 0.7rem; letter-spacing: 0.24em; text-transform: uppercase;
+      color: var(--aurum);
+      margin-bottom: 2rem;
+      animation: rise 0.9s var(--ease-out) 0.1s backwards;
+    }
+    .hero-meta::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--aurum);
+      box-shadow: 0 0 12px rgba(212,175,106,0.7);
+      animation: pulse 2.4s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    .hero-title {
+      font-family: 'Italiana', 'Cormorant Garamond', serif;
+      font-weight: 400;
+      font-size: clamp(3.2rem, 9vw, 8.5rem);
+      line-height: 0.94;
+      letter-spacing: -0.025em;
+      margin-bottom: 1.5rem;
+    }
+    .hero-title .l1, .hero-title .l2, .hero-title .l3 {
+      display: block;
+      animation: rise 1s var(--ease-out) backwards;
+    }
+    .hero-title .l1 { animation-delay: 0.18s; }
+    .hero-title .l2 { animation-delay: 0.32s; }
+    .hero-title .l3 { animation-delay: 0.46s; font-style: italic; color: var(--aurum); }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(28px); filter: blur(6px); }
+      to   { opacity: 1; transform: none;             filter: none; }
+    }
+
+    .hero-sub {
+      max-width: 620px;
+      font-size: clamp(1.02rem, 1.5vw, 1.15rem);
+      color: var(--text-muted);
+      line-height: 1.65;
+      margin-bottom: 2.75rem;
+      animation: rise 1s var(--ease-out) 0.6s backwards;
+    }
+
+    .hero-cta-row {
+      display: flex; gap: 1rem; flex-wrap: wrap;
+      animation: rise 1s var(--ease-out) 0.74s backwards;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.7rem;
+      padding: 1.05rem 1.85rem;
+      border-radius: 999px;
+      font-size: 0.82rem; font-weight: 600;
+      letter-spacing: 0.16em; text-transform: uppercase;
+      cursor: pointer; border: none;
+      transition: transform 0.3s var(--ease), box-shadow 0.3s ease, background 0.3s ease, color 0.3s ease;
+      position: relative; overflow: hidden;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--aurum) 0%, var(--copper) 100%);
+      color: var(--obsidian);
+      box-shadow: 0 16px 40px rgba(212,175,106,0.28), inset 0 1px 0 rgba(255,255,255,0.32);
+    }
+    .btn-primary::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, var(--aurum-lt) 0%, var(--aurum) 100%);
+      opacity: 0; transition: opacity 0.3s ease;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 22px 56px rgba(212,175,106,0.38);
+    }
+    .btn-primary:hover::after { opacity: 1; }
+    .btn-primary > * { position: relative; z-index: 1; }
+    .btn-ghost {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--line-strong);
+    }
+    .btn-ghost:hover {
+      border-color: var(--aurum);
+      color: var(--aurum);
+      transform: translateY(-2px);
+    }
+    .btn .arrow { transition: transform 0.3s var(--ease); }
+    .btn:hover .arrow { transform: translateX(4px); }
+
+    /* Hero stat row */
+    .hero-stats {
+      display: flex; gap: 3.5rem; flex-wrap: wrap;
+      margin-top: 5rem;
+      padding-top: 2.5rem;
+      border-top: 1px solid var(--line);
+      animation: rise 1s var(--ease-out) 0.92s backwards;
+    }
+    .hero-stat .num {
+      font-family: 'Italiana', serif;
+      font-size: clamp(2rem, 4vw, 2.85rem);
+      color: var(--aurum);
+      line-height: 1;
+      letter-spacing: -0.01em;
+    }
+    .hero-stat .lbl {
+      font-size: 0.7rem; letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+    }
+
+    /* ─────────────────────────────────────────
+       MARQUEE — capabilities ticker */
+    .marq {
+      position: relative;
+      background: rgba(11,14,24,0.55);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      border-block: 1px solid var(--line);
+      overflow: hidden;
+    }
+    .marq-track {
+      display: inline-flex; gap: 3rem;
+      padding: 1.4rem 0;
+      white-space: nowrap;
+      animation: marq 38s linear infinite;
+    }
+    .marq-track span {
+      display: inline-flex; align-items: center; gap: 0.8rem;
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 1.35rem;
+      color: var(--text);
+      opacity: 0.82;
+    }
+    .marq-track span::after {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--aurum);
+    }
+    @keyframes marq { to { transform: translateX(-50%); } }
+
+    /* ─────────────────────────────────────────
+       SECTION shells */
+    .section { padding: 7rem 2rem; position: relative; }
+    .section-inner { max-width: 1200px; margin: 0 auto; }
+    .eyebrow {
+      display: inline-block;
+      font-size: 0.7rem; font-weight: 600;
+      letter-spacing: 0.32em; text-transform: uppercase;
+      color: var(--aurum);
+      padding-bottom: 0.85rem; margin-bottom: 1rem;
       position: relative;
     }
-    .hero::after {
-      content: '📸 Photos of our bar builds coming soon';
-      position: absolute; bottom: 1.25rem; left: 50%; transform: translateX(-50%);
-      font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase;
-      color: var(--champagne); opacity: 0.7;
+    .eyebrow::after {
+      content: ''; position: absolute; bottom: 0; left: 0;
+      width: 32px; height: 1px; background: var(--aurum); opacity: 0.55;
     }
-    .pill {
-      display: inline-block; padding: 0.45rem 1.1rem;
-      border: 1px solid var(--champagne); border-radius: 999px;
-      font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase;
-      color: var(--champagne); margin-bottom: 1.5rem;
-      background: rgba(201,169,110,0.08);
-    }
-    .hero h1 {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(2.6rem, 7vw, 5rem); font-weight: 500;
-      line-height: 1.05; margin-bottom: 1.25rem; max-width: 900px;
-    }
-    .hero h1 em { color: var(--champagne); font-style: italic; }
-    .hero p { max-width: 720px; font-size: 1.08rem; opacity: 0.92; margin-bottom: 2rem; }
-    .hero-cta {
-      display: inline-block; padding: 1rem 2rem; border-radius: 999px;
-      background: var(--champagne); color: var(--navy);
-      font-size: 0.95rem; font-weight: 500; letter-spacing: 0.05em;
-      transition: transform 0.15s ease, background 0.2s;
-    }
-    .hero-cta:hover { background: var(--champagne-lt); transform: translateY(-1px); }
-
-    .section { padding: 5rem 2rem; }
-    .section-inner { max-width: 1100px; margin: 0 auto; }
-    .eyebrow { display: inline-block; font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--champagne); margin-bottom: 0.6rem; }
     .section-title {
-      font-family: 'Cormorant Garamond', serif; font-weight: 500;
-      font-size: clamp(1.8rem, 3.6vw, 2.8rem); line-height: 1.15;
+      font-family: 'Italiana', 'Cormorant Garamond', serif;
+      font-size: clamp(2.2rem, 4.4vw, 3.6rem);
+      font-weight: 400;
+      line-height: 1.05;
+      letter-spacing: -0.018em;
+      max-width: 820px;
+      margin-bottom: 1.1rem;
+    }
+    .section-title em { font-style: italic; color: var(--aurum); }
+    .section-sub {
+      font-size: 1.04rem;
+      color: var(--text-muted);
+      max-width: 620px;
+      line-height: 1.65;
+    }
+
+    /* ─────────────────────────────────────────
+       WHAT YOU CAN BUILD — grid of build types */
+    .builds-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.25rem;
+      margin-top: 3rem;
+    }
+    .build-card {
+      position: relative;
+      padding: 2.25rem 1.85rem 1.85rem;
+      background: linear-gradient(180deg, var(--ink) 0%, var(--obsidian) 100%);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: hidden;
+      transition: transform 0.5s var(--ease-out), border-color 0.5s ease, box-shadow 0.5s ease;
+      isolation: isolate;
+    }
+    .build-card::before {
+      content: ''; position: absolute; inset: 0; z-index: 0;
+      background: radial-gradient(circle at 10% 0%, rgba(212,175,106,0.16), transparent 60%);
+      opacity: 0; transition: opacity 0.5s ease;
+    }
+    .build-card > * { position: relative; z-index: 1; }
+    .build-card:hover {
+      transform: translateY(-8px);
+      border-color: rgba(212,175,106,0.4);
+      box-shadow: 0 24px 60px rgba(0,0,0,0.5), 0 0 40px rgba(212,175,106,0.08);
+    }
+    .build-card:hover::before { opacity: 1; }
+
+    .build-icon {
+      width: 52px; height: 52px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 12px;
+      background: rgba(212,175,106,0.08);
+      border: 1px solid rgba(212,175,106,0.28);
+      color: var(--aurum);
+      margin-bottom: 1.5rem;
+      transition: transform 0.5s var(--ease), background 0.5s ease;
+    }
+    .build-icon svg { width: 26px; height: 26px; stroke: currentColor; fill: none; stroke-width: 1.5; }
+    .build-card:hover .build-icon {
+      background: rgba(212,175,106,0.18);
+      transform: rotate(-4deg) scale(1.06);
+    }
+    .build-card h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.55rem; font-weight: 500;
+      letter-spacing: -0.005em;
       margin-bottom: 0.6rem;
     }
-    .section-title em { color: var(--champagne); font-style: italic; font-weight: 400; }
-    .section-sub { color: var(--navy-light); max-width: 700px; margin-bottom: 2.5rem; }
+    .build-card p {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
 
+    /* ─────────────────────────────────────────
+       PROCESS — animated SVG line + 4 steps */
+    .process { background: transparent; }
     .process-grid {
-      display: grid; gap: 1.25rem;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin-top: 3.5rem;
+      position: relative;
     }
-    .process-card {
-      background: var(--white); border-radius: 14px;
-      border: 1px solid rgba(12,21,38,0.08); padding: 1.75rem 1.5rem;
+    .process-step {
+      position: relative;
+      padding: 2rem 1.5rem;
+      background: rgba(245,241,232,0.025);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      transition: transform 0.5s var(--ease-out), border-color 0.5s ease;
     }
-    .process-card .num {
+    .process-step:hover {
+      transform: translateY(-4px);
+      border-color: rgba(212,175,106,0.32);
+    }
+    .process-num {
+      font-family: 'Italiana', serif;
+      font-size: 2rem;
+      color: var(--aurum);
+      letter-spacing: 0.04em;
+      line-height: 1;
+      margin-bottom: 1rem;
+      display: block;
+    }
+    .process-step h4 {
       font-family: 'Cormorant Garamond', serif;
-      font-size: 2rem; color: var(--champagne); font-style: italic;
-      margin-bottom: 0.5rem;
+      font-size: 1.25rem; font-weight: 500;
+      margin-bottom: 0.55rem;
     }
-    .process-card h4 {
-      font-family: 'Cormorant Garamond', serif; font-size: 1.3rem;
-      font-weight: 600; margin-bottom: 0.5rem;
+    .process-step p {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      line-height: 1.55;
     }
-    .process-card p { font-size: 0.9rem; color: var(--navy-light); }
+    @media (max-width: 900px) { .process-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 560px) { .process-grid { grid-template-columns: 1fr; } }
 
-    .feature-grid {
-      display: grid; gap: 1rem;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    /* ─────────────────────────────────────────
+       FEATURE PILLARS — split with vertical line */
+    .pillars { background: transparent; }
+    .pillars-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0;
+      margin-top: 3.5rem;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: hidden;
     }
-    .feature {
-      background: var(--white); border-radius: 12px; padding: 1.25rem 1.4rem;
-      border: 1px solid rgba(12,21,38,0.06);
-      font-size: 0.92rem;
+    .pillar {
+      padding: 2.5rem 2rem;
+      border-right: 1px solid var(--line);
+      transition: background 0.4s ease;
     }
-    .feature strong { display: block; margin-bottom: 0.3rem; color: var(--navy); }
+    .pillar:last-child { border-right: none; }
+    .pillar:hover { background: rgba(212,175,106,0.04); }
+    .pillar svg {
+      width: 28px; height: 28px;
+      stroke: var(--aurum); fill: none; stroke-width: 1.5;
+      margin-bottom: 1.25rem;
+    }
+    .pillar h4 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.4rem; font-weight: 500;
+      margin-bottom: 0.55rem;
+    }
+    .pillar p {
+      font-size: 0.88rem; color: var(--text-muted); line-height: 1.6;
+    }
+    @media (max-width: 880px) {
+      .pillars-grid { grid-template-columns: 1fr; }
+      .pillar { border-right: none; border-bottom: 1px solid var(--line); }
+      .pillar:last-child { border-bottom: none; }
+    }
 
-    .form-section { background: var(--cream); }
-    form { display: grid; gap: 1rem; max-width: 680px; margin: 0 auto; }
-    form label { font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--navy-light); }
-    form input, form textarea, form select {
-      width: 100%; padding: 0.95rem 1rem;
-      border: 1px solid rgba(12,21,38,0.15); border-radius: 10px;
-      font-family: inherit; font-size: 0.95rem; background: var(--white);
+    /* ─────────────────────────────────────────
+       WAITLIST FORM — premium, animated holographic border */
+    .waitlist-section {
+      padding: 7rem 2rem 8rem;
+      background: transparent;
+      position: relative;
     }
-    form textarea { min-height: 130px; resize: vertical; }
-    form input:focus, form textarea:focus, form select:focus {
-      outline: 2px solid var(--champagne); border-color: var(--champagne);
+    .waitlist-section::before {
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(60% 50% at 50% 30%, rgba(212,175,106,0.07), transparent 60%);
     }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .waitlist-inner { max-width: 880px; margin: 0 auto; position: relative; }
+    .waitlist-head { text-align: center; margin-bottom: 3rem; }
+
+    .form-glow-wrap {
+      position: relative;
+      background: var(--ink);
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+    }
+    /* Holographic rotating border (matches contact form on home page) */
+    .form-glow-wrap::before {
+      content: '';
+      position: absolute; inset: 0; z-index: 1; pointer-events: none;
+      border-radius: inherit;
+      padding: 2px;
+      background: conic-gradient(
+        from var(--holo-angle, 0deg),
+        rgba(255,60,90,.95) 0%,
+        rgba(255,190,50,.85) 8%,
+        rgba(80,255,120,.85) 16%,
+        rgba(60,180,255,.95) 25%,
+        rgba(140,70,255,.85) 33%,
+        rgba(255,60,90,.3) 40%,
+        rgba(255,190,50,.25) 50%,
+        rgba(80,255,120,.25) 58%,
+        rgba(60,180,255,.3) 66%,
+        rgba(140,70,255,.25) 75%,
+        rgba(255,60,90,.25) 83%,
+        rgba(255,190,50,.3) 91%,
+        rgba(255,60,90,.95) 100%
+      );
+      -webkit-mask:
+        linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
+              mask:
+        linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+              mask-composite: exclude;
+      opacity: 0.85;
+      transition: opacity 0.4s;
+    }
+    .form-glow-wrap:hover::before { opacity: 1; }
+    .form-glow-aura {
+      position: absolute; inset: -10px; z-index: -1; pointer-events: none;
+      border-radius: inherit;
+      background: conic-gradient(
+        from var(--holo-angle, 0deg),
+        rgba(255,60,90,.3) 0%,
+        rgba(255,190,50,.2) 8%,
+        rgba(80,255,120,.2) 16%,
+        rgba(60,180,255,.3) 25%,
+        rgba(140,70,255,.2) 33%,
+        rgba(255,60,90,.06) 40%,
+        rgba(255,190,50,.05) 50%,
+        rgba(80,255,120,.05) 58%,
+        rgba(60,180,255,.06) 66%,
+        rgba(140,70,255,.05) 75%,
+        rgba(255,60,90,.05) 83%,
+        rgba(255,190,50,.06) 91%,
+        rgba(255,60,90,.3) 100%
+      );
+      filter: blur(22px);
+      opacity: 0.7;
+    }
+    .form-glow-wrap::after {
+      content: '';
+      position: absolute; inset: 2px; z-index: 2; pointer-events: none;
+      border-radius: inherit;
+      background: var(--ink);
+    }
+
+    .waitlist-form {
+      position: relative; z-index: 3;
+      padding: 2.75rem 2.75rem 2.5rem;
+      display: flex; flex-direction: column; gap: 1.5rem;
+    }
+    @media (max-width: 600px) { .waitlist-form { padding: 1.85rem 1.4rem 1.85rem; } }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+    }
     @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
-    .submit-btn {
-      background: var(--champagne); color: var(--navy);
-      padding: 1.1rem; border: none; border-radius: 999px;
-      font-family: inherit; font-size: 0.95rem; font-weight: 500;
-      cursor: pointer; transition: background 0.2s;
+    .field { display: flex; flex-direction: column; gap: 0.55rem; }
+    .field label {
+      font-size: 0.66rem; font-weight: 600;
+      letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--text-muted);
     }
-    .submit-btn:hover { background: var(--champagne-lt); }
-    .form-success { background: #dff5e3; color: #1a6b34; padding: 1rem 1.25rem; border-radius: 10px; display: none; }
-    .form-success.show { display: block; }
+    .field label .req { color: var(--aurum); margin-left: 3px; }
+    .field input, .field select, .field textarea {
+      padding: 0.95rem 1.1rem;
+      background: rgba(245,241,232,0.04);
+      border: 1px solid var(--line-strong);
+      border-radius: 12px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;  /* 16px prevents iOS auto-zoom on focus */
+      transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+      outline: none;
+      width: 100%;
+      min-height: 48px;  /* generous touch target */
+    }
+    .field select { -webkit-appearance: none; appearance: none;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%23D4AF6A' stroke-width='2'><path d='M1 1l5 5 5-5'/></svg>");
+      background-repeat: no-repeat; background-position: right 1rem center;
+      padding-right: 2.5rem;
+    }
+    .field textarea { min-height: 110px; resize: vertical; line-height: 1.55; }
+    .field input::placeholder, .field textarea::placeholder { color: rgba(245,241,232,0.32); }
+    .field input:focus, .field select:focus, .field textarea:focus {
+      border-color: var(--aurum);
+      background: rgba(245,241,232,0.07);
+      box-shadow: 0 0 0 4px rgba(212,175,106,0.14);
+    }
+    .field-help {
+      font-size: 0.78rem; color: var(--text-muted); line-height: 1.5;
+    }
 
-    footer {
-      background: var(--navy); color: var(--ivory);
-      padding: 3rem 2rem 1.5rem; text-align: center;
+    /* Radio cards (primary use) */
+    .use-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 0.6rem;
     }
-    footer a { color: var(--champagne); }
-    footer .f-copy { font-size: 0.8rem; opacity: 0.7; margin-top: 1rem; }
+    .use-card {
+      position: relative;
+      padding: 0.95rem 1rem;
+      min-height: 64px;  /* comfortable tap target on mobile */
+      background: rgba(245,241,232,0.03);
+      border: 1px solid var(--line-strong);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      text-align: left;
+      display: flex; flex-direction: column; justify-content: center; gap: 0.3rem;
+    }
+    .use-card input { position: absolute; opacity: 0; pointer-events: none; }
+    .use-card .label {
+      font-size: 0.92rem; font-weight: 500; color: var(--text);
+    }
+    .use-card .sublabel {
+      font-size: 0.74rem; color: var(--text-muted);
+    }
+    .use-card:hover {
+      border-color: rgba(212,175,106,0.5);
+      background: rgba(212,175,106,0.05);
+    }
+    .use-card:has(input:checked) {
+      border-color: var(--aurum);
+      background: linear-gradient(135deg, rgba(212,175,106,0.16), rgba(182,118,74,0.10));
+      box-shadow: 0 0 0 2px rgba(212,175,106,0.22);
+    }
+
+    /* Capability checkbox grid */
+    .cap-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.55rem;
+    }
+    .cap {
+      display: flex; align-items: flex-start; gap: 0.7rem;
+      padding: 0.85rem 0.9rem;
+      min-height: 56px;  /* tap target */
+      background: rgba(245,241,232,0.03);
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: border-color 0.25s ease, background 0.25s ease;
+    }
+    .cap input { position: absolute; opacity: 0; pointer-events: none; }
+    .cap .check {
+      flex: 0 0 auto;
+      width: 18px; height: 18px; border-radius: 5px;
+      border: 1.5px solid var(--line-strong);
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: all 0.2s ease;
+      margin-top: 1px;
+    }
+    .cap .check svg { width: 12px; height: 12px; stroke: var(--obsidian); fill: none; stroke-width: 3; opacity: 0; transition: opacity 0.2s ease; }
+    .cap:hover { border-color: rgba(212,175,106,0.4); }
+    .cap:has(input:checked) {
+      background: rgba(212,175,106,0.08);
+      border-color: var(--aurum);
+    }
+    .cap:has(input:checked) .check {
+      background: var(--aurum);
+      border-color: var(--aurum);
+    }
+    .cap:has(input:checked) .check svg { opacity: 1; }
+    .cap-label {
+      display: flex; flex-direction: column; gap: 0.15rem;
+    }
+    .cap-label .t { font-size: 0.92rem; color: var(--text); font-weight: 500; }
+    .cap-label .s { font-size: 0.76rem; color: var(--text-muted); }
+
+    /* AI mockup callout */
+    .ai-callout {
+      padding: 1.5rem 1.5rem;
+      background: linear-gradient(135deg, rgba(111,227,214,0.05), rgba(212,175,106,0.05));
+      border: 1px solid rgba(111,227,214,0.22);
+      border-radius: 14px;
+      display: flex; gap: 1rem; align-items: flex-start;
+    }
+    .ai-callout svg {
+      flex: 0 0 auto;
+      width: 28px; height: 28px;
+      stroke: var(--iridescent); fill: none; stroke-width: 1.5;
+      margin-top: 2px;
+    }
+    .ai-callout h5 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.2rem; font-weight: 500;
+      margin-bottom: 0.35rem;
+      color: var(--text);
+    }
+    .ai-callout p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+    .ai-callout p strong { color: var(--iridescent); font-weight: 500; }
+    .ai-callout a {
+      color: var(--iridescent);
+      border-bottom: 1px dotted rgba(111,227,214,0.5);
+      transition: opacity 0.2s;
+    }
+    .ai-callout a:hover { opacity: 0.78; }
+
+    /* File upload */
+    .upload-wrap {
+      position: relative;
+      padding: 1.5rem;
+      background: rgba(245,241,232,0.03);
+      border: 1.5px dashed var(--line-strong);
+      border-radius: 12px;
+      text-align: center;
+      transition: all 0.25s ease;
+      cursor: pointer;
+    }
+    .upload-wrap:hover {
+      border-color: var(--aurum);
+      background: rgba(212,175,106,0.04);
+    }
+    .upload-wrap input[type="file"] {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      opacity: 0; cursor: pointer;
+    }
+    .upload-wrap svg {
+      width: 28px; height: 28px;
+      stroke: var(--aurum); fill: none; stroke-width: 1.5;
+      margin: 0 auto 0.75rem;
+    }
+    .upload-wrap .upload-text {
+      font-size: 0.92rem; color: var(--text);
+    }
+    .upload-wrap .upload-hint {
+      font-size: 0.74rem; color: var(--text-muted); margin-top: 0.3rem;
+    }
+    .upload-preview {
+      margin-top: 0.85rem;
+      display: none;
+      align-items: center; gap: 0.85rem;
+      padding: 0.85rem;
+      background: rgba(245,241,232,0.04);
+      border-radius: 10px;
+      text-align: left;
+    }
+    .upload-preview.show { display: flex; }
+    .upload-preview img {
+      width: 48px; height: 48px; border-radius: 6px;
+      object-fit: cover; flex: 0 0 auto;
+    }
+    .upload-preview .meta {
+      flex: 1; font-size: 0.84rem; color: var(--text);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .upload-preview .meta small { display: block; font-size: 0.74rem; color: var(--text-muted); }
+    .upload-preview .remove {
+      cursor: pointer; padding: 0.4rem; color: var(--text-muted);
+      border: none; background: transparent;
+      transition: color 0.2s;
+    }
+    .upload-preview .remove:hover { color: var(--rose); }
+
+    /* Submit */
+    .submit-btn {
+      align-self: flex-start;
+      padding: 1.15rem 2.4rem;
+      background: linear-gradient(135deg, var(--aurum) 0%, var(--copper) 100%);
+      color: var(--obsidian);
+      border: none; border-radius: 999px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem; font-weight: 700;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      cursor: pointer;
+      transition: transform 0.3s var(--ease), box-shadow 0.3s ease, background 0.3s ease;
+      box-shadow: 0 16px 40px rgba(212,175,106,0.32);
+    }
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 24px 56px rgba(212,175,106,0.45);
+    }
+    .submit-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+
+    /* Success */
+    .form-success {
+      display: none;
+      padding: 1.25rem 1.5rem;
+      background: rgba(34,197,94,0.10);
+      border: 1px solid rgba(34,197,94,0.32);
+      border-radius: 12px;
+      color: #4ADE80;
+      font-size: 0.95rem;
+      margin-bottom: 1.5rem;
+    }
+    .form-success.show { display: block; animation: rise 0.6s var(--ease-out); }
+
+    /* ─────────────────────────────────────────
+       FOOTER */
+    .footer {
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      padding: 3rem 2rem 2rem;
+      text-align: center;
+      border-top: 1px solid var(--line);
+    }
+    .f-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.6rem; font-weight: 600;
+    }
+    .f-logo span { color: var(--aurum); font-style: italic; }
+    .f-links {
+      display: flex; justify-content: center; flex-wrap: wrap;
+      gap: 1.5rem; margin: 1.25rem 0 1rem;
+      font-size: 0.8rem; letter-spacing: 0.14em; text-transform: uppercase;
+    }
+    .f-links a { color: var(--text-muted); transition: color 0.25s; }
+    .f-links a:hover { color: var(--aurum); }
+    .f-copy { font-size: 0.78rem; color: rgba(245,241,232,0.42); }
+
+    /* ─────────────────────────────────────────
+       SCROLL REVEAL */
+    .reveal {
+      opacity: 0; transform: translateY(28px) scale(0.98);
+      filter: blur(6px);
+      transition: opacity 0.9s var(--ease-out), transform 0.9s var(--ease-out), filter 0.9s ease;
+    }
+    .reveal.in {
+      opacity: 1; transform: none; filter: none;
+    }
+
+    /* ─────────────────────────────────────────
+       MOBILE OPTIMIZATIONS — form is the conversion path,
+       has to be completely effortless on a phone */
+    @media (max-width: 720px) {
+      body { font-size: 15px; }
+      .nav { padding: 0.85rem 1.1rem; }
+      .nav-logo { font-size: 1.25rem; }
+      .nav-cta { padding: 0.55rem 0.95rem; font-size: 0.7rem; }
+      .hero { padding: 7rem 1.25rem 4rem; min-height: 90vh; }
+      .hero-stats { gap: 1.75rem; margin-top: 3rem; padding-top: 1.75rem; }
+      .hero-stat .num { font-size: 1.85rem; }
+      .hero-stat .lbl { font-size: 0.62rem; letter-spacing: 0.18em; }
+      .marq-track { gap: 1.75rem; padding: 1rem 0; animation-duration: 28s; }
+      .marq-track span { font-size: 1.1rem; }
+      .section { padding: 4.5rem 1.25rem; }
+      .waitlist-section { padding: 4.5rem 1.25rem 5rem; }
+      .section-title { font-size: clamp(1.85rem, 7vw, 2.4rem); }
+      .builds-grid, .pillars-grid { grid-template-columns: 1fr; gap: 0.85rem; }
+      .pillars-grid { border-radius: 14px; }
+      .pillar { padding: 1.85rem 1.4rem; }
+      .process-grid { grid-template-columns: 1fr; gap: 0.75rem; margin-top: 2.5rem; }
+      .process-step { padding: 1.5rem 1.25rem; }
+      .form-glow-wrap { border-radius: 22px; }
+      .waitlist-form { padding: 1.5rem 1.15rem 1.65rem !important; gap: 1.25rem; }
+      .form-row { grid-template-columns: 1fr; gap: 1rem; }
+      .field label { font-size: 0.6rem; letter-spacing: 0.18em; }
+      .use-grid { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+      .use-card { padding: 0.85rem 0.85rem; min-height: 60px; }
+      .use-card .label { font-size: 0.88rem; }
+      .use-card .sublabel { font-size: 0.7rem; }
+      .cap-grid { grid-template-columns: 1fr; gap: 0.5rem; }
+      .ai-callout { flex-direction: column; gap: 0.85rem; padding: 1.25rem; }
+      .ai-callout svg { width: 24px; height: 24px; }
+      .ai-callout h5 { font-size: 1.05rem; }
+      .ai-callout p { font-size: 0.82rem; }
+      .upload-wrap { padding: 1.25rem 1rem; }
+      .submit-btn {
+        align-self: stretch;  /* full-width tap target on phones */
+        text-align: center;
+        padding: 1.1rem 1.5rem;
+      }
+      .form-success { padding: 1rem 1.15rem; font-size: 0.88rem; }
+      .footer { padding: 2.25rem 1.25rem 1.75rem; }
+      .f-links { gap: 1rem; font-size: 0.72rem; }
+    }
+    /* iOS Safari — disable smooth scroll inside form to avoid scroll-jacking
+       when an input keyboard opens */
+    @supports (-webkit-touch-callout: none) {
+      .waitlist-form input, .waitlist-form textarea, .waitlist-form select {
+        font-size: 16px;  /* belt-and-suspenders for old iOS */
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+      .reveal { opacity: 1; transform: none; filter: none; }
+    }
   </style>
 </head>
 <body>
 
-<nav class="navbar">
+<!-- Floating-upward starfield (canvas-driven, 60fps, pauses on tab hide) -->
+<div class="starfield" aria-hidden="true">
+  <canvas id="starfield-canvas"></canvas>
+</div>
+
+<!-- ═══════════════ NAV ═══════════════ -->
+<nav class="nav">
   <a href="index.html" class="nav-logo">Lake <span>Salt</span></a>
   <ul class="nav-links">
     <li><a href="index.html">Home</a></li>
-    <li><a href="index.html#services">Services</a></li>
-    <li><a href="index.html#pricing-packages">Pricing</a></li>
     <li><a href="rentals.html">Rentals</a></li>
-    <li><a href="sales.html" style="color:var(--champagne);">Buy a Bar</a></li>
+    <li><a href="recipes.html">Recipes</a></li>
+    <li><a href="index.html#contact">Contact</a></li>
   </ul>
   <a href="#waitlist" class="nav-cta">Join Waitlist</a>
 </nav>
 
+<!-- ═══════════════ HERO ═══════════════ -->
 <section class="hero">
-  <span class="pill">Custom Builds · Coming Soon</span>
-  <h1>Buy a <em>Lake Salt</em><br/>Mobile Bar.</h1>
-  <p>We build modern wood mobile bars to order. Whether you want one just like ours, or something completely your own — finishes, footprint, branding, all custom. Perfect for venues, caterers, restaurants, and entrepreneurs starting their own mobile bar business.</p>
-  <a href="#waitlist" class="hero-cta">Join the Waitlist →</a>
-</section>
-
-<section class="section">
-  <div class="section-inner" style="text-align:center;">
-    <span class="eyebrow">What You Get</span>
-    <h2 class="section-title">Built <em>your way</em>.</h2>
-    <p class="section-sub" style="margin:0 auto 2.5rem;">Every build is fully custom. Here&apos;s what comes standard — and everything else is yours to shape.</p>
-    <div class="feature-grid">
-      <div class="feature"><strong>Solid wood construction</strong>Premium hardwood frame, durable for years of event use.</div>
-      <div class="feature"><strong>Custom finish</strong>Stain, paint, or two-tone — pick your aesthetic.</div>
-      <div class="feature"><strong>Built-in storage</strong>Bottle racks, ice well, garnish trays — configured to your service style.</div>
-      <div class="feature"><strong>Mobile-ready</strong>Sturdy casters, breakdown-friendly footprint, fits standard cargo van.</div>
-      <div class="feature"><strong>Optional branding</strong>Engraved logo, custom signage panel, or LED accent lighting.</div>
-      <div class="feature"><strong>Front-of-house quality</strong>Built to match the look of any premium venue or wedding.</div>
+  <div class="hero-inner">
+    <span class="hero-meta">Waitlist Open · Limited First-Round Slots</span>
+    <h1 class="hero-title">
+      <span class="l1">Custom built.</span>
+      <span class="l2">For your space.</span>
+      <span class="l3">For your craft.</span>
+    </h1>
+    <p class="hero-sub">
+      Lake Salt builds mobile bars to your spec — beverage bars, coffee carts, custom-branded bars.
+      You upload an AI mockup of what you want, we build it exactly to that vision. Built in Las Vegas,
+      shipped in a wood crate to your home or business anywhere in the continental US.
+    </p>
+    <div class="hero-cta-row">
+      <a href="#waitlist" class="btn btn-primary">
+        <span>Join the Waitlist</span>
+        <svg class="arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+      <a href="#process" class="btn btn-ghost">
+        <span>How It Works</span>
+      </a>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="num">100%</div><div class="lbl">Built to your mockup</div></div>
+      <div class="hero-stat"><div class="num">6–10wk</div><div class="lbl">Build window</div></div>
+      <div class="hero-stat"><div class="num">Vegas</div><div class="lbl">Built &amp; shipped from</div></div>
     </div>
   </div>
 </section>
 
-<section class="section" style="background: var(--cream);">
+<!-- ═══════════════ MARQUEE ═══════════════ -->
+<div class="marq" aria-hidden="true">
+  <div class="marq-track">
+    <span>Built to your mockup</span><span>Custom branding</span><span>Cold storage</span>
+    <span>USB charging</span><span>LED lighting</span><span>Locking storage</span>
+    <span>Battery-ready</span><span>One-person liftable</span><span>Built in Las Vegas</span>
+    <!-- duplicate for seamless loop -->
+    <span>Built to your mockup</span><span>Custom branding</span><span>Cold storage</span>
+    <span>USB charging</span><span>LED lighting</span><span>Locking storage</span>
+    <span>Battery-ready</span><span>One-person liftable</span><span>Built in Las Vegas</span>
+  </div>
+</div>
+
+<!-- ═══════════════ WHAT YOU CAN BUILD ═══════════════ -->
+<section class="section">
   <div class="section-inner">
-    <div style="text-align:center;margin-bottom:2.5rem;">
-      <span class="eyebrow">Process</span>
-      <h2 class="section-title">From <em>idea</em> to <em>delivery</em>.</h2>
+    <div class="reveal">
+      <span class="eyebrow">What You Can Build</span>
+      <h2 class="section-title">A bar, <em>built to your mockup.</em></h2>
+      <p class="section-sub">Whatever you'll serve, we build the bar around it. Tell us what you have in mind and upload an AI image — we build exactly to that vision.</p>
+    </div>
+    <div class="builds-grid">
+      <div class="build-card reveal">
+        <span class="build-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16l-7 9v6"/><path d="M9 19h6"/><path d="M7 8h10"/></svg>
+        </span>
+        <h3>Beverage Bar</h3>
+        <p>Cocktail, mocktail, or dirty soda — same core build. Speed rail, ice well, garnish station.</p>
+      </div>
+      <div class="build-card reveal">
+        <span class="build-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9h11v6a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V9z"/><path d="M16 11h2a2 2 0 0 1 0 4h-2"/><path d="M7 4v3M11 4v3M15 4v3"/></svg>
+        </span>
+        <h3>Coffee Cart</h3>
+        <p>Customized to fit your coffee machine — drip, pour-over, espresso. Tell us the dimensions, we cut to spec.</p>
+      </div>
+      <div class="build-card reveal">
+        <span class="build-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>
+        </span>
+        <h3>Brand-Ready</h3>
+        <p>Clean panels, ready for vinyl or decals. Brand it yourself, or we'll point you to <a href="https://fuseprints.com" target="_blank" rel="noopener" style="color:var(--aurum);border-bottom:1px dotted rgba(212,175,106,0.5);">Fuse Prints</a> — the printing partner we trust.</p>
+      </div>
+      <div class="build-card reveal">
+        <span class="build-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="11" rx="1.5"/><path d="M3 10h18"/><path d="M9 13.5h.01M12 13.5h.01M15 13.5h.01"/></svg>
+        </span>
+        <h3>Multi-Purpose</h3>
+        <p>Modular insert system — swap a coffee bay for a beverage bay. One bar, every event you book.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ PROCESS ═══════════════ -->
+<section class="section process" id="process">
+  <div class="section-inner">
+    <div class="reveal">
+      <span class="eyebrow">How It Works</span>
+      <h2 class="section-title">Upload your mockup. <em>We build it.</em></h2>
+      <p class="section-sub">Three steps. Roughly 6–10 weeks from your submission to your door.</p>
     </div>
     <div class="process-grid">
-      <div class="process-card">
-        <div class="num">01</div>
-        <h4>Consult</h4>
-        <p>Free 30-minute call to talk through your use case, footprint, branding, and timeline.</p>
+      <div class="process-step reveal">
+        <span class="process-num">01</span>
+        <h4>Submit</h4>
+        <p>Generate an AI image of the bar you want — ChatGPT, Gemini, Midjourney. Fill the waitlist form, upload your mockup, tell us the capabilities you need. That's the whole brief.</p>
       </div>
-      <div class="process-card">
-        <div class="num">02</div>
-        <h4>Design</h4>
-        <p>We turn your inputs into a build spec — dimensions, materials, finishes, storage layout.</p>
+      <div class="process-step reveal">
+        <span class="process-num">02</span>
+        <h4>Build</h4>
+        <p>Built in our Las Vegas shop, exactly to your mockup. Real wood, real welding. Quick photo confirmation when it's done — no design back-and-forth.</p>
       </div>
-      <div class="process-card">
-        <div class="num">03</div>
-        <h4>Quote</h4>
-        <p>Concrete quote with timeline. 50% deposit secures your build slot.</p>
-      </div>
-      <div class="process-card">
-        <div class="num">04</div>
-        <h4>Build &amp; Deliver</h4>
-        <p>Build typically 6–10 weeks. Delivered locally; shipping available for out-of-state.</p>
+      <div class="process-step reveal">
+        <span class="process-num">03</span>
+        <h4>Ship</h4>
+        <p>Crated in custom wood crating and shipped to your home or business. Local Vegas? Pickup is on us. Shipping cost is paid at order.</p>
       </div>
     </div>
   </div>
 </section>
 
-<section class="section form-section" id="waitlist">
+<!-- ═══════════════ FEATURE PILLARS ═══════════════ -->
+<section class="section pillars">
   <div class="section-inner">
-    <div style="text-align:center;margin-bottom:2.5rem;">
-      <span class="eyebrow">Waitlist</span>
-      <h2 class="section-title">Be <em>first</em> in line.</h2>
-      <p class="section-sub" style="margin:0 auto;">We&apos;re launching custom builds soon. Drop your details and we&apos;ll reach out the moment we open up build slots — plus you&apos;ll get founder pricing on the first round.</p>
+    <div class="reveal">
+      <span class="eyebrow">Built In</span>
+      <h2 class="section-title">Engineered for <em>real events.</em></h2>
     </div>
-
-    <div id="sales-success" class="form-success" style="margin-bottom:1.5rem;">
-      You&apos;re on the list — talk soon.
+    <div class="pillars-grid">
+      <div class="pillar reveal">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3h-4a2 2 0 0 0-2 2v3h8V5a2 2 0 0 0-2-2z"/><rect x="6" y="8" width="12" height="13" rx="2"/><path d="M11 13l-1.5 3h2L10 19"/></svg>
+        <h4>Battery Bay</h4>
+        <p>A built-in compartment sized for your portable battery (Jackery, EcoFlow, Goal Zero — sold separately). Drop the battery in, run your appliance cords to it. No extension cords across the venue.</p>
+      </div>
+      <div class="pillar reveal">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h7l3-9 4 18 3-9h1"/></svg>
+        <h4>Portable, Solo or Team</h4>
+        <p>Lockable wheels and balanced weight. One strong person can lift it solo — two people can carry it easily. No crew required to load it into a truck.</p>
+      </div>
+      <div class="pillar reveal">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l4 4-4 4-4-4 4-4z M4 12l4 4-4 4-0-8z M20 12l4 4-4 4 0-8z M12 14l4 4-4 4-4-4 4-4z"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+        <h4>Built to Last</h4>
+        <p>Engineered for real events. Sealed surfaces shrug off spills, hardwood corners absorb bumps, hardware rated for years of moves and pours. These bars take a beating and keep showing up.</p>
+      </div>
     </div>
-
-    <form id="sales-form" onsubmit="return submitWaitlist(event)">
-      <div class="form-row">
-        <div>
-          <label for="s-name">Your name</label>
-          <input id="s-name" name="name" required type="text" />
-        </div>
-        <div>
-          <label for="s-email">Email</label>
-          <input id="s-email" name="email" required type="email" />
-        </div>
-      </div>
-      <div class="form-row">
-        <div>
-          <label for="s-phone">Phone (optional)</label>
-          <input id="s-phone" name="phone" type="tel" />
-        </div>
-        <div>
-          <label for="s-use">Primary use</label>
-          <select id="s-use" name="primaryUse">
-            <option value="">Pick one…</option>
-            <option value="own-mobile-bar">Starting my own mobile bar business</option>
-            <option value="venue">Venue / event space</option>
-            <option value="catering">Catering company</option>
-            <option value="restaurant">Restaurant / hospitality</option>
-            <option value="personal">Personal / home use</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
-      </div>
-
-      <div>
-        <label for="s-vision">What kind of bar do you want?</label>
-        <textarea id="s-vision" name="vision" placeholder="Style, size, color, branding, special features…"></textarea>
-      </div>
-
-      <div>
-        <label for="s-budget">Rough budget range (optional)</label>
-        <input id="s-budget" name="budget" type="text" placeholder="e.g. $4k–$8k" />
-      </div>
-
-      <button type="submit" class="submit-btn">Join Waitlist →</button>
-    </form>
   </div>
 </section>
 
-<footer>
-  <div>
-    <a href="index.html" class="nav-logo">Lake <span>Salt</span></a>
+<!-- ═══════════════ WAITLIST FORM ═══════════════ -->
+<section class="waitlist-section" id="waitlist">
+  <div class="waitlist-inner">
+    <div class="waitlist-head reveal">
+      <span class="eyebrow">Waitlist</span>
+      <h2 class="section-title" style="margin-left:auto;margin-right:auto;">Be <em>first</em> in line.</h2>
+      <p class="section-sub" style="margin:0.85rem auto 0;">First-round builders get founder pricing and earliest delivery. Tell us about your bar — the more detail, the faster we can quote.</p>
+    </div>
+
+    <div id="sales-success" class="form-success">
+      ✓ You're on the list. We'll reach out within a week to schedule a concept call.
+    </div>
+
+    <div class="form-glow-wrap" id="holo-form-card">
+      <div class="form-glow-aura"></div>
+      <form id="sales-form" class="waitlist-form" onsubmit="return submitWaitlist(event)">
+
+        <!-- Contact -->
+        <div class="form-row">
+          <div class="field">
+            <label for="s-name">Your Name <span class="req">*</span></label>
+            <input id="s-name" name="name" required type="text" placeholder="Full name" />
+          </div>
+          <div class="field">
+            <label for="s-email">Email <span class="req">*</span></label>
+            <input id="s-email" name="email" required type="email" placeholder="you@email.com" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label for="s-phone">Phone</label>
+            <input id="s-phone" name="phone" type="tel" placeholder="(801) 555-0000" />
+          </div>
+          <div class="field">
+            <label for="s-location">Location <span class="req">*</span></label>
+            <input id="s-location" name="location" required type="text" placeholder="City, State (where the bar will live)" />
+          </div>
+        </div>
+
+        <!-- Primary use -->
+        <div class="field">
+          <label>What will you build it for? <span class="req">*</span></label>
+          <div class="use-grid">
+            <label class="use-card"><input type="radio" name="primaryUse" value="cocktail" required /><span class="label">Cocktail Bar</span><span class="sublabel">Full alcohol service</span></label>
+            <label class="use-card"><input type="radio" name="primaryUse" value="coffee" /><span class="label">Coffee Cart</span><span class="sublabel">Espresso, drip, cold brew</span></label>
+            <label class="use-card"><input type="radio" name="primaryUse" value="mocktail" /><span class="label">Mocktail / NA</span><span class="sublabel">Premium zero-proof</span></label>
+            <label class="use-card"><input type="radio" name="primaryUse" value="dirty-soda" /><span class="label">Dirty Soda</span><span class="sublabel">Sodas + cream + syrups</span></label>
+            <label class="use-card"><input type="radio" name="primaryUse" value="tasting" /><span class="label">Tasting / Wine</span><span class="sublabel">Stem storage, stone top</span></label>
+            <label class="use-card"><input type="radio" name="primaryUse" value="multi" /><span class="label">Multi-purpose</span><span class="sublabel">Modular swap inserts</span></label>
+            <label class="use-card"><input type="radio" name="primaryUse" value="other" /><span class="label">Something else</span><span class="sublabel">Tell us in the vision</span></label>
+          </div>
+        </div>
+
+        <!-- Capabilities -->
+        <div class="field">
+          <label>Capabilities you'll need</label>
+          <div class="cap-grid">
+            <label class="cap"><input type="checkbox" name="cap" value="battery-outlet" /><span class="check"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-11"/></svg></span><span class="cap-label"><span class="t">Battery + AC outlet</span><span class="s">Run a blender or fountain anywhere</span></span></label>
+            <label class="cap"><input type="checkbox" name="cap" value="usb" /><span class="check"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-11"/></svg></span><span class="cap-label"><span class="t">USB charging ports</span><span class="s">For tablets, POS, phones</span></span></label>
+            <label class="cap"><input type="checkbox" name="cap" value="led" /><span class="check"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-11"/></svg></span><span class="cap-label"><span class="t">LED accent lighting</span><span class="s">Under-counter / face glow</span></span></label>
+            <label class="cap"><input type="checkbox" name="cap" value="ice-well" /><span class="check"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-11"/></svg></span><span class="cap-label"><span class="t">Ice well + cold storage</span><span class="s">Drainable, insulated</span></span></label>
+            <label class="cap"><input type="checkbox" name="cap" value="sink" /><span class="check"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-11"/></svg></span><span class="cap-label"><span class="t">Sink + water tank</span><span class="s">Self-contained for venues without plumbing</span></span></label>
+            <label class="cap"><input type="checkbox" name="cap" value="locking" /><span class="check"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-11"/></svg></span><span class="cap-label"><span class="t">Locking storage</span><span class="s">For overnight at venues</span></span></label>
+            <label class="cap"><input type="checkbox" name="cap" value="wheels" /><span class="check"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-11"/></svg></span><span class="cap-label"><span class="t">Heavy-duty wheels</span><span class="s">Lockable, terrain-friendly</span></span></label>
+            <label class="cap"><input type="checkbox" name="cap" value="branding" /><span class="check"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-11"/></svg></span><span class="cap-label"><span class="t">Custom branding</span><span class="s">Logo, finish, panel art</span></span></label>
+          </div>
+        </div>
+
+        <!-- Style + Size -->
+        <div class="form-row">
+          <div class="field">
+            <label for="s-style">Style direction</label>
+            <select id="s-style" name="style">
+              <option value="">Pick one…</option>
+              <option value="modern-wood">Modern wood (Lake Salt house style)</option>
+              <option value="industrial">Industrial / steel + walnut</option>
+              <option value="rustic">Rustic / reclaimed</option>
+              <option value="black-moody">Black &amp; moody</option>
+              <option value="custom-branded">Custom-branded face</option>
+              <option value="open">Open to ideas</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="s-size">Approx. size / capacity</label>
+            <input id="s-size" name="size" type="text" placeholder="e.g. 6ft long, 1 bartender + 50 guests" />
+          </div>
+        </div>
+
+        <!-- Vision -->
+        <div class="field">
+          <label for="s-vision">Tell us your vision</label>
+          <textarea id="s-vision" name="vision" placeholder="Where it'll live, what it'll serve, what mood you want, must-have features, references you love…"></textarea>
+        </div>
+
+        <!-- AI mockup callout + upload -->
+        <div class="ai-callout">
+          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M5 19l3-3M16 8l3-3"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          <div>
+            <h5>Generate a mockup with AI — we build exactly to that image.</h5>
+            <p>This is how the build happens — <strong>no design iteration, no back-and-forth.</strong> Describe what you want to <a href="https://chat.openai.com" target="_blank" rel="noopener"><strong>ChatGPT</strong></a>, <a href="https://gemini.google.com" target="_blank" rel="noopener"><strong>Gemini</strong></a>, or another image model — wood tone, finish, shape, layout, capabilities, branding. Generate until you love it. Then upload the image below and we build to that vision exactly. Keeps cost down and turnaround fast.</p>
+          </div>
+        </div>
+
+        <!-- Mockup upload -->
+        <div class="field">
+          <label for="s-mockup">Upload a mockup or reference image</label>
+          <div class="upload-wrap" id="upload-wrap">
+            <input id="s-mockup" name="mockup" type="file" accept="image/*" />
+            <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 16v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/></svg>
+            <div class="upload-text">Click or drop an image</div>
+            <div class="upload-hint">PNG, JPG, WEBP — under 10 MB</div>
+          </div>
+          <div class="upload-preview" id="upload-preview">
+            <img id="upload-thumb" alt="" />
+            <div class="meta" id="upload-meta">
+              <span id="upload-name"></span>
+              <small id="upload-size"></small>
+            </div>
+            <button type="button" class="remove" id="upload-remove" aria-label="Remove image">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+          </div>
+          <div class="field-help" id="upload-progress" style="display:none;"></div>
+        </div>
+
+        <!-- Budget + Timeline -->
+        <div class="form-row">
+          <div class="field">
+            <label for="s-budget">Budget range</label>
+            <input id="s-budget" name="budget" type="text" placeholder="e.g. $4k–$8k, flexible, not sure yet" />
+          </div>
+          <div class="field">
+            <label for="s-when">When do you need it?</label>
+            <input id="s-when" name="when" type="text" placeholder="e.g. by August, ASAP, no rush" />
+          </div>
+        </div>
+
+        <button type="submit" class="submit-btn" id="submit-btn">Join the Waitlist →</button>
+      </form>
+    </div>
   </div>
-  <div style="margin-top:1rem;display:flex;justify-content:center;gap:1.5rem;flex-wrap:wrap;font-size:0.85rem;">
+</section>
+
+<!-- ═══════════════ FOOTER ═══════════════ -->
+<footer class="footer">
+  <div class="f-logo">Lake <span>Salt</span></div>
+  <div class="f-links">
     <a href="index.html">Home</a>
-    <a href="index.html#pricing-packages">Pricing</a>
     <a href="rentals.html">Rentals</a>
-    <a href="sales.html">Buy a Bar</a>
     <a href="recipes.html">Recipes</a>
     <a href="index.html#contact">Contact</a>
   </div>
-  <p class="f-copy">© 2025 Lake Salt Bartending · All Rights Reserved · Saratoga Springs, UT</p>
+  <p class="f-copy">© 2026 Lake Salt Bartending · Custom builds · Saratoga Springs, UT</p>
 </footer>
 
 <script>
+  /* ─── Starfield (canvas-driven, drift upward) — ported from /book ─── */
+  (function startCanvasStarfield() {
+    const canvas = document.getElementById('starfield-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d', { alpha: true });
+    let W = 0, H = 0, dpr = 1;
+
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = canvas.width  = Math.floor(window.innerWidth * dpr);
+      H = canvas.height = Math.floor(window.innerHeight * dpr);
+      canvas.style.width  = window.innerWidth  + 'px';
+      canvas.style.height = window.innerHeight + 'px';
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    /* 80 stars, three size+speed tiers — small (60%), medium (30%), bright (10%) */
+    const starCount = 80, stars = [];
+    for (let i = 0; i < starCount; i++) {
+      const tier = Math.random();
+      const size = tier < 0.6 ? 0.5 + Math.random() * 0.6
+                : tier < 0.9 ? 0.9 + Math.random() * 0.8
+                              : 1.4 + Math.random() * 0.8;
+      stars.push({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        r: size,
+        speed: 0.06 + Math.random() * 0.18 + (tier > 0.6 ? 0.1 : 0),
+        baseAlpha: 0.35 + Math.random() * 0.55,
+        twinklePhase: Math.random() * Math.PI * 2,
+        twinkleSpeed: 0.4 + Math.random() * 1.2,
+      });
+    }
+
+    let lastTime = performance.now();
+    let running = true;
+    function frame(now) {
+      if (!running) return;
+      const dt = Math.min((now - lastTime) / 16.67, 3);
+      lastTime = now;
+      const w = window.innerWidth, h = window.innerHeight;
+      ctx.clearRect(0, 0, w, h);
+      for (const s of stars) {
+        s.y -= s.speed * dt;
+        s.twinklePhase += 0.04 * s.twinkleSpeed * dt;
+        if (s.y < -2) { s.y = h + 2; s.x = Math.random() * w; }
+        const tw = 0.6 + 0.4 * Math.sin(s.twinklePhase);
+        const a = s.baseAlpha * tw;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,' + a.toFixed(3) + ')';
+        ctx.fill();
+      }
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { running = false; }
+      else if (!running)   { running = true; lastTime = performance.now(); requestAnimationFrame(frame); }
+    });
+  })();
+
+  /* ─── Holographic angle driver (matches /index.html) ─── */
+  (function startHoloAngle() {
+    const card = document.getElementById('holo-form-card');
+    if (!card) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let angle = 0, timer = null;
+    const tick = () => { angle = (angle + 2) % 360; card.style.setProperty('--holo-angle', angle + 'deg'); };
+    const start = () => { if (!timer) timer = setInterval(tick, 40); };
+    const stop  = () => { if (timer) { clearInterval(timer); timer = null; } };
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(es => { es[0].isIntersecting ? start() : stop(); }, { rootMargin: '120px' }).observe(card);
+    } else { start(); }
+    document.addEventListener('visibilitychange', () => {
+      document.hidden ? stop() : (card.getBoundingClientRect().bottom > 0 && start());
+    });
+  })();
+
+  /* ─── Scroll reveal (IntersectionObserver) ─── */
+  (function() {
+    if (!('IntersectionObserver' in window)) {
+      document.querySelectorAll('.reveal').forEach(el => el.classList.add('in'));
+      return;
+    }
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('in');
+          io.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -10% 0px' });
+    document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+  })();
+
+  /* ─── File upload preview + size guard ─── */
+  (function() {
+    const input  = document.getElementById('s-mockup');
+    const wrap   = document.getElementById('upload-wrap');
+    const prev   = document.getElementById('upload-preview');
+    const thumb  = document.getElementById('upload-thumb');
+    const nameEl = document.getElementById('upload-name');
+    const sizeEl = document.getElementById('upload-size');
+    const remBtn = document.getElementById('upload-remove');
+    const MAX_BYTES = 10 * 1024 * 1024;
+
+    function fmt(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+      return (bytes/1024/1024).toFixed(2) + ' MB';
+    }
+    input.addEventListener('change', () => {
+      const file = input.files && input.files[0];
+      if (!file) { prev.classList.remove('show'); return; }
+      if (file.size > MAX_BYTES) {
+        alert('That image is over 10 MB. Please pick a smaller one or compress it.');
+        input.value = '';
+        return;
+      }
+      thumb.src = URL.createObjectURL(file);
+      nameEl.textContent = file.name;
+      sizeEl.textContent = fmt(file.size);
+      prev.classList.add('show');
+      wrap.style.borderColor = 'var(--aurum)';
+    });
+    remBtn.addEventListener('click', () => {
+      input.value = '';
+      prev.classList.remove('show');
+      wrap.style.borderColor = '';
+    });
+  })();
+
+  /* ─── Submit handler ─── */
   async function submitWaitlist(e) {
     e.preventDefault();
+    const btn = document.getElementById('submit-btn');
+    const orig = btn.textContent;
+    const prog = document.getElementById('upload-progress');
+    btn.disabled = true; btn.textContent = 'Joining…';
+
+    // Collect
+    const fd = new FormData(document.getElementById('sales-form'));
+    const capabilities = fd.getAll('cap');
     const data = {
-      intent: 'bar-sale',
-      source: 'sales.html',
-      name: document.getElementById('s-name').value.trim(),
-      email: document.getElementById('s-email').value.trim(),
-      phone: document.getElementById('s-phone').value.trim(),
-      primaryUse: document.getElementById('s-use').value,
-      vision: document.getElementById('s-vision').value.trim(),
-      budget: document.getElementById('s-budget').value.trim(),
-      createdAt: new Date().toISOString()
+      intent:      'bar-sale-waitlist',
+      stage:       'Waitlist',
+      source:      'Bar Build Waitlist',
+      name:        (fd.get('name')||'').trim(),
+      email:       (fd.get('email')||'').trim(),
+      phone:       (fd.get('phone')||'').trim(),
+      location:    (fd.get('location')||'').trim(),
+      primaryUse:  fd.get('primaryUse') || '',
+      capabilities,
+      style:       fd.get('style') || '',
+      size:        (fd.get('size')||'').trim(),
+      vision:      (fd.get('vision')||'').trim(),
+      budget:      (fd.get('budget')||'').trim(),
+      when:        (fd.get('when')||'').trim(),
+      mockupUrl:   '',
+      mockupName:  '',
+      createdAt:   (window.firebase && firebase.firestore && firebase.firestore.FieldValue)
+                     ? firebase.firestore.FieldValue.serverTimestamp()
+                     : new Date().toISOString()
     };
-    try {
-      if (window._db) {
-        await window._db.collection('leads').add(data);
+
+    // Upload mockup if provided + Storage available
+    const mockupFile = document.getElementById('s-mockup').files[0];
+    if (mockupFile && window._storage) {
+      try {
+        prog.style.display = 'block';
+        prog.textContent = 'Uploading mockup… 0%';
+        const ext  = (mockupFile.name.split('.').pop() || 'img').toLowerCase().replace(/[^a-z0-9]/g,'');
+        const path = `bar-build-uploads/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+        const ref  = window._storage.ref(path);
+        const task = ref.put(mockupFile, { contentType: mockupFile.type });
+        await new Promise((res, rej) => {
+          task.on('state_changed',
+            s => { prog.textContent = `Uploading mockup… ${Math.round((s.bytesTransferred / s.totalBytes) * 100)}%`; },
+            err => rej(err),
+            () => res()
+          );
+        });
+        data.mockupUrl  = await ref.getDownloadURL();
+        data.mockupName = mockupFile.name;
+        prog.textContent = 'Mockup uploaded ✓';
+      } catch (err) {
+        console.warn('Mockup upload failed (form will still submit):', err);
+        prog.textContent = 'Mockup upload failed — we\'ll grab it on the design call.';
       }
+    }
+
+    // Save lead
+    try {
+      if (window._db) await window._db.collection('leads').add(data);
+      try {
+        if (typeof window.lsTrack === 'function') {
+          window.lsTrack('bar_build_waitlist_submitted', { primaryUse: data.primaryUse || 'unknown', hasMockup: !!data.mockupUrl });
+        }
+      } catch (_) {}
       document.getElementById('sales-success').classList.add('show');
       document.getElementById('sales-form').reset();
+      document.getElementById('upload-preview').classList.remove('show');
+      btn.textContent = '✓ You\'re on the list';
+      btn.style.background = '#22c55e';
+      window.scrollTo({ top: document.getElementById('sales-success').offsetTop - 100, behavior: 'smooth' });
     } catch (err) {
       console.error(err);
-      alert('Something went wrong. Please email hello@lakesalt.us and we\'ll add you manually.');
+      btn.disabled = false; btn.textContent = orig;
+      alert('Something went wrong. Please email contact@lakesalt.us and we\'ll add you manually.');
     }
     return false;
   }
 </script>
-
 </body>
 </html>
