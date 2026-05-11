@@ -270,7 +270,8 @@
       animation: rise 1s var(--ease-out) 0.92s backwards;
     }
     .hero-stat .num {
-      font-family: 'Italiana', serif;
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 600;
       font-size: clamp(1.85rem, 4vw, 2.6rem);
       color: var(--aurum); line-height: 1; letter-spacing: -0.01em;
     }
@@ -450,8 +451,10 @@
       color: var(--text-muted); margin-bottom: 0.3rem;
     }
     .r-price {
-      font-family: 'Italiana', serif;
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 600;
       font-size: 2.4rem; line-height: 1; color: var(--aurum);
+      letter-spacing: -0.01em;
       margin-bottom: 1.3rem;
     }
     .r-price small {
@@ -616,10 +619,11 @@
     }
     .builder-price {
       flex: 0 0 auto;
-      font-family: 'Italiana', serif;
-      font-size: 1.05rem;
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 600;
+      font-size: 1.15rem;
       color: var(--aurum);
-      letter-spacing: 0.01em;
+      letter-spacing: -0.005em;
       min-width: 60px; text-align: right;
     }
     .builder-toggle {
@@ -671,9 +675,11 @@
     }
     .stepper-btn:disabled { opacity: 0.32; cursor: not-allowed; }
     .stepper-val {
-      min-width: 32px; text-align: center;
-      font-family: 'Italiana', serif;
-      font-size: 1.15rem; color: var(--text);
+      min-width: 36px; text-align: center;
+      font-family: 'Inter', sans-serif;
+      font-size: 1.1rem; font-weight: 600;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
     }
     /* "Need more than 5?" hint when at limit */
     .limit-note {
@@ -709,11 +715,13 @@
     }
     .t-amount {
       grid-column: 2; grid-row: 1 / span 2;
-      font-family: 'Italiana', serif;
-      font-size: clamp(2rem, 4vw, 2.6rem);
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 600;
+      font-size: clamp(2rem, 4vw, 2.8rem);
       line-height: 1;
       color: var(--aurum);
-      letter-spacing: -0.01em;
+      letter-spacing: -0.015em;
+      font-variant-numeric: tabular-nums;
     }
     .t-amount small {
       font-size: 0.55em; font-family: 'Inter', sans-serif;
@@ -1140,6 +1148,20 @@
               <input type="hidden" id="r-chairs" name="chairCount" value="0" />
             </div>
 
+            <!-- Tablecloths stepper (add-on) -->
+            <div class="builder-row" id="row-cloths">
+              <div class="builder-info">
+                <span class="t">Black Tablecloths</span>
+                <span class="s">$5/cloth/day · plain black polyester, fits a 6' table</span>
+              </div>
+              <div class="stepper" data-stepper="cloths">
+                <button type="button" class="stepper-btn" data-step="-1" aria-label="Fewer cloths">−</button>
+                <span class="stepper-val" id="r-cloths-val">0</span>
+                <button type="button" class="stepper-btn" data-step="1" aria-label="More cloths">+</button>
+              </div>
+              <input type="hidden" id="r-cloths" name="clothCount" value="0" />
+            </div>
+
             <!-- Delivery toggle -->
             <div class="builder-row" id="row-delivery">
               <label class="builder-toggle">
@@ -1207,7 +1229,7 @@
       </details>
       <details class="faq-item reveal">
         <summary>Can I rent the bar with bartenders?</summary>
-        <p>Of course — that's our core service. Head back to the <a href="index.html#pricing-packages">main pricing page</a> for full-service bartending starting around $995.</p>
+        <p>Of course — that's our core service. Head back to the <a href="index.html#pricing-packages">main pricing page</a> for full-service bartending starting around $650.</p>
       </details>
       <details class="faq-item reveal">
         <summary>Will the mobile bar fit in my car?</summary>
@@ -1339,8 +1361,8 @@
   /* ─── Interactive price builder ───
      Pricing: bar $150, table $8, chair $2, delivery flat +$10.
      Caps: 5 tables, 30 chairs. */
-  const PRICES = { bar: 150, table: 8, chair: 2, delivery: 10 };
-  const LIMITS = { tables: 5, chairs: 30 };
+  const PRICES = { bar: 150, table: 8, chair: 2, cloth: 5, delivery: 10 };
+  const LIMITS = { tables: 5, chairs: 30, cloths: 5 };
 
   const $ = (id) => document.getElementById(id);
 
@@ -1348,6 +1370,7 @@
     const includeBar = $('r-include-bar').checked;
     const tables = parseInt($('r-tables').value || '0', 10);
     const chairs = parseInt($('r-chairs').value || '0', 10);
+    const cloths = parseInt($('r-cloths').value || '0', 10);
     const delivery = $('r-delivery').checked;
 
     // Compute
@@ -1356,10 +1379,10 @@
     if (includeBar) { subtotal += PRICES.bar; parts.push(`Bar $${PRICES.bar}`); }
     if (tables > 0) { subtotal += tables * PRICES.table; parts.push(`${tables} table${tables>1?'s':''} $${tables*PRICES.table}`); }
     if (chairs > 0) { subtotal += chairs * PRICES.chair; parts.push(`${chairs} chair${chairs>1?'s':''} $${chairs*PRICES.chair}`); }
+    if (cloths > 0) { subtotal += cloths * PRICES.cloth; parts.push(`${cloths} cloth${cloths>1?'s':''} $${cloths*PRICES.cloth}`); }
     if (delivery) { subtotal += PRICES.delivery; parts.push(`Delivery $${PRICES.delivery}`); }
 
-    // Apply bundle discount: if bar + tables + chairs all selected → 10% off
-    // (simple incentive; gross bundle still beats competitor avg)
+    // Bundle discount: bar + tables + chairs all selected → 10% off
     let discount = 0;
     if (includeBar && tables > 0 && chairs > 0) {
       discount = Math.round(subtotal * 0.10);
@@ -1380,13 +1403,14 @@
     $('row-bar').classList.toggle('selected', includeBar);
     $('row-tables').classList.toggle('selected', tables > 0);
     $('row-chairs').classList.toggle('selected', chairs > 0);
+    $('row-cloths').classList.toggle('selected', cloths > 0);
     $('row-delivery').classList.toggle('selected', delivery);
 
     // Limit hint
     const atLimit = (tables >= LIMITS.tables) || (chairs >= LIMITS.chairs);
     $('limit-note').classList.toggle('show', atLimit);
 
-    // Auto-derive rentalType for analytics + CRM (no dropdown anymore)
+    // Auto-derive rentalType for analytics + CRM
     let type = 'other';
     const hasBar = includeBar, hasTables = tables > 0, hasChairs = chairs > 0;
     if (hasBar && (hasTables || hasChairs)) type = 'bundle';
@@ -1459,6 +1483,7 @@
     const includeBar = $('r-include-bar').checked;
     const tables = parseInt($('r-tables').value || '0', 10);
     const chairs = parseInt($('r-chairs').value || '0', 10);
+    const cloths = parseInt($('r-cloths').value || '0', 10);
     const delivery = $('r-delivery').checked;
     const subtotal = parseInt($('r-subtotal').value || '0', 10);
 
@@ -1481,6 +1506,7 @@
       includeBar,
       tableCount: tables,
       chairCount: chairs,
+      clothCount: cloths,
       delivery,
       subtotal,
       location:   $('r-location').value.trim(),
@@ -1500,6 +1526,7 @@
             includeBar,
             tableCount: tables,
             chairCount: chairs,
+            clothCount: cloths,
             delivery,
           });
         }
@@ -1509,7 +1536,8 @@
       // reset builder state too
       $('r-tables-val').textContent = '0';
       $('r-chairs-val').textContent = '0';
-      $('r-tables').value = 0; $('r-chairs').value = 0;
+      $('r-cloths-val').textContent = '0';
+      $('r-tables').value = 0; $('r-chairs').value = 0; $('r-cloths').value = 0;
       recalc();
       btn.textContent = '✓ Sent — talk soon';
       btn.style.background = '#22c55e';
