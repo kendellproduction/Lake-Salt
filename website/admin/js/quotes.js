@@ -296,9 +296,12 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
         <!-- ACTIONS -->
         <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px">
           <button class="btn btn-secondary btn-sm" id="qb-save">💾 Save draft</button>
-          <button class="btn btn-primary btn-sm" id="qb-lock">🔒 Lock in & mark Proposal Sent</button>
-          <button class="btn btn-ghost btn-sm" id="qb-copy">📋 Copy quote text</button>
-          <button class="btn btn-ghost btn-sm" id="qb-email">✉ Email proposal</button>
+          <button class="btn btn-primary btn-sm" id="qb-lock">🔒 Lock in price</button>
+          <button class="btn btn-primary btn-sm" id="qb-send" style="background:#22c55e;border-color:#22c55e">📤 Send proposal</button>
+          <button class="btn btn-ghost btn-sm" id="qb-copy">📋 Copy text</button>
+        </div>
+        <div class="text-muted" style="font-size:11px;margin-top:6px;line-height:1.5">
+          <strong>Lock</strong> = this is the final number (no stage change). <strong>Send</strong> = deliver to the client and move the lead to <em>Proposal Sent</em>.
         </div>
         <div id="qb-history" style="margin-top:14px"></div>
       </div>
@@ -329,8 +332,8 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
 
     container.querySelector('#qb-save')?.addEventListener('click', () => saveQuote('draft'));
     container.querySelector('#qb-lock')?.addEventListener('click', () => saveQuote('locked'));
+    container.querySelector('#qb-send')?.addEventListener('click', () => openSendProposalMenu(calc));
     container.querySelector('#qb-copy')?.addEventListener('click', () => copyToClipboard(quoteText(state.q, calc)));
-    container.querySelector('#qb-email')?.addEventListener('click', () => emailProposal());
 
     loadHistory();
   }
@@ -353,11 +356,13 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
     else render();
   }
 
-  async function saveQuote(status) {
+  /* Save a quote at the given status. Lock does NOT change the lead stage —
+   * only Send does. Status values: 'draft' | 'locked' | 'sent'. */
+  async function saveQuote(status, sendMeta = null) {
     const calc = calcQuote(state.q);
-    if (status === 'locked' && !state.q.leadId) {
-      alert('Link a lead before locking the quote.');
-      return;
+    if ((status === 'locked' || status === 'sent') && !state.q.leadId) {
+      alert('Link a lead before locking or sending the quote.');
+      return null;
     }
     const payload = {
       leadId: state.q.leadId,
@@ -394,14 +399,22 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
       createdBy: currentUser?.displayName || currentUser?.email || 'Admin'
     };
     if (status === 'locked') payload.lockedAt = TS();
+    if (status === 'sent') {
+      payload.lockedAt = TS();
+      payload.sentAt = TS();
+      payload.sentBy = currentUser?.displayName || currentUser?.email || 'Admin';
+      if (sendMeta) payload.sentVia = sendMeta;
+    }
 
     try {
       const ref = await db.collection('quotes').add(payload);
-      logActivity(status === 'locked' ? 'quote_locked' : 'quote_saved', 'quotes', ref.id,
-        `${status === 'locked' ? 'Locked' : 'Saved'} quote for ${state.q.leadName || 'lead'} — ${moneyFmt(calc.total)}`,
+      const action = status === 'sent' ? 'quote_sent' : status === 'locked' ? 'quote_locked' : 'quote_saved';
+      const verb = status === 'sent' ? 'Sent' : status === 'locked' ? 'Locked' : 'Saved';
+      logActivity(action, 'quotes', ref.id,
+        `${verb} quote for ${state.q.leadName || 'lead'} — ${moneyFmt(calc.total)}${sendMeta ? ' via ' + sendMeta : ''}`,
         { total: calc.total, leadId: state.q.leadId });
 
-      /* Mirror summary on the lead for fast list display. */
+      /* Mirror summary on the lead. Only Send moves the stage. */
       if (state.q.leadId) {
         const update = {
           latestQuoteId: ref.id,
@@ -409,16 +422,89 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
           latestQuoteStatus: status,
           updatedAt: TS()
         };
-        if (status === 'locked') update.stage = 'Proposal Sent';
+        if (status === 'sent') update.stage = 'Proposal Sent';
         await db.collection('leads').doc(state.q.leadId).update(update);
       }
-      showToast(status === 'locked' ? '🔒 Quote locked — stage moved to Proposal Sent' : 'Quote saved');
-      if (status === 'locked' && typeof closeModal === 'function') closeModal();
-      else loadHistory();
+      const toast = status === 'sent' ? '📤 Marked as sent — stage moved to Proposal Sent'
+                  : status === 'locked' ? '🔒 Price locked'
+                  : 'Draft saved';
+      showToast(toast);
+      loadHistory();
+      return ref.id;
     } catch (err) {
       console.error('Save quote failed:', err);
       alert('Could not save quote — see console.');
+      return null;
     }
+  }
+
+  /* Send-proposal chooser. Currently no automated send — picks a delivery
+   * method, opens it, and marks the quote sent in Firestore. */
+  function openSendProposalMenu(calc) {
+    if (!state.q.leadId) { alert('Link a lead before sending.'); return; }
+    const email = options.leadEmail || '';
+    const phone = (lead?.phone || '').replace(/\D/g, '');
+    const text = quoteText(state.q, calc);
+    const subject = `Lake Salt — Quote for your event`;
+
+    openModal('Send proposal', `
+      <p class="text-muted" style="font-size:13px;line-height:1.5;margin-bottom:14px">
+        Choose how you're delivering the quote. The system currently <strong>does not</strong> auto-send —
+        it opens your mail/SMS app or copies the text. Once you've actually sent it, the quote is logged as
+        <em>sent</em>, your lead moves to <em>Proposal Sent</em>, and an activity entry is recorded.
+      </p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button class="btn btn-primary" id="sp-email" ${email?'':'disabled'} style="text-align:left;padding:12px 14px">
+          ✉ Open email draft ${email?`<span class="text-muted" style="font-weight:400;font-size:12px;margin-left:6px">→ ${email}</span>`:'<span class="text-muted" style="font-weight:400;font-size:12px;margin-left:6px">(no email on lead)</span>'}
+        </button>
+        <button class="btn btn-secondary" id="sp-sms" ${phone?'':'disabled'} style="text-align:left;padding:12px 14px">
+          💬 Open SMS draft ${phone?`<span class="text-muted" style="font-weight:400;font-size:12px;margin-left:6px">→ ${phone}</span>`:'<span class="text-muted" style="font-weight:400;font-size:12px;margin-left:6px">(no phone on lead)</span>'}
+        </button>
+        <button class="btn btn-ghost" id="sp-cowork" style="text-align:left;padding:12px 14px">
+          🤖 Copy a Cowork prompt <span class="text-muted" style="font-weight:400;font-size:12px;margin-left:6px">(paste into the comms agent to draft + send)</span>
+        </button>
+        <button class="btn btn-ghost" id="sp-copy" style="text-align:left;padding:12px 14px">
+          📋 Just copy the quote text <span class="text-muted" style="font-weight:400;font-size:12px;margin-left:6px">(I'll deliver it manually)</span>
+        </button>
+      </div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);line-height:1.5">
+        After any of these, click <strong>Mark as sent</strong> below. Nothing is recorded until you confirm.
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px">
+        <button class="btn btn-primary" id="sp-confirm" style="background:#22c55e;border-color:#22c55e;flex:1">✓ Mark as sent</button>
+        <button class="btn btn-ghost" id="sp-cancel">Cancel</button>
+      </div>
+    `, { wide: false });
+
+    let chosenMethod = null;
+    document.getElementById('sp-email').addEventListener('click', () => {
+      chosenMethod = 'email';
+      const url = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text + '\n\nLooking forward to bartending your event!\n— Kendell · Lake Salt')}`;
+      window.location.href = url;
+    });
+    document.getElementById('sp-sms').addEventListener('click', () => {
+      chosenMethod = 'sms';
+      window.location.href = `sms:${phone}?&body=${encodeURIComponent(text)}`;
+    });
+    document.getElementById('sp-cowork').addEventListener('click', () => {
+      chosenMethod = 'cowork';
+      const prompt = `Send the following quote to ${state.q.leadName} at ${email || phone || '[no contact info]'} via email. Use a warm, professional tone — Kendell's voice. Sign as "Kendell · Lake Salt Bartending". Quote text below:\n\n${text}`;
+      copyToClipboard(prompt);
+      showToast('Cowork prompt copied — paste it into the lake-salt-comms agent');
+    });
+    document.getElementById('sp-copy').addEventListener('click', () => {
+      chosenMethod = 'copy';
+      copyToClipboard(text);
+    });
+    document.getElementById('sp-cancel').addEventListener('click', () => { if (typeof closeModal==='function') closeModal(); });
+    document.getElementById('sp-confirm').addEventListener('click', async () => {
+      if (!chosenMethod) {
+        if (!confirm('You haven\'t picked a delivery method yet — mark sent anyway?')) return;
+        chosenMethod = 'manual';
+      }
+      await saveQuote('sent', chosenMethod);
+      if (typeof closeModal === 'function') closeModal();
+    });
   }
 
   async function loadHistory() {
@@ -441,14 +527,6 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
         }).join('')}
       `;
     } catch (e) { console.warn('History load failed:', e); }
-  }
-
-  function emailProposal() {
-    const calc = calcQuote(state.q);
-    const subject = encodeURIComponent(`Lake Salt — Quote for your event`);
-    const body = encodeURIComponent(quoteText(state.q, calc) + '\n\nLooking forward to bartending your event!\n— Kendell · Lake Salt');
-    const to = encodeURIComponent(options.leadEmail || '');
-    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
   }
 
   render();
