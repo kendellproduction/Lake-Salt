@@ -19,19 +19,12 @@ const DEFAULT_QUOTE_DEFAULTS = {
   travelBase: 75,
   hoursDefault: 5,
   bartendersPerGuests: 75,
-  packages: {
-    beerWine:  { label: 'Beer & Wine',         perGuest: 18 },
-    fullBar:   { label: 'Full Bar',            perGuest: 28 },
-    signature: { label: 'Full Bar + Signature', perGuest: 38 },
-    custom:    { label: 'Custom (flat fee)',   perGuest: 0  }
-  },
-  addOns: {
-    glassware:    { label: 'Glassware service',     price: 95 },
-    tablecloths:  { label: 'Tablecloths',           price: 120 },
-    mixerKit:     { label: 'Mixer & garnish kit',   price: 85 },
-    iceService:   { label: 'Ice service',           price: 60 },
-    smokeShow:    { label: 'Smoke-show signature',  price: 150 }
-  },
+
+  /* Lake Salt offers a curated custom menu of cocktails + mocktails.
+   * No "Full Bar" tier. Off-menu requests are a separate per-drink charge. */
+  customMenuFeeDefault: 450,
+  offMenuPerDrink: 12,
+
   depositPct: 30,
   saturdayPeakMultiplier: 1.15,
   peakMonths: [5, 6, 9, 10],  // May, June, Sept, Oct (1-indexed)
@@ -41,7 +34,7 @@ const DEFAULT_QUOTE_DEFAULTS = {
     { label: 'Match competitor', pct: 8 }
   ],
   quoteExpiryDays: 14,
-  packageCostPctOfRevenue: 0.30 // rough COGS % for margin estimate on drink package
+  menuCostPctOfRevenue: 0.30 // rough COGS % on the custom-menu fee, for margin
 };
 
 let QUOTE_DEFAULTS = { ...DEFAULT_QUOTE_DEFAULTS };
@@ -91,82 +84,118 @@ function suggestPeak(eventDate) {
 function makeInitialQuote(lead) {
   const guests = parseGuests(lead?.guestCount);
   const peak = suggestPeak(lead?.eventDate);
+  const budget = parseBudget(lead?.budget);
   return {
     leadId: lead?.id || null,
     leadName: lead?.name || '',
+    guestCount: guests,
     serviceHours: QUOTE_DEFAULTS.hoursDefault,
     bartenders: Math.max(1, Math.ceil(guests / QUOTE_DEFAULTS.bartendersPerGuests)),
     bartenderRate: QUOTE_DEFAULTS.bartenderRate,
     travelFee: QUOTE_DEFAULTS.travelBase,
-    packageKey: 'fullBar',
-    packageFlatFee: 0,
-    guestCount: guests,
-    addOns: {},
+
+    /* Custom drink menu — Lake Salt's actual offering. Flat fee.
+     * Off-menu requests are an optional per-drink upcharge. */
+    customMenuFee: QUOTE_DEFAULTS.customMenuFeeDefault,
+    offMenuEnabled: false,
+    offMenuQty: 0,
+    offMenuPrice: QUOTE_DEFAULTS.offMenuPerDrink,
+
+    /* User-defined line items: [{ label, price }] */
+    lineItems: [],
+
     peakApplied: peak.isPeak,
     peakReason: peak.reason,
     peakMultiplier: QUOTE_DEFAULTS.saturdayPeakMultiplier,
     discountType: 'pct',  // 'pct' | 'amt'
     discountValue: 0,
     depositPct: QUOTE_DEFAULTS.depositPct,
+
+    /* Top-down override. When set, this becomes the quoted total and an
+     * "Adjustment to target" line is implied in the breakdown. */
+    totalOverride: null,
+
     notes: '',
-    budgetTarget: parseBudget(lead?.budget)
+    budgetRaw: budget.raw,
+    budgetValid: budget.valid,
+    budgetTarget: budget.valid ? budget.value : 0
   };
 }
 
+/* Parse the lead's stated budget. Returns { value, raw, valid } where valid
+ * is true only if the parsed number is in a plausible event-bartending range
+ * ($300–$50,000). This guards against guest-count strings like "150-300"
+ * accidentally getting parsed as $150,300. */
 function parseBudget(b) {
-  if (!b) return 0;
-  if (typeof b === 'number') return b;
-  const n = parseInt(String(b).replace(/[^0-9]/g, ''), 10);
-  return isNaN(n) ? 0 : n;
+  const raw = b == null ? '' : String(b);
+  if (!raw) return { value: 0, raw: '', valid: false };
+  if (typeof b === 'number') {
+    return { value: b, raw, valid: b >= 300 && b <= 50000 };
+  }
+  /* Detect dashes (guest-count style) — refuse to combine the two numbers. */
+  if (/[-–—]/.test(raw)) return { value: 0, raw, valid: false };
+  const digits = raw.replace(/[^0-9.]/g, '');
+  const n = parseFloat(digits);
+  if (isNaN(n)) return { value: 0, raw, valid: false };
+  return { value: n, raw, valid: n >= 300 && n <= 50000 };
 }
 
-/* Pure calc — no DOM. Returns { subtotal, peakAdj, beforeDiscount, discountAmt, total, deposit, costEstimate, profit, marginPct } */
+/* Pure calc — no DOM. Returns the full breakdown including a derived
+ * "targetAdjustment" line when the user has set a top-down totalOverride. */
 function calcQuote(q) {
   const bartenderTotal = (q.serviceHours || 0) * (q.bartenderRate || 0) * (q.bartenders || 0);
-  const pkg = QUOTE_DEFAULTS.packages[q.packageKey] || { perGuest: 0, label: '' };
-  const drinkTotal = q.packageKey === 'custom'
-    ? (q.packageFlatFee || 0)
-    : (pkg.perGuest || 0) * (q.guestCount || 0);
-  const addOnTotal = Object.entries(q.addOns || {})
-    .filter(([_, on]) => on)
-    .reduce((sum, [k]) => sum + (QUOTE_DEFAULTS.addOns[k]?.price || 0), 0);
+  const menuTotal = q.customMenuFee || 0;
+  const offMenuTotal = q.offMenuEnabled ? (q.offMenuQty || 0) * (q.offMenuPrice || 0) : 0;
+  const lineItemTotal = (q.lineItems || []).reduce((s, li) => s + (Number(li.price) || 0), 0);
 
-  const subtotal = bartenderTotal + drinkTotal + addOnTotal + (q.travelFee || 0);
+  const subtotal = bartenderTotal + menuTotal + offMenuTotal + lineItemTotal + (q.travelFee || 0);
   const peakAdj = q.peakApplied ? subtotal * (q.peakMultiplier - 1) : 0;
   const beforeDiscount = subtotal + peakAdj;
   const discountAmt = q.discountType === 'pct'
     ? beforeDiscount * (q.discountValue / 100)
     : (q.discountValue || 0);
-  const total = Math.max(0, beforeDiscount - discountAmt);
+  const computedTotal = Math.max(0, beforeDiscount - discountAmt);
+
+  /* Top-down: if user set an override, that's the real total. The difference
+   * vs computed becomes a visible "Adjustment to target" line. */
+  const hasOverride = q.totalOverride != null && !isNaN(q.totalOverride);
+  const total = hasOverride ? Number(q.totalOverride) : computedTotal;
+  const targetAdjustment = hasOverride ? total - computedTotal : 0;
+
   const deposit = total * ((q.depositPct || 0) / 100);
 
-  /* Cost estimate (for margin): bartender labor + package COGS estimate.
-     Travel and add-ons treated as ~50% margin. */
+  /* Margin estimate: bartender labor + custom menu COGS + travel/line-items at ~40% cost. */
   const laborCost = (q.serviceHours || 0) * (QUOTE_DEFAULTS.bartenderCostHr || 0) * (q.bartenders || 0);
-  const packageCost = drinkTotal * (QUOTE_DEFAULTS.packageCostPctOfRevenue || 0.3);
+  const menuCost = (menuTotal + offMenuTotal) * (QUOTE_DEFAULTS.menuCostPctOfRevenue || 0.3);
   const travelCost = (q.travelFee || 0) * 0.4;
-  const addOnCost = addOnTotal * 0.4;
-  const costEstimate = laborCost + packageCost + travelCost + addOnCost;
+  const lineCost = lineItemTotal * 0.4;
+  const costEstimate = laborCost + menuCost + travelCost + lineCost;
   const profit = total - costEstimate;
   const marginPct = total > 0 ? (profit / total) * 100 : 0;
 
-  return { subtotal, peakAdj, beforeDiscount, discountAmt, total, deposit, costEstimate, profit, marginPct,
-           breakdown: { bartenderTotal, drinkTotal, addOnTotal, travelFee: q.travelFee || 0 } };
+  return {
+    subtotal, peakAdj, beforeDiscount, discountAmt,
+    computedTotal, total, hasOverride, targetAdjustment,
+    deposit, costEstimate, profit, marginPct,
+    breakdown: { bartenderTotal, menuTotal, offMenuTotal, lineItemTotal, travelFee: q.travelFee || 0 }
+  };
 }
 
 /* Markdown-style quote text for copy/email. Margin NEVER included. */
 function quoteText(q, calc) {
-  const pkg = QUOTE_DEFAULTS.packages[q.packageKey];
-  const addOnLines = Object.entries(q.addOns || {})
-    .filter(([_, on]) => on)
-    .map(([k]) => `• ${QUOTE_DEFAULTS.addOns[k]?.label || k}: ${moneyFmt(QUOTE_DEFAULTS.addOns[k]?.price || 0)}`);
+  const lineItemLines = (q.lineItems || [])
+    .filter(li => (li.label || '').trim() || (li.price || 0) > 0)
+    .map(li => `• ${li.label || 'Add-on'}: ${moneyFmt(li.price)}`);
   const lines = [
     `Lake Salt Bartending — Quote for ${q.leadName || 'your event'}`,
     `─────────────────────────────────────`,
     `Bartenders: ${q.bartenders} × ${q.serviceHours} hrs @ ${moneyFmt(q.bartenderRate)}/hr = ${moneyFmt(calc.breakdown.bartenderTotal)}`,
-    `Drinks: ${pkg?.label || 'Custom'}${q.packageKey !== 'custom' ? ` × ${q.guestCount} guests` : ''} = ${moneyFmt(calc.breakdown.drinkTotal)}`,
+    `Custom drink menu (cocktails + mocktails): ${moneyFmt(calc.breakdown.menuTotal)}`,
+    q.offMenuEnabled && calc.breakdown.offMenuTotal > 0
+      ? `Off-menu requests: ${q.offMenuQty} × ${moneyFmt(q.offMenuPrice)} = ${moneyFmt(calc.breakdown.offMenuTotal)}`
+      : null,
     `Travel: ${moneyFmt(q.travelFee)}`,
-    ...addOnLines,
+    ...lineItemLines,
     `─────────────────────────────────────`,
     `Subtotal: ${moneyFmt(calc.subtotal)}`,
     q.peakApplied ? `Peak adjustment (${q.peakReason}, +${Math.round((q.peakMultiplier-1)*100)}%): ${moneyFmt(calc.peakAdj)}` : null,
@@ -179,6 +208,28 @@ function quoteText(q, calc) {
     q.notes ? `\nNotes: ${q.notes}` : ''
   ].filter(Boolean);
   return lines.join('\n');
+}
+
+/* Show the math behind the budget-vs-quote comparison. */
+function showBudgetMath(q, calc) {
+  const diff = q.budgetValid ? calc.total - q.budgetTarget : null;
+  openModal('Budget comparison', `
+    <div style="display:flex;flex-direction:column;gap:10px;font-size:13px;line-height:1.6">
+      <div style="display:flex;justify-content:space-between"><span class="text-muted">Lead's stated budget (raw value)</span><span style="font-family:ui-monospace,Menlo,monospace">"${escapeHtmlSafe(q.budgetRaw || '(blank)')}"</span></div>
+      <div style="display:flex;justify-content:space-between"><span class="text-muted">Parsed as</span><span><strong>${q.budgetValid ? moneyFmt(q.budgetTarget) : 'unparseable — ignored'}</strong></span></div>
+      ${!q.budgetValid ? `<div style="background:rgba(250,204,21,0.08);border:1px solid rgba(250,204,21,0.3);padding:8px 10px;border-radius:8px;font-size:12px">
+        The budget field on this lead doesn't look like a clean dollar amount in the $300–$50,000 range. Common cause: a guest-count string ("150–300") accidentally typed into the budget field. Fix it on the lead and re-open this quote, or ignore.
+      </div>` : ''}
+      <hr style="border:none;border-top:1px solid var(--border);margin:6px 0">
+      <div style="display:flex;justify-content:space-between"><span class="text-muted">Quoted total</span><span><strong>${moneyFmt(calc.total)}</strong></span></div>
+      ${q.budgetValid ? `
+        <div style="display:flex;justify-content:space-between"><span class="text-muted">Difference (quote − budget)</span>
+          <span style="font-weight:700;color:${diff <= 0 ? '#22c55e' : '#E05252'}">${diff > 0 ? '+' : ''}${moneyFmt(diff)}</span></div>
+        <div style="font-size:12px;color:var(--text-muted)">
+          ${diff <= 0 ? 'You are at or below their stated budget — room to upsell or hold firm.' : 'You are over their stated budget. Consider trimming line items, applying a discount, or asking what level of flex they have.'}
+        </div>` : ''}
+    </div>
+  `, { wide: false });
 }
 
 /* ═════════════════════════════════════════════════════════════════════════
@@ -196,17 +247,20 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
     const q = state.q;
     const calc = calcQuote(q);
 
-    // Budget comparison color
+    /* Budget badge — only shown when budget parsed cleanly into a sane range.
+     * Click → modal with the math. */
     let budgetBadge = '';
-    if (q.budgetTarget > 0) {
+    if (q.budgetValid && q.budgetTarget > 0) {
       const diff = calc.total - q.budgetTarget;
-      if (diff <= 0) {
-        budgetBadge = `<span class="badge" style="background:rgba(34,197,94,0.15);color:#22c55e">✓ Under budget (saving ${moneyFmt(-diff)})</span>`;
-      } else if (diff / q.budgetTarget < 0.1) {
-        budgetBadge = `<span class="badge" style="background:rgba(250,204,21,0.15);color:#FACC15">⚠ ${moneyFmt(diff)} over budget</span>`;
-      } else {
-        budgetBadge = `<span class="badge" style="background:rgba(224,82,82,0.15);color:#E05252">${moneyFmt(diff)} over budget</span>`;
+      let bg = 'rgba(34,197,94,0.15)', color = '#22c55e', label = `✓ Under budget by ${moneyFmt(-diff)}`;
+      if (diff > 0 && diff / q.budgetTarget < 0.1) {
+        bg = 'rgba(250,204,21,0.15)'; color = '#FACC15'; label = `⚠ ${moneyFmt(diff)} over budget`;
+      } else if (diff > 0) {
+        bg = 'rgba(224,82,82,0.15)'; color = '#E05252'; label = `${moneyFmt(diff)} over budget`;
       }
+      budgetBadge = `<button type="button" id="qb-budget-info" class="badge" style="background:${bg};color:${color};border:none;cursor:pointer">${label} ⓘ</button>`;
+    } else if (q.budgetRaw) {
+      budgetBadge = `<button type="button" id="qb-budget-info" class="badge" style="background:rgba(100,116,139,0.15);color:var(--text-muted);border:none;cursor:pointer">Budget unclear ⓘ</button>`;
     }
 
     const marginColor = calc.marginPct >= 50 ? '#22c55e' : calc.marginPct >= 35 ? '#FACC15' : '#E05252';
@@ -218,36 +272,54 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
           ${budgetBadge}
         </div>
 
-        <!-- LINE ITEMS GRID -->
+        <!-- BARTENDER + TRAVEL -->
         <div class="qb-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px">
           <label class="qb-field"><span>Service hours</span>
-            <input type="number" min="1" step="0.5" id="qb-hours" value="${q.serviceHours}" class="form-input qb-input"></label>
+            <input type="number" min="0" step="0.5" id="qb-hours" value="${q.serviceHours}" class="form-input qb-input"></label>
           <label class="qb-field"><span>Bartenders</span>
-            <input type="number" min="1" id="qb-bartenders" value="${q.bartenders}" class="form-input qb-input"></label>
+            <input type="number" min="0" id="qb-bartenders" value="${q.bartenders}" class="form-input qb-input"></label>
           <label class="qb-field"><span>Rate ($/hr per bartender)</span>
             <input type="number" min="0" id="qb-rate" value="${q.bartenderRate}" class="form-input qb-input"></label>
           <label class="qb-field"><span>Travel fee</span>
             <input type="number" min="0" id="qb-travel" value="${q.travelFee}" class="form-input qb-input"></label>
-          <label class="qb-field"><span>Drink package</span>
-            <select id="qb-package" class="form-select qb-input">
-              ${Object.entries(QUOTE_DEFAULTS.packages).map(([k,p]) =>
-                `<option value="${k}" ${k===q.packageKey?'selected':''}>${p.label}${p.perGuest?` ($${p.perGuest}/guest)`:''}</option>`).join('')}
-            </select></label>
-          ${q.packageKey === 'custom'
-            ? `<label class="qb-field"><span>Custom drink fee ($)</span><input type="number" min="0" id="qb-pkgflat" value="${q.packageFlatFee}" class="form-input qb-input"></label>`
-            : `<label class="qb-field"><span>Guest count</span><input type="number" min="1" id="qb-guests" value="${q.guestCount}" class="form-input qb-input"></label>`}
         </div>
 
-        <!-- ADD-ONS -->
-        <div style="margin-top:14px">
-          <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:6px">Add-ons</div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px">
-            ${Object.entries(QUOTE_DEFAULTS.addOns).map(([k,a]) => `
-              <label class="qb-addon" style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid ${q.addOns[k]?'var(--gold)':'var(--border)'};border-radius:20px;font-size:12px;cursor:pointer;background:${q.addOns[k]?'rgba(201,168,76,0.12)':'transparent'}">
-                <input type="checkbox" data-addon="${k}" ${q.addOns[k]?'checked':''} style="margin:0">
-                ${a.label} · ${moneyFmt(a.price)}
-              </label>`).join('')}
+        <!-- DRINK MENU (Lake Salt's real model: custom curated menu, flat fee) -->
+        <div style="margin-top:14px;padding:12px;border:1px solid var(--border);border-radius:10px">
+          <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:8px">Custom drink menu</div>
+          <label class="qb-field"><span>Menu fee (cocktails + mocktails, curated)</span>
+            <input type="number" min="0" id="qb-menu" value="${q.customMenuFee}" class="form-input qb-input"></label>
+
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:10px">
+            <input type="checkbox" id="qb-offmenu" ${q.offMenuEnabled?'checked':''}>
+            <span>Allow off-menu requests (generic drinks beyond the curated menu)</span>
+          </label>
+          ${q.offMenuEnabled ? `
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin-top:8px;padding-left:24px">
+              <label class="qb-field"><span>Expected off-menu drinks</span>
+                <input type="number" min="0" id="qb-offqty" value="${q.offMenuQty}" class="form-input qb-input"></label>
+              <label class="qb-field"><span>Per drink ($)</span>
+                <input type="number" min="0" id="qb-offprice" value="${q.offMenuPrice}" class="form-input qb-input"></label>
+            </div>
+            <div class="text-muted" style="font-size:11px;margin-top:4px;padding-left:24px">${moneyFmt((q.offMenuQty||0)*(q.offMenuPrice||0))} expected</div>
+          `: ''}
+        </div>
+
+        <!-- USER-DEFINED LINE ITEMS -->
+        <div style="margin-top:14px;padding:12px;border:1px solid var(--border);border-radius:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">Additional items / add-ons</div>
+            <button type="button" id="qb-add-line" class="btn btn-ghost btn-sm" style="padding:3px 10px;font-size:12px">+ Add line</button>
           </div>
+          ${(q.lineItems || []).length === 0
+            ? `<div class="text-muted" style="font-size:12px;padding:6px 0">No add-ons. Click "+ Add line" for things like tablecloths, glassware, smoke effects — anything you want to itemize.</div>`
+            : (q.lineItems.map((li, i) => `
+                <div style="display:grid;grid-template-columns:1fr 110px 32px;gap:8px;margin-bottom:6px;align-items:center">
+                  <input type="text" data-li-idx="${i}" data-li-field="label" value="${escapeHtmlSafe(li.label || '')}" placeholder="Label (e.g. Smoke-show signature)" class="form-input qb-line-input" style="font-size:13px;padding:6px 8px">
+                  <input type="number" min="0" data-li-idx="${i}" data-li-field="price" value="${li.price || 0}" placeholder="$" class="form-input qb-line-input" style="font-size:13px;padding:6px 8px">
+                  <button type="button" data-li-rm="${i}" class="btn btn-ghost btn-sm" style="padding:4px;font-size:14px;color:#E05252">✕</button>
+                </div>`).join(''))
+          }
         </div>
 
         <!-- PEAK + DISCOUNT -->
@@ -280,10 +352,22 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
             <div class="text-muted">Subtotal</div><div style="text-align:right">${moneyFmt(calc.subtotal)}</div>
             ${q.peakApplied?`<div class="text-muted">Peak adj.</div><div style="text-align:right">+${moneyFmt(calc.peakAdj)}</div>`:''}
             ${calc.discountAmt>0?`<div class="text-muted">Discount</div><div style="text-align:right;color:#22c55e">−${moneyFmt(calc.discountAmt)}</div>`:''}
-            <div style="font-weight:700;color:var(--text);font-size:18px;margin-top:4px">Total</div>
+            <div class="text-muted">Computed total</div><div style="text-align:right;${calc.hasOverride?'text-decoration:line-through;opacity:.7':''}">${moneyFmt(calc.computedTotal)}</div>
+            ${calc.hasOverride && calc.targetAdjustment !== 0 ? `<div class="text-muted">Adjustment to target</div><div style="text-align:right;color:${calc.targetAdjustment>0?'#FACC15':'#22c55e'}">${calc.targetAdjustment>0?'+':''}${moneyFmt(calc.targetAdjustment)}</div>`:''}
+            <div style="font-weight:700;color:var(--text);font-size:18px;margin-top:4px">Quoted total</div>
             <div style="text-align:right;font-weight:700;color:var(--gold);font-size:22px">${moneyFmt(calc.total)}</div>
             <div class="text-muted" style="font-size:12px">Deposit (${q.depositPct}%)</div><div style="text-align:right;font-size:12px">${moneyFmt(calc.deposit)}</div>
           </div>
+
+          <!-- TOP-DOWN OVERRIDE -->
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;flex-wrap:wrap">
+              <input type="checkbox" id="qb-override-on" ${calc.hasOverride?'checked':''}>
+              <span>Set my own total — I know the number, fit the line items to it</span>
+              ${calc.hasOverride?`<input type="number" min="0" id="qb-override-val" value="${q.totalOverride}" class="form-input" style="flex:0 0 120px;padding:4px 8px;font-size:13px">`:''}
+            </label>
+          </div>
+
           <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:12px">
             <span class="text-muted">Est. profit (admin only)</span>
             <span style="color:${marginColor};font-weight:700">${moneyFmt(calc.profit)} · ${Math.round(calc.marginPct)}% margin</span>
@@ -301,25 +385,22 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
           <button class="btn btn-ghost btn-sm" id="qb-copy">📋 Copy text</button>
         </div>
         <div class="text-muted" style="font-size:11px;margin-top:6px;line-height:1.5">
-          <strong>Lock</strong> = this is the final number (no stage change). <strong>Send</strong> = deliver to the client and move the lead to <em>Proposal Sent</em>.
+          <strong>Lock</strong> = final number (no stage change). <strong>Send</strong> = deliver to the client and move the lead to <em>Proposal Sent</em>.
         </div>
         <div id="qb-history" style="margin-top:14px"></div>
       </div>
     `;
 
-    /* Wire inputs — single delegated approach */
+    /* Wire inputs */
     container.querySelectorAll('.qb-input').forEach(el => {
       el.addEventListener('input', () => sync());
       el.addEventListener('change', () => sync());
     });
-    container.querySelectorAll('input[data-addon]').forEach(el => {
-      el.addEventListener('change', () => {
-        state.q.addOns[el.dataset.addon] = el.checked;
-        render();
-      });
+    container.querySelector('#qb-offmenu')?.addEventListener('change', (e) => {
+      state.q.offMenuEnabled = e.target.checked; render();
     });
     container.querySelector('#qb-peak')?.addEventListener('change', (e) => { state.q.peakApplied = e.target.checked; render(); });
-    container.querySelector('#qb-disctype')?.addEventListener('change', (e) => { state.q.discountType = e.target.value; sync(); });
+    container.querySelector('#qb-disctype')?.addEventListener('change', (e) => { state.q.discountType = e.target.value; render(); });
     container.querySelector('#qb-discval')?.addEventListener('input', (e) => { state.q.discountValue = parseFloat(e.target.value) || 0; render(); });
     container.querySelectorAll('.qb-preset').forEach(b => {
       b.addEventListener('click', () => {
@@ -328,6 +409,41 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
         render();
       });
     });
+    container.querySelector('#qb-add-line')?.addEventListener('click', () => {
+      state.q.lineItems.push({ label: '', price: 0 });
+      render();
+    });
+    container.querySelectorAll('.qb-line-input').forEach(el => {
+      el.addEventListener('input', () => {
+        const i = +el.dataset.liIdx;
+        const f = el.dataset.liField;
+        if (f === 'price') state.q.lineItems[i].price = parseFloat(el.value) || 0;
+        else state.q.lineItems[i].label = el.value;
+        /* don't re-render on every keystroke for label — re-render only for price totals */
+        if (f === 'price') render();
+      });
+      el.addEventListener('blur', () => render());
+    });
+    container.querySelectorAll('[data-li-rm]').forEach(b => {
+      b.addEventListener('click', () => {
+        state.q.lineItems.splice(+b.dataset.liRm, 1);
+        render();
+      });
+    });
+    container.querySelector('#qb-override-on')?.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        const c = calcQuote(state.q);
+        state.q.totalOverride = Math.round(c.computedTotal);
+      } else {
+        state.q.totalOverride = null;
+      }
+      render();
+    });
+    container.querySelector('#qb-override-val')?.addEventListener('input', (e) => {
+      state.q.totalOverride = parseFloat(e.target.value) || 0;
+      render();
+    });
+    container.querySelector('#qb-budget-info')?.addEventListener('click', () => showBudgetMath(state.q, calc));
     container.querySelector('#qb-notes')?.addEventListener('input', (e) => { state.q.notes = e.target.value; });
 
     container.querySelector('#qb-save')?.addEventListener('click', () => saveQuote('draft'));
@@ -341,19 +457,15 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
   function sync() {
     const q = state.q;
     q.serviceHours    = parseFloat(document.getElementById('qb-hours').value) || 0;
-    q.bartenders      = parseInt(document.getElementById('qb-bartenders').value, 10) || 1;
+    q.bartenders      = parseInt(document.getElementById('qb-bartenders').value, 10) || 0;
     q.bartenderRate   = parseFloat(document.getElementById('qb-rate').value) || 0;
     q.travelFee       = parseFloat(document.getElementById('qb-travel').value) || 0;
-    const newPkg      = document.getElementById('qb-package').value;
-    const pkgChanged  = newPkg !== q.packageKey;
-    q.packageKey      = newPkg;
-    if (q.packageKey === 'custom') {
-      q.packageFlatFee = parseFloat(document.getElementById('qb-pkgflat')?.value) || 0;
-    } else {
-      q.guestCount = parseInt(document.getElementById('qb-guests')?.value, 10) || q.guestCount;
+    q.customMenuFee   = parseFloat(document.getElementById('qb-menu').value) || 0;
+    if (q.offMenuEnabled) {
+      q.offMenuQty   = parseInt(document.getElementById('qb-offqty')?.value, 10) || 0;
+      q.offMenuPrice = parseFloat(document.getElementById('qb-offprice')?.value) || 0;
     }
-    if (pkgChanged) render(); // need to swap the guest/flat-fee input
-    else render();
+    render();
   }
 
   /* Save a quote at the given status. Lock does NOT change the lead stage —
@@ -372,11 +484,16 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
         bartenders: state.q.bartenders,
         bartenderRate: state.q.bartenderRate,
         travelFee: state.q.travelFee,
-        packageKey: state.q.packageKey,
-        packageFlatFee: state.q.packageFlatFee,
+        customMenuFee: state.q.customMenuFee,
+        offMenuEnabled: state.q.offMenuEnabled,
+        offMenuQty: state.q.offMenuQty,
+        offMenuPrice: state.q.offMenuPrice,
         guestCount: state.q.guestCount,
-        addOns: { ...state.q.addOns }
+        custom: [...(state.q.lineItems || [])]
       },
+      totalOverride: state.q.totalOverride,
+      computedTotal: calc.computedTotal,
+      targetAdjustment: calc.targetAdjustment,
       subtotal: calc.subtotal,
       peakApplied: state.q.peakApplied,
       peakMultiplier: state.q.peakMultiplier,
@@ -901,28 +1018,18 @@ function renderQuoteSettingsCard(mountId) {
   mount.innerHTML = `
     <div class="card" style="margin-top:18px">
       <div class="card-header"><span class="card-title">💰 Quote defaults</span></div>
-      <p class="text-muted" style="font-size:13px;margin-bottom:14px;line-height:1.5">Pricing used when a new quote is created. Saves to Firestore so your phone and laptop share the same numbers.</p>
+      <p class="text-muted" style="font-size:13px;margin-bottom:14px;line-height:1.5">Pricing used as starting values when a new quote is created. Saves to Firestore so your phone and laptop share the same numbers. You always edit per-quote on top of these.</p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <label class="qb-field"><span>Bartender rate ($/hr, charged)</span><input type="number" id="qs-rate" value="${D.bartenderRate}" class="form-input"></label>
         <label class="qb-field"><span>Bartender cost ($/hr, you pay)</span><input type="number" id="qs-cost" value="${D.bartenderCostHr}" class="form-input"></label>
         <label class="qb-field"><span>Travel base ($)</span><input type="number" id="qs-travel" value="${D.travelBase}" class="form-input"></label>
-        <label class="qb-field"><span>Default hours</span><input type="number" id="qs-hours" value="${D.hoursDefault}" class="form-input"></label>
+        <label class="qb-field"><span>Default service hours</span><input type="number" id="qs-hours" value="${D.hoursDefault}" class="form-input"></label>
         <label class="qb-field"><span>1 bartender per N guests</span><input type="number" id="qs-bpg" value="${D.bartendersPerGuests}" class="form-input"></label>
         <label class="qb-field"><span>Deposit %</span><input type="number" id="qs-dep" value="${D.depositPct}" class="form-input"></label>
         <label class="qb-field"><span>Peak multiplier (e.g. 1.15)</span><input type="number" step="0.05" id="qs-peak" value="${D.saturdayPeakMultiplier}" class="form-input"></label>
         <label class="qb-field"><span>Quote expires after (days)</span><input type="number" id="qs-exp" value="${D.quoteExpiryDays}" class="form-input"></label>
-      </div>
-
-      <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin:14px 0 6px">Drink packages ($/guest)</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-        ${Object.entries(D.packages).filter(([k]) => k !== 'custom').map(([k,p]) =>
-          `<label class="qb-field"><span>${p.label}</span><input type="number" data-pkg="${k}" value="${p.perGuest}" class="form-input qs-pkg"></label>`).join('')}
-      </div>
-
-      <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin:14px 0 6px">Add-on prices ($)</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        ${Object.entries(D.addOns).map(([k,a]) =>
-          `<label class="qb-field"><span>${a.label}</span><input type="number" data-addon="${k}" value="${a.price}" class="form-input qs-addon"></label>`).join('')}
+        <label class="qb-field"><span>Custom drink menu — default fee ($)</span><input type="number" id="qs-menu" value="${D.customMenuFeeDefault}" class="form-input"></label>
+        <label class="qb-field"><span>Off-menu request — default $/drink</span><input type="number" id="qs-off" value="${D.offMenuPerDrink}" class="form-input"></label>
       </div>
 
       <button class="btn btn-primary" id="qs-save" style="margin-top:14px">Save quote defaults</button>
@@ -939,17 +1046,9 @@ function renderQuoteSettingsCard(mountId) {
       depositPct: +document.getElementById('qs-dep').value,
       saturdayPeakMultiplier: +document.getElementById('qs-peak').value,
       quoteExpiryDays: +document.getElementById('qs-exp').value,
-      packages: { ...D.packages },
-      addOns: { ...D.addOns }
+      customMenuFeeDefault: +document.getElementById('qs-menu').value,
+      offMenuPerDrink: +document.getElementById('qs-off').value
     };
-    document.querySelectorAll('.qs-pkg').forEach(el => {
-      const k = el.dataset.pkg;
-      updates.packages[k] = { ...D.packages[k], perGuest: +el.value };
-    });
-    document.querySelectorAll('.qs-addon').forEach(el => {
-      const k = el.dataset.addon;
-      updates.addOns[k] = { ...D.addOns[k], price: +el.value };
-    });
     try {
       await saveQuoteDefaults(updates);
       logActivity('update', 'settings', 'quote_defaults', 'Updated quote defaults');
