@@ -252,6 +252,38 @@ function showBudgetMath(q, calc) {
    Renders into the provided container. Self-managed state.
    ───────────────────────────────────────────────────────────────────────── */
 
+/* Inner HTML for the totals grid — extracted so repaintTotals() can refresh
+ * it in place without rebuilding the whole builder DOM. */
+function totalsGridHTML(q, calc) {
+  return `
+    <div class="text-muted">Subtotal</div><div style="text-align:right">${moneyFmt(calc.subtotal)}</div>
+    ${q.peakApplied?`<div class="text-muted">Peak adj.</div><div style="text-align:right">+${moneyFmt(calc.peakAdj)}</div>`:''}
+    ${calc.discountAmt>0?`<div class="text-muted">Discount</div><div style="text-align:right;color:#22c55e">−${moneyFmt(calc.discountAmt)}</div>`:''}
+    <div class="text-muted">Computed total</div><div style="text-align:right;${calc.hasOverride?'text-decoration:line-through;opacity:.7':''}">${moneyFmt(calc.computedTotal)}</div>
+    ${calc.hasOverride && calc.targetAdjustment !== 0 ? `<div class="text-muted">Adjustment to target</div><div style="text-align:right;color:${calc.targetAdjustment>0?'#FACC15':'#22c55e'}">${calc.targetAdjustment>0?'+':''}${moneyFmt(calc.targetAdjustment)}</div>`:''}
+    <div style="font-weight:700;color:var(--text);font-size:18px;margin-top:4px">Quoted total</div>
+    <div style="text-align:right;font-weight:700;color:var(--gold);font-size:22px">${moneyFmt(calc.total)}</div>
+    <div class="text-muted" style="font-size:12px">Deposit (${q.depositPct}%)</div><div style="text-align:right;font-size:12px">${moneyFmt(calc.deposit)}</div>
+  `;
+}
+
+function budgetBadgeHTML(q, calc) {
+  if (q.budgetValid && q.budgetTarget > 0) {
+    const diff = calc.total - q.budgetTarget;
+    let bg = 'rgba(34,197,94,0.15)', color = '#22c55e', label = `✓ Under budget by ${moneyFmt(-diff)}`;
+    if (diff > 0 && diff / q.budgetTarget < 0.1) {
+      bg = 'rgba(250,204,21,0.15)'; color = '#FACC15'; label = `⚠ ${moneyFmt(diff)} over budget`;
+    } else if (diff > 0) {
+      bg = 'rgba(224,82,82,0.15)'; color = '#E05252'; label = `${moneyFmt(diff)} over budget`;
+    }
+    return `<button type="button" id="qb-budget-info" class="badge" style="background:${bg};color:${color};border:none;cursor:pointer">${label} ⓘ</button>`;
+  }
+  if (q.budgetRaw) {
+    return `<button type="button" id="qb-budget-info" class="badge" style="background:rgba(100,116,139,0.15);color:var(--text-muted);border:none;cursor:pointer">Budget unclear ⓘ</button>`;
+  }
+  return '';
+}
+
 function renderQuoteBuilder(containerId, lead, options = {}) {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -261,30 +293,13 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
   function render() {
     const q = state.q;
     const calc = calcQuote(q);
-
-    /* Budget badge — only shown when budget parsed cleanly into a sane range.
-     * Click → modal with the math. */
-    let budgetBadge = '';
-    if (q.budgetValid && q.budgetTarget > 0) {
-      const diff = calc.total - q.budgetTarget;
-      let bg = 'rgba(34,197,94,0.15)', color = '#22c55e', label = `✓ Under budget by ${moneyFmt(-diff)}`;
-      if (diff > 0 && diff / q.budgetTarget < 0.1) {
-        bg = 'rgba(250,204,21,0.15)'; color = '#FACC15'; label = `⚠ ${moneyFmt(diff)} over budget`;
-      } else if (diff > 0) {
-        bg = 'rgba(224,82,82,0.15)'; color = '#E05252'; label = `${moneyFmt(diff)} over budget`;
-      }
-      budgetBadge = `<button type="button" id="qb-budget-info" class="badge" style="background:${bg};color:${color};border:none;cursor:pointer">${label} ⓘ</button>`;
-    } else if (q.budgetRaw) {
-      budgetBadge = `<button type="button" id="qb-budget-info" class="badge" style="background:rgba(100,116,139,0.15);color:var(--text-muted);border:none;cursor:pointer">Budget unclear ⓘ</button>`;
-    }
-
     const marginColor = calc.marginPct >= 50 ? '#22c55e' : calc.marginPct >= 35 ? '#FACC15' : '#E05252';
 
     container.innerHTML = `
       <div class="qb-wrap" style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:12px;padding:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px;flex-wrap:wrap">
           <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--gold)">💰 Quote builder</div>
-          ${budgetBadge}
+          <div id="qb-budget-slot">${budgetBadgeHTML(q, calc)}</div>
         </div>
 
         <!-- BARTENDER + TRAVEL -->
@@ -292,18 +307,18 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
           <label class="qb-field"><span>Service hours</span>
             <input type="number" min="0" step="0.5" id="qb-hours" value="${q.serviceHours}" class="form-input qb-input"></label>
           <label class="qb-field"><span>Bartenders</span>
-            <input type="number" min="0" id="qb-bartenders" value="${q.bartenders}" class="form-input qb-input"></label>
+            <input type="number" min="0" step="1" id="qb-bartenders" value="${q.bartenders}" class="form-input qb-input"></label>
           <label class="qb-field"><span>Rate ($/hr per bartender)</span>
-            <input type="number" min="0" id="qb-rate" value="${q.bartenderRate}" class="form-input qb-input"></label>
+            <input type="number" min="0" step="5" id="qb-rate" value="${q.bartenderRate}" class="form-input qb-input"></label>
           <label class="qb-field"><span>Travel fee</span>
-            <input type="number" min="0" id="qb-travel" value="${q.travelFee}" class="form-input qb-input"></label>
+            <input type="number" min="0" step="25" id="qb-travel" value="${q.travelFee}" class="form-input qb-input"></label>
         </div>
 
         <!-- DRINK MENU (Lake Salt's real model: custom curated menu, flat fee) -->
         <div style="margin-top:14px;padding:12px;border:1px solid var(--border);border-radius:10px">
           <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:8px">Custom drink menu</div>
           <label class="qb-field"><span>Menu fee (cocktails + mocktails, curated)</span>
-            <input type="number" min="0" id="qb-menu" value="${q.customMenuFee}" class="form-input qb-input"></label>
+            <input type="number" min="0" step="25" id="qb-menu" value="${q.customMenuFee}" class="form-input qb-input"></label>
 
           <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:10px">
             <input type="checkbox" id="qb-offmenu" ${q.offMenuEnabled?'checked':''}>
@@ -312,11 +327,11 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
           ${q.offMenuEnabled ? `
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin-top:8px;padding-left:24px">
               <label class="qb-field"><span>Expected off-menu drinks</span>
-                <input type="number" min="0" id="qb-offqty" value="${q.offMenuQty}" class="form-input qb-input"></label>
+                <input type="number" min="0" step="1" id="qb-offqty" value="${q.offMenuQty}" class="form-input qb-input"></label>
               <label class="qb-field"><span>Per drink ($)</span>
-                <input type="number" min="0" id="qb-offprice" value="${q.offMenuPrice}" class="form-input qb-input"></label>
+                <input type="number" min="0" step="1" id="qb-offprice" value="${q.offMenuPrice}" class="form-input qb-input"></label>
             </div>
-            <div class="text-muted" style="font-size:11px;margin-top:4px;padding-left:24px">${moneyFmt((q.offMenuQty||0)*(q.offMenuPrice||0))} expected</div>
+            <div class="text-muted" id="qb-offmenu-expected" style="font-size:11px;margin-top:4px;padding-left:24px">${moneyFmt((q.offMenuQty||0)*(q.offMenuPrice||0))} expected</div>
           `: ''}
         </div>
 
@@ -363,29 +378,20 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
 
         <!-- TOTALS STRIP -->
         <div style="margin-top:14px;padding:12px;background:linear-gradient(135deg,rgba(201,168,76,0.10),rgba(139,155,126,0.08));border:1px solid rgba(201,168,76,0.35);border-radius:10px">
-          <div style="display:grid;grid-template-columns:1fr auto;row-gap:4px;font-size:13px">
-            <div class="text-muted">Subtotal</div><div style="text-align:right">${moneyFmt(calc.subtotal)}</div>
-            ${q.peakApplied?`<div class="text-muted">Peak adj.</div><div style="text-align:right">+${moneyFmt(calc.peakAdj)}</div>`:''}
-            ${calc.discountAmt>0?`<div class="text-muted">Discount</div><div style="text-align:right;color:#22c55e">−${moneyFmt(calc.discountAmt)}</div>`:''}
-            <div class="text-muted">Computed total</div><div style="text-align:right;${calc.hasOverride?'text-decoration:line-through;opacity:.7':''}">${moneyFmt(calc.computedTotal)}</div>
-            ${calc.hasOverride && calc.targetAdjustment !== 0 ? `<div class="text-muted">Adjustment to target</div><div style="text-align:right;color:${calc.targetAdjustment>0?'#FACC15':'#22c55e'}">${calc.targetAdjustment>0?'+':''}${moneyFmt(calc.targetAdjustment)}</div>`:''}
-            <div style="font-weight:700;color:var(--text);font-size:18px;margin-top:4px">Quoted total</div>
-            <div style="text-align:right;font-weight:700;color:var(--gold);font-size:22px">${moneyFmt(calc.total)}</div>
-            <div class="text-muted" style="font-size:12px">Deposit (${q.depositPct}%)</div><div style="text-align:right;font-size:12px">${moneyFmt(calc.deposit)}</div>
-          </div>
+          <div id="qb-totals-grid" style="display:grid;grid-template-columns:1fr auto;row-gap:4px;font-size:13px">${totalsGridHTML(q, calc)}</div>
 
           <!-- TOP-DOWN OVERRIDE -->
           <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
             <label style="display:flex;align-items:center;gap:8px;font-size:12px;flex-wrap:wrap">
               <input type="checkbox" id="qb-override-on" ${calc.hasOverride?'checked':''}>
               <span>Set my own total — I know the number, fit the line items to it</span>
-              ${calc.hasOverride?`<input type="number" min="0" id="qb-override-val" value="${q.totalOverride}" class="form-input" style="flex:0 0 120px;padding:4px 8px;font-size:13px">`:''}
+              ${calc.hasOverride?`<input type="number" min="0" step="50" id="qb-override-val" value="${q.totalOverride}" class="form-input" style="flex:0 0 120px;padding:4px 8px;font-size:13px">`:''}
             </label>
           </div>
 
           <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:12px">
             <span class="text-muted">Est. profit (admin only)</span>
-            <span style="color:${marginColor};font-weight:700">${moneyFmt(calc.profit)} · ${Math.round(calc.marginPct)}% margin</span>
+            <span id="qb-margin-line" style="color:${marginColor};font-weight:700">${moneyFmt(calc.profit)} · ${Math.round(calc.marginPct)}% margin</span>
           </div>
         </div>
 
@@ -406,17 +412,18 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
       </div>
     `;
 
-    /* Wire inputs */
+    /* Wire inputs — numeric/text fields call repaintTotals() (NO full
+     * re-render, so the field keeps focus and the cursor stays put while
+     * you type). Only structural changes call render(). */
     container.querySelectorAll('.qb-input').forEach(el => {
-      el.addEventListener('input', () => sync());
-      el.addEventListener('change', () => sync());
+      el.addEventListener('input', () => { readFieldsIntoState(); repaintTotals(); });
     });
     container.querySelector('#qb-offmenu')?.addEventListener('change', (e) => {
       state.q.offMenuEnabled = e.target.checked; render();
     });
     container.querySelector('#qb-peak')?.addEventListener('change', (e) => { state.q.peakApplied = e.target.checked; render(); });
-    container.querySelector('#qb-disctype')?.addEventListener('change', (e) => { state.q.discountType = e.target.value; render(); });
-    container.querySelector('#qb-discval')?.addEventListener('input', (e) => { state.q.discountValue = parseFloat(e.target.value) || 0; render(); });
+    container.querySelector('#qb-disctype')?.addEventListener('change', (e) => { state.q.discountType = e.target.value; repaintTotals(); });
+    container.querySelector('#qb-discval')?.addEventListener('input', (e) => { state.q.discountValue = parseFloat(e.target.value) || 0; repaintTotals(); });
     container.querySelectorAll('.qb-preset').forEach(b => {
       b.addEventListener('click', () => {
         state.q.discountType = 'pct';
@@ -432,12 +439,15 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
       el.addEventListener('input', () => {
         const i = +el.dataset.liIdx;
         const f = el.dataset.liField;
-        if (f === 'price') state.q.lineItems[i].price = parseFloat(el.value) || 0;
-        else state.q.lineItems[i].label = el.value;
-        /* don't re-render on every keystroke for label — re-render only for price totals */
-        if (f === 'price') render();
+        if (f === 'price') {
+          state.q.lineItems[i].price = parseFloat(el.value) || 0;
+          repaintTotals();
+        } else {
+          state.q.lineItems[i].label = el.value;
+          /* label change doesn't affect totals — no repaint needed,
+           * which also means cursor stays put. */
+        }
       });
-      el.addEventListener('blur', () => render());
     });
     container.querySelectorAll('[data-li-rm]').forEach(b => {
       b.addEventListener('click', () => {
@@ -456,9 +466,16 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
     });
     container.querySelector('#qb-override-val')?.addEventListener('input', (e) => {
       state.q.totalOverride = parseFloat(e.target.value) || 0;
-      render();
+      repaintTotals();
     });
-    container.querySelector('#qb-budget-info')?.addEventListener('click', () => showBudgetMath(state.q, calc));
+
+    /* Budget badge sits inside #qb-budget-slot which gets repainted by
+     * repaintTotals(); delegate the click so it survives repaints. */
+    container.querySelector('#qb-budget-slot')?.addEventListener('click', (e) => {
+      if (e.target.closest('#qb-budget-info')) {
+        showBudgetMath(state.q, calcQuote(state.q));
+      }
+    });
     container.querySelector('#qb-notes')?.addEventListener('input', (e) => { state.q.notes = e.target.value; });
 
     container.querySelector('#qb-save')?.addEventListener('click', () => saveQuote('draft'));
@@ -469,18 +486,46 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
     loadHistory();
   }
 
-  function sync() {
+  /* Read every numeric/text input into state.q WITHOUT touching the DOM.
+   * Called on every keystroke so the source of truth stays in sync, but
+   * the focused input is never destroyed. */
+  function readFieldsIntoState() {
     const q = state.q;
-    q.serviceHours    = parseFloat(document.getElementById('qb-hours').value) || 0;
-    q.bartenders      = parseInt(document.getElementById('qb-bartenders').value, 10) || 0;
-    q.bartenderRate   = parseFloat(document.getElementById('qb-rate').value) || 0;
-    q.travelFee       = parseFloat(document.getElementById('qb-travel').value) || 0;
-    q.customMenuFee   = parseFloat(document.getElementById('qb-menu').value) || 0;
+    const v = (id, fn = parseFloat) => {
+      const el = document.getElementById(id);
+      if (!el) return undefined;
+      const n = fn(el.value);
+      return isNaN(n) ? 0 : n;
+    };
+    q.serviceHours    = v('qb-hours') ?? q.serviceHours;
+    q.bartenders      = v('qb-bartenders', s => parseInt(s, 10)) ?? q.bartenders;
+    q.bartenderRate   = v('qb-rate') ?? q.bartenderRate;
+    q.travelFee       = v('qb-travel') ?? q.travelFee;
+    q.customMenuFee   = v('qb-menu') ?? q.customMenuFee;
     if (q.offMenuEnabled) {
-      q.offMenuQty   = parseInt(document.getElementById('qb-offqty')?.value, 10) || 0;
-      q.offMenuPrice = parseFloat(document.getElementById('qb-offprice')?.value) || 0;
+      q.offMenuQty   = v('qb-offqty', s => parseInt(s, 10)) ?? q.offMenuQty;
+      q.offMenuPrice = v('qb-offprice') ?? q.offMenuPrice;
     }
-    render();
+    const discEl = document.getElementById('qb-discval');
+    if (discEl) q.discountValue = parseFloat(discEl.value) || 0;
+  }
+
+  /* Surgical UI refresh — touches only the parts that depend on calc.
+   * No focus loss, no scroll jump. */
+  function repaintTotals() {
+    const calc = calcQuote(state.q);
+    const totals = document.getElementById('qb-totals-grid');
+    if (totals) totals.innerHTML = totalsGridHTML(state.q, calc);
+    const slot = document.getElementById('qb-budget-slot');
+    if (slot) slot.innerHTML = budgetBadgeHTML(state.q, calc);
+    const offExp = document.getElementById('qb-offmenu-expected');
+    if (offExp) offExp.textContent = `${moneyFmt((state.q.offMenuQty||0)*(state.q.offMenuPrice||0))} expected`;
+    const margin = document.getElementById('qb-margin-line');
+    if (margin) {
+      const c = calc.marginPct >= 50 ? '#22c55e' : calc.marginPct >= 35 ? '#FACC15' : '#E05252';
+      margin.style.color = c;
+      margin.textContent = `${moneyFmt(calc.profit)} · ${Math.round(calc.marginPct)}% margin`;
+    }
   }
 
   /* Save a quote at the given status. Lock does NOT change the lead stage —
