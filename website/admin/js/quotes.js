@@ -767,7 +767,8 @@ function openNewQuoteModal() {
     </div>
   `, { wide: false });
 
-  /* Search */
+  /* Search — substring match first, then fuzzy (Levenshtein ≤ 2 per word).
+   * "kenzie" finds "Kinzie", "estman" finds "Eastman", etc. */
   const search = document.getElementById('nq-search');
   const results = document.getElementById('nq-results');
   let searchTimeout;
@@ -777,12 +778,15 @@ function openNewQuoteModal() {
     if (!term) { results.innerHTML = ''; return; }
     searchTimeout = setTimeout(async () => {
       try {
-        const snap = await db.collection('leads').limit(200).get();
-        const matches = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-          .filter(l => `${l.name||''}${l.email||''}${l.phone||''}`.toLowerCase().includes(term))
-          .slice(0, 8);
-        results.innerHTML = matches.length
-          ? matches.map(l => `<div style="padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer" onclick="closeModal();setTimeout(()=>openLeadModal('${l.id}'),50)">
+        const snap = await db.collection('leads').limit(500).get();
+        const leads = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const scored = leads.map(l => ({ l, m: scoreLeadMatch(l, term) }))
+          .filter(x => x.m !== null)
+          .sort((a, b) => a.m - b.m)
+          .slice(0, 8)
+          .map(x => x.l);
+        results.innerHTML = scored.length
+          ? scored.map(l => `<div style="padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer" onclick="closeModal();setTimeout(()=>openLeadModal('${l.id}'),50)">
               <div style="font-size:13px;font-weight:600">${l.name||'(no name)'}</div>
               <div class="text-muted" style="font-size:11px">${l.email||''} · ${l.eventType||''} · ${l.eventDate||''}</div>
             </div>`).join('')
@@ -1006,6 +1010,71 @@ async function mergeLeads(keepId, dropIds) {
 window.openMergeDuplicatesModal = openMergeDuplicatesModal;
 
 window.openNewQuoteModal = openNewQuoteModal;
+
+/* ─── Fuzzy lead matching ─── Returns a numeric score (lower = better) or
+ * null for no match. Tries cheap checks first (substring on the combined
+ * name/email/phone haystack), then per-word Levenshtein on the name. */
+function scoreLeadMatch(lead, term) {
+  if (!term) return null;
+  const t = term.toLowerCase();
+  const name  = String(lead.name  || '').toLowerCase();
+  const email = String(lead.email || '').toLowerCase();
+  const phone = String(lead.phone || '').replace(/\D/g, '');
+  const tdig  = t.replace(/\D/g, '');
+
+  /* Cheap exact / substring matches */
+  if (name === t || email === t) return 0;
+  if (name.startsWith(t) || email.startsWith(t)) return 1;
+  if (name.includes(t)) return 2;
+  if (email.includes(t)) return 3;
+  if (tdig.length >= 4 && phone.includes(tdig)) return 4;
+
+  /* Fuzzy: each search word must approximately match some word in the name */
+  const termWords = t.split(/\s+/).filter(Boolean);
+  const nameWords = name.split(/\s+/).filter(Boolean);
+  if (!nameWords.length) return null;
+
+  let totalDist = 0;
+  for (const tw of termWords) {
+    let best = Infinity;
+    for (const nw of nameWords) {
+      if (nw.startsWith(tw)) { best = 0; break; }
+      const lenDiff = Math.abs(nw.length - tw.length);
+      if (lenDiff > 2) continue;
+      const d = levenshteinCapped(nw, tw, 2);
+      if (d < best) best = d;
+    }
+    if (best === Infinity || best > 2) return null;
+    totalDist += best;
+  }
+  /* Offset so fuzzy hits sort below exact hits */
+  return 10 + totalDist;
+}
+
+/* Levenshtein distance with an early-exit cap. Returns Infinity if the true
+ * distance exceeds `cap`. Adequate for short names (under ~20 chars). */
+function levenshteinCapped(a, b, cap) {
+  const m = a.length, n = b.length;
+  if (!m) return n <= cap ? n : Infinity;
+  if (!n) return m <= cap ? m : Infinity;
+  if (Math.abs(m - n) > cap) return Infinity;
+  let prev = new Array(n + 1);
+  let curr = new Array(n + 1);
+  for (let j = 0; j <= n; j++) prev[j] = j;
+  for (let i = 1; i <= m; i++) {
+    curr[0] = i;
+    let rowMin = curr[0];
+    for (let j = 1; j <= n; j++) {
+      curr[j] = a[i - 1] === b[j - 1]
+        ? prev[j - 1]
+        : 1 + Math.min(prev[j - 1], prev[j], curr[j - 1]);
+      if (curr[j] < rowMin) rowMin = curr[j];
+    }
+    if (rowMin > cap) return Infinity;
+    [prev, curr] = [curr, prev];
+  }
+  return prev[n] <= cap ? prev[n] : Infinity;
+}
 
 /* ═════════════════════════════════════════════════════════════════════════
    SETTINGS CARD — drops into the Settings page.
