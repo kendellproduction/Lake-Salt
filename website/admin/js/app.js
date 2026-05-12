@@ -23,6 +23,7 @@ const MODULES = {
   'event-day': () => renderEventDay(),
   marketing:   () => renderMarketing(),
   notes:       () => renderNotes(),
+  quotes:      () => renderQuotes(),
   settings:    () => renderSettings()
 };
 

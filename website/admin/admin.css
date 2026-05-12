@@ -1138,6 +1138,15 @@ td { padding: 11px 12px; font-size: 12.5px; }
   .stat-value { font-size: 24px !important; }
 }
 
+/* Quote builder field labels */
+.qb-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.qb-field > span { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; color: var(--text-muted); }
+.qb-field .form-input, .qb-field .form-select { font-size: 13px; padding: 6px 10px; }
+@media (max-width: 540px) {
+  .qb-grid { grid-template-columns: 1fr !important; }
+  .qb-wrap .qb-grid + div > div { grid-template-columns: 1fr !important; }
+}
+
 /* Upcoming-calls banner — phone layout: stack the date/time label above the
  * name, give the cancel × a generous tap target, drop the right-arrow chevron
  * since the whole row tap is obvious on mobile. */

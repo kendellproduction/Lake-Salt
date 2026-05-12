@@ -218,6 +218,8 @@ async function renderSettings() {
       </p>
     </div>
 
+    <div id="settings-quote-defaults-mount"></div>
+
     <div class="card" style="margin-top:18px">
       <div class="card-header"><span class="card-title">📱 Mobile experience</span></div>
       <p class="text-muted" style="font-size:13px;line-height:1.6">
@@ -246,4 +248,9 @@ async function renderSettings() {
       showToast('Theme applied');
     });
   });
+
+  /* Mount the quote-defaults editor (from quotes.js) */
+  if (typeof renderQuoteSettingsCard === 'function') {
+    renderQuoteSettingsCard('settings-quote-defaults-mount');
+  }
 }

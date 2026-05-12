@@ -211,8 +211,11 @@ async function openLeadModal(id) {
         </div>
       </div>
 
-      <!-- Right: notes + tasks -->
+      <!-- Right: quote builder + notes + tasks -->
       <div class="lead-modal-section">
+        <div class="form-section-title">Quote</div>
+        <div id="lead-quote-builder-${id}"></div>
+        <div class="divider"></div>
         <div class="form-section-title">Notes</div>
         <div class="notes-thread" id="notes-thread-${id}">
           ${(l.notes||[]).length ? (l.notes||[]).map(n => `
@@ -239,6 +242,9 @@ async function openLeadModal(id) {
   { wide: true });
 
   loadLeadCallBooking(id, l.name);
+  if (typeof renderQuoteBuilder === 'function') {
+    renderQuoteBuilder(`lead-quote-builder-${id}`, l, { leadEmail: l.email });
+  }
 }
 
 /* Look up any active call_booking for this lead and render a panel with the
