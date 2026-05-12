@@ -66,12 +66,46 @@ function initAuth() {
     }
   });
 
-  // Sign in button
-  document.getElementById('google-signin-btn').addEventListener('click', () => {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    auth.signInWithPopup(provider).catch(err => {
+  /* Complete a pending redirect-based sign-in (set when the popup flow
+   * falls back to a full-page redirect). Failures are surfaced inline. */
+  auth.getRedirectResult().catch(err => {
+    if (err && err.code && err.code !== 'auth/no-auth-event') {
       showAuthError('Sign-in failed: ' + err.message);
-    });
+    }
+  });
+
+  // Sign in button — guards against double-clicks (which trigger
+  // auth/cancelled-popup-request) and falls back to signInWithRedirect if
+  // the popup is blocked by COOP, ad blockers, or strict browsers.
+  const btn = document.getElementById('google-signin-btn');
+  btn.addEventListener('click', async () => {
+    if (btn.disabled) return;
+    btn.disabled = true;
+    const origText = btn.innerHTML;
+    btn.textContent = 'Signing in…';
+    const provider = new firebase.auth.GoogleAuthProvider();
+    try {
+      await auth.signInWithPopup(provider);
+      /* onAuthStateChanged handles the rest — no need to re-enable. */
+    } catch (err) {
+      const code = err && err.code;
+      const popupFailed = code === 'auth/popup-blocked'
+        || code === 'auth/popup-closed-by-user'
+        || code === 'auth/cancelled-popup-request'
+        || code === 'auth/web-storage-unsupported';
+      if (popupFailed) {
+        try {
+          await auth.signInWithRedirect(provider);
+          return; // page is about to navigate
+        } catch (e2) {
+          showAuthError('Sign-in failed: ' + (e2.message || code));
+        }
+      } else {
+        showAuthError('Sign-in failed: ' + (err.message || code));
+      }
+      btn.disabled = false;
+      btn.innerHTML = origText;
+    }
   });
 
   // Sign out button

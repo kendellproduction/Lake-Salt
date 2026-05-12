@@ -53,8 +53,11 @@ async function saveQuoteDefaults(updates) {
   return QUOTE_DEFAULTS;
 }
 
-/* Bootstrap defaults on admin load. */
-if (typeof db !== 'undefined') loadQuoteDefaults();
+/* Bootstrap defaults — only AFTER auth, so we don't generate
+ * permission-denied noise on the sign-in screen. */
+if (typeof auth !== 'undefined' && auth.onAuthStateChanged) {
+  auth.onAuthStateChanged((user) => { if (user) loadQuoteDefaults(); });
+}
 
 const moneyFmt = (n) => `$${(Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
