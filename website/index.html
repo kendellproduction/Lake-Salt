@@ -2393,6 +2393,8 @@
       position: relative;
     }
     .service-card:first-child .sc-image { height: 260px; }
+    .sc-image-adobe { height: 340px; }
+    .sc-image-adobe img { object-position: center 30%; }
     .sc-image img {
       width: 100%;
       height: 100%;
@@ -3989,19 +3991,12 @@
     <!-- Step 5: Guest count -->
     <div class="ob-panel" id="ob-p5">
       <h2 class="onboarding-q">How many<br/><em>guests?</em></h2>
-      <div class="ob-chips" id="ob-guests">
-        <button class="ob-chip" data-val="under_50" onclick="obToggleChip(this,'guestRange',true)">Under 50</button>
-        <button class="ob-chip" data-val="50_100" onclick="obToggleChip(this,'guestRange',true)">50–100</button>
-        <button class="ob-chip" data-val="100_150" onclick="obToggleChip(this,'guestRange',true)">100–150</button>
-        <button class="ob-chip" data-val="150_200" onclick="obToggleChip(this,'guestRange',true)">150–200</button>
-        <button class="ob-chip" data-val="200_plus" onclick="obToggleChip(this,'guestRange',true)">200+</button>
-      </div>
-      <input class="ob-input" id="ob-guest-num" type="number" placeholder="Or enter a number" min="1" />
+      <p class="ob-sub" style="text-align:center;color:var(--ink-muted,#7a7a7a);margin:-0.5rem 0 1rem;font-size:0.95rem;">Exact number — even a best estimate. This drives the quote.</p>
+      <input class="ob-input" id="ob-guest-num" type="number" inputmode="numeric" placeholder="e.g. 120" min="1" max="2000" required />
       <div class="ob-nav">
         <button class="ob-back" onclick="obGoTo(4)">← Back</button>
         <div style="display:flex;align-items:center;gap:0.6rem;">
-          <button class="ob-skip-step" onclick="obSkipAll()">Skip</button>
-          <button class="ob-next-btn" onclick="obNext()">Next →</button>
+          <button class="ob-next-btn" onclick="obNextGuests()">Next →</button>
         </div>
       </div>
       <button class="ob-goto-site-sm" onclick="obSkipAll()">Go to Site &rarr;</button>
@@ -4426,8 +4421,8 @@
 
       <!-- CORPORATE -->
       <div class="service-card">
-        <div class="sc-image">
-          <img src="images/IMG_2491.jpeg" alt="Lake Salt bartenders serving guests at a corporate event" loading="lazy" />
+        <div class="sc-image sc-image-adobe">
+          <img src="images/IMG_8491.jpeg" alt="Lake Salt bartenders smiling behind a fully-stocked bar in front of the Adobe logo at Adobe Lehi" loading="lazy" />
           <div class="sc-tag tag-corporate">Corporate</div>
         </div>
         <div class="sc-body">
@@ -5028,7 +5023,7 @@
           </div>
           <div class="form-group">
             <label class="form-label">Guest Count</label>
-            <input type="text" name="guest_count" class="form-input" placeholder="Approx. number of guests" />
+            <input type="number" name="guest_count" class="form-input" placeholder="Exact number of guests" min="1" max="2000" required />
           </div>
         </div>
         <div class="form-row">
@@ -5446,7 +5441,6 @@ let obData = {
   date: '',
   time: '',
   endTime: '',
-  guestRange: null,
   guestNum: '',
   hasBuiltInBar: null,
   name: '',
@@ -5585,6 +5579,17 @@ function obNext() {
   if (obStep < obTotalSteps) obGoTo(obStep + 1);
 }
 
+function obNextGuests() {
+  const el = document.getElementById('ob-guest-num');
+  const n = parseInt((el && el.value || '').trim(), 10);
+  if (!n || n < 1) {
+    if (el) { el.focus(); el.reportValidity ? el.reportValidity() : alert('Please enter a guest count.'); }
+    return;
+  }
+  obData.guestNum = String(n);
+  obNext();
+}
+
 function obSkipAll() {
   trackEvent('quiz_skipped', { step: obStep });
   chooseMode('wedding');
@@ -5708,7 +5713,7 @@ function obSubmitQuiz() {
   form.querySelector('[name="event_date"]').value = obData.date ? new Date(obData.date).toISOString().split('T')[0] : '';
   form.querySelector('[name="event_start_time"]').value = obData.time || '';
   form.querySelector('[name="event_end_time"]').value = obData.endTime || '';
-  form.querySelector('[name="guest_count"]').value = obData.guestNum || (obData.guestRange ? { under_50: 'Under 50', '50_100': '50–100', '100_200': '100–200', '200_plus': '200+' }[obData.guestRange] || '' : '');
+  form.querySelector('[name="guest_count"]').value = obData.guestNum || '';
   form.querySelector('[name="venue"]').value = obData.venueText || (obData.venue ? { home: 'At a Home', business: 'At a Business', venue_hall: 'At a Venue', outdoors: 'Outdoors' }[obData.venue] || '' : '');
   form.querySelector('[name="has_built_in_bar"]').value = obData.hasBuiltInBar ? { yes: 'Yes', no: 'No', unsure: 'Unsure' }[obData.hasBuiltInBar] || '' : '';
   form.querySelector('[name="budget"]').value = obData.budget || '';
@@ -5778,14 +5783,7 @@ function prefillForm() {
 
   // Guest count
   const guestInput = document.querySelector('input[name="guest_count"]');
-  if (guestInput) {
-    if (d.guestNum) {
-      guestInput.value = d.guestNum;
-    } else if (d.guestRange) {
-      const gl = { under_50: 'Under 50', '50_100': '50–100', '100_200': '100–200', '200_plus': '200+' };
-      guestInput.value = gl[d.guestRange] || '';
-    }
-  }
+  if (guestInput && d.guestNum) guestInput.value = d.guestNum;
 
   // Time (start and end)
   const timeHidden = document.getElementById('form-event-time');
@@ -5852,7 +5850,7 @@ function restartQuiz() {
   if (nqBtn) nqBtn.style.display = 'none';
 
   // Reset quiz state
-  obData = { eventType: 'all', drinks: [], drinkDetail: '', venue: null, venueText: '', date: '', guestRange: null, guestNum: '' };
+  obData = { eventType: 'all', drinks: [], drinkDetail: '', venue: null, venueText: '', date: '', guestNum: '' };
   obStep = 1;
   // Returning users hitting "New Quote" already chose bartending — skip intent step
   const intentPanel = document.getElementById('ob-intent');
