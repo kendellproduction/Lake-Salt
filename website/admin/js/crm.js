@@ -179,10 +179,15 @@ async function openLeadModal(id) {
     }
   }
 
-  openModal(`Lead: ${l.name || 'Unknown'}`, `
+  const mergeBadge = Array.isArray(l.mergeHistory) && l.mergeHistory.length
+    ? `<button type="button" class="badge" onclick="showMergeHistory('${id}')" style="background:rgba(100,116,139,0.2);color:#94a3b8;border:none;cursor:pointer;margin-left:6px">📎 Merged from ${l.mergeHistory.length} duplicate${l.mergeHistory.length===1?'':'s'} · view</button>`
+    : '';
+
+  openModal(`Lead: ${l.name || 'Unknown'}${mergeBadge ? '' : ''}`, `
     <div class="lead-modal-grid">
       <!-- Left: info + stage -->
       <div class="lead-modal-section">
+        ${mergeBadge ? `<div style="margin-bottom:10px">${mergeBadge}</div>` : ''}
         <div id="lead-call-booking-${id}"></div>
         <div class="form-section-title">Contact Info</div>
         <div class="lead-info-item"><span class="lead-info-label">Name</span><span class="lead-info-value">${l.name||'—'}</span></div>
@@ -277,6 +282,60 @@ async function loadLeadCallBooking(leadId, leadName) {
     slot.innerHTML = '';
   }
 }
+
+/* Show every duplicate submission that's been merged into this lead. */
+async function showMergeHistory(leadId) {
+  let l = crmLeads[leadId];
+  if (!l) {
+    const doc = await db.collection('leads').doc(leadId).get();
+    if (!doc.exists) return;
+    l = { id: leadId, ...doc.data() };
+  }
+  const history = Array.isArray(l.mergeHistory) ? l.mergeHistory : [];
+  if (!history.length) { showToast('No merge history on this lead'); return; }
+
+  openModal(`Merged submissions for ${l.name || 'lead'}`, `
+    <p class="text-muted" style="font-size:13px;line-height:1.5;margin-bottom:14px">
+      This lead has ${history.length} duplicate submission${history.length===1?'':'s'} merged into it. Full pre-merge data is preserved below so nothing is lost. The current card already includes all unique info; conflicts (where both submissions had different values) are listed so you can decide whether to switch.
+    </p>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      ${history.map((h, i) => {
+        const when = h.mergedAt ? new Date(h.mergedAt).toLocaleString('en-US',{dateStyle:'medium',timeStyle:'short'}) : '';
+        const submittedAt = h.snapshot?.createdAt?.seconds
+          ? new Date(h.snapshot.createdAt.seconds * 1000).toLocaleString('en-US',{dateStyle:'medium',timeStyle:'short'})
+          : '—';
+        const snap = h.snapshot || {};
+        const fields = ['email','phone','venue','eventType','eventDate','guestCount','budget','source','message','drinkDetail']
+          .filter(k => snap[k]);
+        return `
+          <div style="border:1px solid var(--border);border-radius:10px;padding:12px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+              <div style="font-size:13px;font-weight:700">Submission #${i+1} <span class="text-muted" style="font-weight:400">· submitted ${submittedAt}</span></div>
+              <div class="text-muted" style="font-size:11px">merged ${when} by ${h.mergedBy || 'Admin'}</div>
+            </div>
+            ${Object.keys(h.conflicts || {}).length ? `
+              <div style="background:rgba(250,204,21,0.08);border:1px solid rgba(250,204,21,0.3);border-radius:8px;padding:8px 10px;margin-bottom:8px">
+                <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#FACC15;margin-bottom:4px">Conflicts — current card kept</div>
+                ${Object.entries(h.conflicts).map(([k,v]) => `<div style="font-size:12px;margin:2px 0"><strong>${k}:</strong> kept "${escapeHtml(v.kept)}" · also seen "${escapeHtml(v.dropped)}"</div>`).join('')}
+              </div>` : ''}
+            ${Object.keys(h.backfilled || {}).length ? `
+              <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.3);border-radius:8px;padding:8px 10px;margin-bottom:8px">
+                <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#22c55e;margin-bottom:4px">Backfilled into current card</div>
+                ${Object.entries(h.backfilled).map(([k,v]) => `<div style="font-size:12px;margin:2px 0"><strong>${k}:</strong> ${escapeHtml(v)}</div>`).join('')}
+              </div>` : ''}
+            <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px">Full submission snapshot</div>
+            <div style="font-size:12px;line-height:1.7">
+              ${fields.length ? fields.map(k => `<div><strong>${k}:</strong> ${escapeHtml(snap[k])}</div>`).join('') : '<div class="text-muted">No additional fields recorded</div>'}
+            </div>
+          </div>`;
+      }).join('')}
+    </div>
+  `, { wide: true });
+}
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+window.showMergeHistory = showMergeHistory;
 
 function renderTaskList(tasks, leadId) {
   if (!tasks.length) return '<div style="font-size:12px;color:var(--text-muted)">No tasks</div>';

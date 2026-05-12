@@ -879,17 +879,39 @@ async function openMergeDuplicatesModal() {
   const norm = (s) => String(s || '').trim().toLowerCase();
   const digits = (s) => String(s || '').replace(/\D/g, '');
 
-  /* Group by email and phone — collect every group of 2+ */
-  const groupsMap = new Map();
-  const seenIds = new Set();
-
-  for (const l of leads) {
+  /* Build group keys per lead — emails, phones (≥7 digits), and
+   * name+eventDate combos. A lead can join multiple keys; we merge groups
+   * that share any member via a union-find sweep. */
+  const keysForLead = (l) => {
+    const out = [];
     const e = norm(l.email);
     const p = digits(l.phone);
-    const key = e || (p.length >= 7 ? p : null);
-    if (!key) continue;
-    if (!groupsMap.has(key)) groupsMap.set(key, []);
-    groupsMap.get(key).push(l);
+    const nd = norm(l.name) && norm(l.eventDate) ? `nd:${norm(l.name)}|${norm(l.eventDate)}` : '';
+    if (e) out.push(`e:${e}`);
+    if (p.length >= 7) out.push(`p:${p}`);
+    if (nd) out.push(nd);
+    return out;
+  };
+
+  /* Union-find so a chain (A=B by email, B=C by phone) becomes one group. */
+  const parent = new Map(); // leadId → leadId
+  const find = (x) => { while (parent.get(x) !== x) { parent.set(x, parent.get(parent.get(x))); x = parent.get(x); } return x; };
+  const union = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent.set(ra, rb); };
+  leads.forEach(l => parent.set(l.id, l.id));
+
+  const keyToLead = new Map(); // first lead seen for that key
+  for (const l of leads) {
+    for (const k of keysForLead(l)) {
+      if (keyToLead.has(k)) union(l.id, keyToLead.get(k));
+      else keyToLead.set(k, l.id);
+    }
+  }
+
+  const groupsMap = new Map();
+  for (const l of leads) {
+    const root = find(l.id);
+    if (!groupsMap.has(root)) groupsMap.set(root, []);
+    groupsMap.get(root).push(l);
   }
 
   const groups = [...groupsMap.values()].filter(g => g.length >= 2);
@@ -953,26 +975,80 @@ async function openMergeDuplicatesModal() {
   });
 }
 
+/* Merge dropIds into keepId without destroying information.
+ *   • Every dropped lead's full pre-merge data is preserved as a snapshot
+ *     on the keeper under mergeHistory[].
+ *   • An auto-generated note is added to the keeper's notes thread for
+ *     each merged lead, describing what was folded in (submission date,
+ *     source, any unique field values, original message).
+ *   • Notes and tasks arrays are concatenated.
+ *   • Blank fields on the keeper are backfilled. Conflicting field values
+ *     are NOT overwritten — they're recorded in mergeHistory so nothing
+ *     is silently lost.
+ *   • Related quotes + call_bookings are reassigned to the keeper.
+ *   • The dropped lead doc is then deleted.
+ */
 async function mergeLeads(keepId, dropIds) {
   const keepRef = db.collection('leads').doc(keepId);
   const keepDoc = await keepRef.get();
   if (!keepDoc.exists) throw new Error('Keep lead does not exist');
-  let keep = keepDoc.data();
+  let keep = { ...keepDoc.data() };
   const mergedNotes = Array.isArray(keep.notes) ? [...keep.notes] : [];
   const mergedTasks = Array.isArray(keep.tasks) ? [...keep.tasks] : [];
+  const mergeHistory = Array.isArray(keep.mergeHistory) ? [...keep.mergeHistory] : [];
+
+  const trackedFields = ['name','email','phone','venue','eventType','eventDate','guestCount','budget','message','source','priority','followUpDate','hasBuiltInBar','drinks','drinkDetail','eventStartTime','eventEndTime'];
 
   for (const dropId of dropIds) {
     const dropDoc = await db.collection('leads').doc(dropId).get();
     if (!dropDoc.exists) continue;
     const d = dropDoc.data();
+    const fullSnapshot = { id: dropId, ...d };
+
+    /* Find which fields differ between keep and drop */
+    const conflicts = {};
+    const backfilled = {};
+    for (const k of trackedFields) {
+      const kv = keep[k];
+      const dv = d[k];
+      if (!kv && dv) {
+        keep[k] = dv;
+        backfilled[k] = dv;
+      } else if (kv && dv && String(kv).trim() !== String(dv).trim()) {
+        conflicts[k] = { kept: kv, dropped: dv };
+      }
+    }
+
+    /* Build a human-readable auto-note */
+    const submittedAt = d.createdAt?.toDate ? d.createdAt.toDate().toLocaleString('en-US',{dateStyle:'medium',timeStyle:'short'}) : 'unknown date';
+    const noteLines = [
+      `📎 Merged from a duplicate submission`,
+      `Submitted: ${submittedAt}`,
+      d.source ? `Source: ${d.source}` : null,
+      d.message ? `Original message: ${d.message}` : null,
+      Object.keys(backfilled).length ? `Filled blank fields: ${Object.keys(backfilled).join(', ')}` : null,
+      Object.keys(conflicts).length ? `Conflicts (kept current values, full snapshot preserved):\n  ${Object.entries(conflicts).map(([k,v]) => `${k}: kept "${v.kept}" — also seen "${v.dropped}"`).join('\n  ')}` : null
+    ].filter(Boolean);
+    mergedNotes.push({
+      text: noteLines.join('\n'),
+      author: currentUser?.displayName || 'Admin',
+      time: new Date().toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }),
+      kind: 'merge'
+    });
 
     /* Fold in notes + tasks */
     if (Array.isArray(d.notes)) mergedNotes.push(...d.notes);
     if (Array.isArray(d.tasks)) mergedTasks.push(...d.tasks);
 
-    /* Fill any blank fields on keep from drop */
-    ['phone','venue','eventType','eventDate','guestCount','budget','message','source','priority','followUpDate']
-      .forEach(k => { if (!keep[k] && d[k]) keep[k] = d[k]; });
+    /* Add full snapshot to mergeHistory so the data is recoverable */
+    mergeHistory.push({
+      mergedAt: new Date().toISOString(),
+      mergedBy: currentUser?.displayName || currentUser?.email || 'Admin',
+      sourceLeadId: dropId,
+      conflicts,
+      backfilled,
+      snapshot: fullSnapshot
+    });
 
     /* Reassign related docs */
     const [quotes, bookings] = await Promise.all([
@@ -980,29 +1056,25 @@ async function mergeLeads(keepId, dropIds) {
       db.collection('call_bookings').where('leadId','==',dropId).get()
     ]);
     const batch = db.batch();
-    quotes.forEach(q => batch.update(q.ref, { leadId: keepId, leadName: keep.name || dropDoc.data().name }));
-    bookings.forEach(b => batch.update(b.ref, { leadId: keepId, name: keep.name || dropDoc.data().name }));
-    await batch.commit();
+    quotes.forEach(q => batch.update(q.ref, { leadId: keepId, leadName: keep.name || d.name || '' }));
+    bookings.forEach(b => batch.update(b.ref, { leadId: keepId, name: keep.name || d.name || '' }));
+    if (!quotes.empty || !bookings.empty) await batch.commit();
 
     /* Delete the dropped lead */
     await db.collection('leads').doc(dropId).delete();
-    logActivity('merge', 'leads', dropId, `Merged into ${keep.name || keepId}`, { mergedInto: keepId });
+    logActivity('merge', 'leads', dropId, `Merged into ${keep.name || keepId} (submitted ${submittedAt})`, {
+      mergedInto: keepId,
+      conflicts: Object.keys(conflicts),
+      backfilled: Object.keys(backfilled)
+    });
   }
 
   /* Save the consolidated keep doc */
   await keepRef.update({
+    ...Object.fromEntries(trackedFields.map(k => [k, keep[k] || ''])),
     notes: mergedNotes,
     tasks: mergedTasks,
-    phone: keep.phone || '',
-    venue: keep.venue || '',
-    eventType: keep.eventType || '',
-    eventDate: keep.eventDate || '',
-    guestCount: keep.guestCount || '',
-    budget: keep.budget || '',
-    message: keep.message || '',
-    source: keep.source || '',
-    priority: keep.priority || '',
-    followUpDate: keep.followUpDate || '',
+    mergeHistory,
     updatedAt: TS()
   });
 }
