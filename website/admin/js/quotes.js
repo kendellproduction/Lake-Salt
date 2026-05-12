@@ -290,6 +290,38 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
 
   const state = { q: makeInitialQuote(lead) };
 
+  /* If the lead has a saved latest quote, hydrate the builder from it
+   * instead of the lead-defaults. The user's last work is recoverable. */
+  if (lead?.latestQuoteId) {
+    db.collection('quotes').doc(lead.latestQuoteId).get().then(doc => {
+      if (!doc.exists) return;
+      const saved = doc.data();
+      const li = saved.lineItems || {};
+      Object.assign(state.q, {
+        serviceHours:   li.serviceHours   ?? state.q.serviceHours,
+        bartenders:     li.bartenders     ?? state.q.bartenders,
+        bartenderRate:  li.bartenderRate  ?? state.q.bartenderRate,
+        travelFee:      li.travelFee      ?? state.q.travelFee,
+        customMenuFee:  li.customMenuFee  ?? state.q.customMenuFee,
+        offMenuEnabled: li.offMenuEnabled ?? state.q.offMenuEnabled,
+        offMenuQty:     li.offMenuQty     ?? state.q.offMenuQty,
+        offMenuPrice:   li.offMenuPrice   ?? state.q.offMenuPrice,
+        guestCount:     li.guestCount     ?? state.q.guestCount,
+        lineItems:      Array.isArray(li.custom) ? [...li.custom] : state.q.lineItems,
+        peakApplied:    saved.peakApplied ?? state.q.peakApplied,
+        peakReason:     saved.peakReason  ?? state.q.peakReason,
+        discountType:   saved.discountType ?? state.q.discountType,
+        discountValue:  saved.discountValue ?? state.q.discountValue,
+        depositPct:     saved.depositPct  ?? state.q.depositPct,
+        totalOverride:  saved.totalOverride ?? null,
+        notes:          saved.notes || ''
+      });
+      state.priorQuoteId = lead.latestQuoteId;
+      state.priorStatus = saved.status;
+      render();
+    }).catch(e => console.warn('Load saved quote failed:', e));
+  }
+
   function render() {
     const q = state.q;
     const calc = calcQuote(q);
@@ -615,21 +647,64 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
     }
   }
 
-  /* Send-proposal chooser. Currently no automated send — picks a delivery
-   * method, opens it, and marks the quote sent in Firestore. */
-  function openSendProposalMenu(calc) {
+  /* Send-proposal chooser. Saves a quote first (so we have an ID for the
+   * public link), then offers delivery methods that include the link.
+   * Client opens the link, accepts inline, and the quote auto-flips to
+   * 'accepted' — that's the "agreement" step the user asked for. */
+  async function openSendProposalMenu(calc) {
     if (!state.q.leadId) { alert('Link a lead before sending.'); return; }
-    const email = options.leadEmail || '';
+    const email = options.leadEmail || lead?.email || '';
     const phone = (lead?.phone || '').replace(/\D/g, '');
+
+    /* Save the quote with status='locked' so we have an ID and a frozen
+     * snapshot. If the user has already saved, reuse the prior ID instead
+     * of creating yet another version. */
+    let quoteId = state.priorQuoteId;
+    if (!quoteId || state.dirty) {
+      quoteId = await saveQuote('locked');
+      if (!quoteId) return;
+    }
+    const shareUrl = `https://lakesalt.us/quote?id=${quoteId}`;
     const text = quoteText(state.q, calc);
-    const subject = `Lake Salt — Quote for your event`;
+
+    const subject = `Lake Salt — Your event quote (${moneyFmt(calc.total)})`;
+    const firstName = (state.q.leadName || '').split(' ')[0] || 'there';
+    const emailBody =
+`Hi ${firstName},
+
+Thanks for considering Lake Salt for your event. I put together a custom proposal — full breakdown, total, and a one-click accept button:
+
+${shareUrl}
+
+Quick highlights:
+• ${state.q.bartenders} bartender${state.q.bartenders===1?'':'s'} for ${state.q.serviceHours} hours
+• Custom drink menu (cocktails + mocktails)
+• Total: ${moneyFmt(calc.total)} · ${state.q.depositPct}% deposit (${moneyFmt(calc.deposit)}) holds your date
+
+Have questions before you decide? Just reply — happy to talk it through.
+
+— Kendell
+Lake Salt Bartending
+lakesalt.us`;
+
+    const smsBody =
+`Lake Salt — your quote is ready: ${moneyFmt(calc.total)} for ${state.q.bartenders} bartender${state.q.bartenders===1?'':'s'}, ${state.q.serviceHours} hrs.
+
+Full proposal + one-tap accept: ${shareUrl}
+
+— Kendell`;
 
     openModal('Send proposal', `
-      <p class="text-muted" style="font-size:13px;line-height:1.5;margin-bottom:14px">
-        Choose how you're delivering the quote. The system currently <strong>does not</strong> auto-send —
-        it opens your mail/SMS app or copies the text. Once you've actually sent it, the quote is logged as
-        <em>sent</em>, your lead moves to <em>Proposal Sent</em>, and an activity entry is recorded.
+      <p class="text-muted" style="font-size:13px;line-height:1.5;margin-bottom:8px">
+        Quote saved. Share the link below — your client opens it, sees the full proposal, and can <strong>accept inline by typing their name</strong>. Acceptance fires back to your dashboard and locks the date.
       </p>
+      <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.3);border-radius:8px;padding:10px 12px;margin-bottom:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="text" readonly value="${shareUrl}" id="sp-link" class="form-input" style="flex:1;min-width:180px;font-family:ui-monospace,Menlo,monospace;font-size:12px;padding:6px 10px;background:rgba(255,255,255,0.6);color:var(--charcoal)">
+        <button class="btn btn-secondary btn-sm" id="sp-copylink">Copy link</button>
+        <a class="btn btn-ghost btn-sm" href="${shareUrl}" target="_blank" rel="noopener">Preview ↗</a>
+      </div>
+
+      <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:6px">Send it</div>
       <div style="display:flex;flex-direction:column;gap:10px">
         <button class="btn btn-primary" id="sp-email" ${email?'':'disabled'} style="text-align:left;padding:12px 14px">
           ✉ Open email draft ${email?`<span class="text-muted" style="font-weight:400;font-size:12px;margin-left:6px">→ ${email}</span>`:'<span class="text-muted" style="font-weight:400;font-size:12px;margin-left:6px">(no email on lead)</span>'}
@@ -638,14 +713,12 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
           💬 Open SMS draft ${phone?`<span class="text-muted" style="font-weight:400;font-size:12px;margin-left:6px">→ ${phone}</span>`:'<span class="text-muted" style="font-weight:400;font-size:12px;margin-left:6px">(no phone on lead)</span>'}
         </button>
         <button class="btn btn-ghost" id="sp-cowork" style="text-align:left;padding:12px 14px">
-          🤖 Copy a Cowork prompt <span class="text-muted" style="font-weight:400;font-size:12px;margin-left:6px">(paste into the comms agent to draft + send)</span>
-        </button>
-        <button class="btn btn-ghost" id="sp-copy" style="text-align:left;padding:12px 14px">
-          📋 Just copy the quote text <span class="text-muted" style="font-weight:400;font-size:12px;margin-left:6px">(I'll deliver it manually)</span>
+          🤖 Copy a Cowork prompt <span class="text-muted" style="font-weight:400;font-size:12px;margin-left:6px">(paste into lake-salt-comms agent for auto-send)</span>
         </button>
       </div>
+
       <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);line-height:1.5">
-        After any of these, click <strong>Mark as sent</strong> below. Nothing is recorded until you confirm.
+        After any of these, click <strong>Mark as sent</strong> to move the lead to <em>Proposal Sent</em> and log the activity.
       </div>
       <div style="margin-top:10px;display:flex;gap:8px">
         <button class="btn btn-primary" id="sp-confirm" style="background:#22c55e;border-color:#22c55e;flex:1">✓ Mark as sent</button>
@@ -654,24 +727,31 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
     `, { wide: false });
 
     let chosenMethod = null;
+    document.getElementById('sp-copylink').addEventListener('click', () => {
+      copyToClipboard(shareUrl);
+    });
     document.getElementById('sp-email').addEventListener('click', () => {
       chosenMethod = 'email';
-      const url = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text + '\n\nLooking forward to bartending your event!\n— Kendell · Lake Salt')}`;
+      const url = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
       window.location.href = url;
     });
     document.getElementById('sp-sms').addEventListener('click', () => {
       chosenMethod = 'sms';
-      window.location.href = `sms:${phone}?&body=${encodeURIComponent(text)}`;
+      window.location.href = `sms:${phone}?&body=${encodeURIComponent(smsBody)}`;
     });
     document.getElementById('sp-cowork').addEventListener('click', () => {
       chosenMethod = 'cowork';
-      const prompt = `Send the following quote to ${state.q.leadName} at ${email || phone || '[no contact info]'} via email. Use a warm, professional tone — Kendell's voice. Sign as "Kendell · Lake Salt Bartending". Quote text below:\n\n${text}`;
+      const prompt = `Send a quote-ready email to ${state.q.leadName} at ${email || phone || '[no contact info]'}.
+
+Subject: ${subject}
+
+Use a warm, professional tone in Kendell's voice. Sign as "Kendell · Lake Salt Bartending". Use this body:
+
+${emailBody}
+
+The link in the email lets the client accept the quote with one click.`;
       copyToClipboard(prompt);
-      showToast('Cowork prompt copied — paste it into the lake-salt-comms agent');
-    });
-    document.getElementById('sp-copy').addEventListener('click', () => {
-      chosenMethod = 'copy';
-      copyToClipboard(text);
+      showToast('Cowork prompt copied — paste it into lake-salt-comms');
     });
     document.getElementById('sp-cancel').addEventListener('click', () => { if (typeof closeModal==='function') closeModal(); });
     document.getElementById('sp-confirm').addEventListener('click', async () => {
@@ -679,7 +759,26 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
         if (!confirm('You haven\'t picked a delivery method yet — mark sent anyway?')) return;
         chosenMethod = 'manual';
       }
-      await saveQuote('sent', chosenMethod);
+      /* Update the saved quote to status='sent' instead of creating a new one. */
+      try {
+        await db.collection('quotes').doc(quoteId).update({
+          status: 'sent',
+          sentAt: TS(),
+          sentBy: currentUser?.displayName || currentUser?.email || 'Admin',
+          sentVia: chosenMethod
+        });
+        if (state.q.leadId) {
+          await db.collection('leads').doc(state.q.leadId).update({
+            latestQuoteStatus: 'sent',
+            stage: 'Proposal Sent',
+            updatedAt: TS()
+          });
+        }
+        logActivity('quote_sent', 'quotes', quoteId, `Sent quote to ${state.q.leadName} via ${chosenMethod} — ${moneyFmt(calc.total)}`, { leadId: state.q.leadId });
+        showToast('📤 Marked as sent — stage moved to Proposal Sent');
+      } catch (e) {
+        console.error(e); alert('Could not mark sent — see console.');
+      }
       if (typeof closeModal === 'function') closeModal();
     });
   }
@@ -791,6 +890,13 @@ async function renderQuotes() {
     document.getElementById('qs-month').textContent = moneyFmt(monthSum);
     document.getElementById('qs-avg').textContent = moneyFmt(avg);
 
+    /* Wire row clicks → view-quote modal */
+    setTimeout(() => {
+      document.querySelectorAll('.quote-row').forEach(row => {
+        row.addEventListener('click', () => openQuoteViewModal(row.dataset.id));
+      });
+    }, 0);
+
     /* List */
     const listEl = document.getElementById('quotes-list');
     if (!list.length) { listEl.innerHTML = '<div class="text-muted" style="padding:12px;font-size:13px">No quotes yet. Click "+ New quote" to start.</div>'; return; }
@@ -800,13 +906,14 @@ async function renderQuotes() {
       </div>
       ${list.map(q => {
         const when = q.createdAt?.toDate ? q.createdAt.toDate().toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
-        const statusColor = q.status==='locked'?'#22c55e':q.status==='sent'?'#3b82f6':q.status==='expired'?'#E05252':'var(--text-muted)';
-        return `<div style="display:grid;grid-template-columns:1fr auto auto auto auto;gap:10px;align-items:center;padding:10px 8px;border-bottom:1px solid var(--border);font-size:13px">
+        const status = q.clientAcceptedAt ? 'accepted' : (q.status || 'draft');
+        const statusColor = status==='accepted'?'#22c55e':status==='locked'?'#FACC15':status==='sent'?'#3b82f6':status==='expired'?'#E05252':'var(--text-muted)';
+        return `<div class="quote-row" data-id="${q.id}" style="display:grid;grid-template-columns:1fr auto auto auto auto;gap:10px;align-items:center;padding:10px 8px;border-bottom:1px solid var(--border);font-size:13px;cursor:pointer">
           <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${q.leadName || '(unlinked)'}</div>
-          <div style="text-transform:uppercase;font-size:11px;letter-spacing:.1em;color:${statusColor};font-weight:700">${q.status}</div>
+          <div style="text-transform:uppercase;font-size:11px;letter-spacing:.1em;color:${statusColor};font-weight:700">${status}</div>
           <div style="text-align:right;font-weight:700">${moneyFmt(q.total)}</div>
           <div style="text-align:right;color:var(--text-muted);font-size:12px">${when}</div>
-          <div style="text-align:right">${q.leadId?`<button class="btn btn-ghost btn-sm" onclick="openLeadModal('${q.leadId}')" style="font-size:11px;padding:3px 8px">Open lead</button>`:''}</div>
+          <div style="text-align:right">${q.leadId?`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openLeadModal('${q.leadId}')" style="font-size:11px;padding:3px 8px">Lead</button>`:''}</div>
         </div>`;
       }).join('')}
     `;
@@ -1202,6 +1309,96 @@ async function mergeLeads(keepId, dropIds) {
 window.openMergeDuplicatesModal = openMergeDuplicatesModal;
 
 window.openNewQuoteModal = openNewQuoteModal;
+
+/* Read-only view of a single saved quote. Used from the Quotes-hub list. */
+async function openQuoteViewModal(quoteId) {
+  openModal('Quote details', `<div id="qv-body"><div class="text-muted" style="padding:14px">Loading…</div></div>`, { wide: true });
+  let q;
+  try {
+    const doc = await db.collection('quotes').doc(quoteId).get();
+    if (!doc.exists) { document.getElementById('qv-body').innerHTML = '<div style="color:#E05252">Quote not found.</div>'; return; }
+    q = { id: doc.id, ...doc.data() };
+  } catch (e) {
+    document.getElementById('qv-body').innerHTML = `<div style="color:#E05252">Could not load: ${e.message}</div>`;
+    return;
+  }
+
+  const li = q.lineItems || {};
+  const bartenderTotal = (li.serviceHours||0) * (li.bartenderRate||0) * (li.bartenders||0);
+  const offMenuTotal = li.offMenuEnabled ? (li.offMenuQty||0) * (li.offMenuPrice||0) : 0;
+  const customLines = Array.isArray(li.custom) ? li.custom.filter(l => (l.label||'').trim() || (l.price||0) > 0) : [];
+  const status = q.clientAcceptedAt ? 'accepted' : (q.status || 'draft');
+  const statusColor = status==='accepted'?'#22c55e':status==='locked'?'#FACC15':status==='sent'?'#3b82f6':status==='expired'?'#E05252':'var(--text-muted)';
+  const shareUrl = `https://lakesalt.us/quote?id=${quoteId}`;
+
+  const events = [
+    q.createdAt   && { label: 'Created', ts: q.createdAt,   by: q.createdBy },
+    q.lockedAt    && { label: 'Locked',  ts: q.lockedAt,    by: q.createdBy },
+    q.sentAt      && { label: `Sent (${q.sentVia || 'manual'})`, ts: q.sentAt, by: q.sentBy },
+    q.clientAcceptedAt && { label: `Accepted by ${q.clientAcceptedSignature || 'client'}`, ts: q.clientAcceptedAt }
+  ].filter(Boolean);
+  const fmtTs = (ts) => ts?.toDate ? ts.toDate().toLocaleString('en-US',{dateStyle:'medium',timeStyle:'short'}) : '';
+
+  document.getElementById('qv-body').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <div>
+        <div style="font-size:16px;font-weight:700">${q.leadName || '(unlinked)'}</div>
+        <div class="text-muted" style="font-size:12px">Quote · ${q.createdAt?.toDate ? q.createdAt.toDate().toLocaleString('en-US',{dateStyle:'medium'}) : ''}</div>
+      </div>
+      <div style="text-transform:uppercase;font-size:11px;letter-spacing:.1em;color:${statusColor};font-weight:700">${status}</div>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px">
+      <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:8px">Breakdown</div>
+      <div style="display:grid;grid-template-columns:1fr auto;row-gap:6px;font-size:13px">
+        <div>Bartender service <span class="text-muted" style="font-size:11px">${li.bartenders||1} × ${li.serviceHours||0} hrs @ ${moneyFmt(li.bartenderRate)}/hr</span></div>
+        <div style="text-align:right">${moneyFmt(bartenderTotal)}</div>
+        <div>Custom drink menu</div>
+        <div style="text-align:right">${moneyFmt(li.customMenuFee||0)}</div>
+        ${li.offMenuEnabled && offMenuTotal>0 ? `<div>Off-menu (${li.offMenuQty} × ${moneyFmt(li.offMenuPrice)})</div><div style="text-align:right">${moneyFmt(offMenuTotal)}</div>`:''}
+        <div>Travel</div>
+        <div style="text-align:right">${moneyFmt(li.travelFee||0)}</div>
+        ${customLines.map(c => `<div>${escapeHtmlSafe(c.label||'Add-on')}</div><div style="text-align:right">${moneyFmt(c.price)}</div>`).join('')}
+      </div>
+    </div>
+
+    <div style="background:linear-gradient(135deg,rgba(201,168,76,0.10),rgba(139,155,126,0.08));border:1px solid rgba(201,168,76,0.35);border-radius:10px;padding:12px;margin-bottom:12px">
+      <div style="display:grid;grid-template-columns:1fr auto;row-gap:4px;font-size:13px">
+        <div class="text-muted">Subtotal</div><div style="text-align:right">${moneyFmt(q.subtotal)}</div>
+        ${q.peakApplied?`<div class="text-muted">Peak adj.</div><div style="text-align:right">+${moneyFmt(q.peakAdj)}</div>`:''}
+        ${q.discountAmt>0?`<div class="text-muted">Discount</div><div style="text-align:right;color:#22c55e">−${moneyFmt(q.discountAmt)}</div>`:''}
+        ${q.totalOverride!=null && q.targetAdjustment ? `<div class="text-muted">Adjustment to target</div><div style="text-align:right">${q.targetAdjustment>0?'+':''}${moneyFmt(q.targetAdjustment)}</div>`:''}
+        <div style="font-weight:700;color:var(--text);font-size:16px;margin-top:4px">Total</div>
+        <div style="text-align:right;font-weight:700;color:var(--gold);font-size:20px">${moneyFmt(q.total)}</div>
+        <div class="text-muted" style="font-size:12px">Deposit (${q.depositPct||30}%)</div><div style="text-align:right;font-size:12px">${moneyFmt(q.deposit)}</div>
+      </div>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px">
+      <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:8px">Timeline</div>
+      ${events.length ? events.map(e => `<div style="font-size:12px;padding:3px 0">${e.label}: <span class="text-muted">${fmtTs(e.ts)}${e.by?' · '+e.by:''}</span></div>`).join('') : '<div class="text-muted" style="font-size:12px">No events yet</div>'}
+    </div>
+
+    ${q.notes ? `<div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px">
+      <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:6px">Notes</div>
+      <div style="font-size:13px;line-height:1.6">${escapeHtmlSafe(q.notes)}</div>
+    </div>` : ''}
+
+    <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">Public proposal link</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="text" readonly value="${shareUrl}" id="qv-link" class="form-input" style="flex:1;min-width:200px;font-family:ui-monospace,Menlo,monospace;font-size:12px;padding:6px 10px">
+        <button class="btn btn-secondary btn-sm" onclick="copyToClipboard('${shareUrl}')">Copy</button>
+        <a class="btn btn-ghost btn-sm" href="${shareUrl}" target="_blank" rel="noopener">Open ↗</a>
+      </div>
+      <div class="text-muted" style="font-size:11px">${q.clientViewedAt?.length ? `Client opened this link ${q.clientViewedAt.length} time${q.clientViewedAt.length===1?'':'s'}.` : 'Client has not opened this link yet.'}</div>
+    </div>
+
+    ${q.leadId ? `<div style="margin-top:14px;text-align:center"><button class="btn btn-primary btn-sm" onclick="closeModal();setTimeout(()=>openLeadModal('${q.leadId}'),50)">Open ${escapeHtmlSafe(q.leadName||'lead')} card →</button></div>` : ''}
+  `;
+}
+window.openQuoteViewModal = openQuoteViewModal;
+window.copyToClipboard = copyToClipboard;
 
 /* ─── Fuzzy lead matching ─── Returns a numeric score (lower = better) or
  * null for no match. Tries cheap checks first (substring on the combined

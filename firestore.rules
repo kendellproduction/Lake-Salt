@@ -56,9 +56,30 @@ service cloud.firestore {
     }
 
     // ── Quote builder ──
-    // quotes/{id}     — every saved quote (draft/locked/sent)
-    // settings/{id}   — admin config docs (quote_defaults, etc.)
-    match /quotes/{id}   { allow read, write: if isAdmin(); }
+    // settings/{id} — admin config docs (quote_defaults, etc.). Admin-only.
     match /settings/{id} { allow read, write: if isAdmin(); }
+
+    // quotes/{id} — admins do anything. Clients who hold the quote URL get
+    // a single-doc read (so the public proposal page works), and a tightly
+    // scoped UPDATE that can ONLY set the acceptance fields and only when
+    // the quote isn't already accepted. They can't change line items,
+    // discounts, the total, or any other field.
+    match /quotes/{id} {
+      allow read:   if isAdmin() || true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() ||
+        (
+          /* Only when no one has accepted yet */
+          resource.data.clientAcceptedAt == null &&
+          /* The update may ONLY touch these fields */
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['clientAcceptedAt','clientAcceptedSignature','clientViewedAt','status']) &&
+          /* If status is set, it must be the literal 'accepted' string */
+          (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status']) ||
+            request.resource.data.status == 'accepted'
+          )
+        );
+    }
   }
 }

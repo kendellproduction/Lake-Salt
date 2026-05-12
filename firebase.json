@@ -10,7 +10,8 @@
       { "source": "/expo.html", "destination": "/?ref=expo#contact", "type": 301 }
     ],
     "rewrites": [
-      { "source": "/recipes", "destination": "/recipes.html" }
+      { "source": "/recipes", "destination": "/recipes.html" },
+      { "source": "/quote", "destination": "/quote.html" }
     ],
     "headers": [
       {

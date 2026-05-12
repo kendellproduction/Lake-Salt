@@ -1141,10 +1141,16 @@ td { padding: 11px 12px; font-size: 12.5px; }
 /* Quote builder field labels */
 .qb-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
 .qb-field > span { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; color: var(--text-muted); }
-.qb-field .form-input, .qb-field .form-select { font-size: 13px; padding: 6px 10px; }
-@media (max-width: 540px) {
-  .qb-grid { grid-template-columns: 1fr !important; }
-  .qb-wrap .qb-grid + div > div { grid-template-columns: 1fr !important; }
+.qb-field .form-input, .qb-field .form-select { font-size: 13px; padding: 6px 10px; min-height: 36px; }
+
+/* Mobile: every 2-col grid inside the builder stacks; tap targets grow. */
+@media (max-width: 640px) {
+  .qb-wrap .qb-grid,
+  .qb-wrap [style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
+  .qb-wrap [style*="grid-template-columns:1fr 110px 32px"] { grid-template-columns: 1fr 90px 36px !important; }
+  .qb-field .form-input, .qb-field .form-select { font-size: 16px; padding: 8px 10px; min-height: 42px; } /* 16px prevents iOS zoom */
+  .qb-wrap input[type="number"] { font-size: 16px; }
+  .qb-wrap .btn { min-height: 38px; }
 }
 
 /* Upcoming-calls banner — phone layout: stack the date/time label above the
