@@ -54,9 +54,21 @@ async function saveQuoteDefaults(updates) {
 }
 
 /* Bootstrap defaults — only AFTER auth, so we don't generate
- * permission-denied noise on the sign-in screen. */
+ * permission-denied noise on the sign-in screen. Also runs a one-shot
+ * silent auto-merge of high-confidence duplicates (same email or phone). */
+let _quotesBootRan = false;
 if (typeof auth !== 'undefined' && auth.onAuthStateChanged) {
-  auth.onAuthStateChanged((user) => { if (user) loadQuoteDefaults(); });
+  auth.onAuthStateChanged(async (user) => {
+    if (!user || _quotesBootRan) return;
+    _quotesBootRan = true;
+    loadQuoteDefaults();
+    try {
+      const merged = await autoMergeHighConfidence();
+      if (merged > 0 && typeof showToast === 'function') {
+        showToast(`Auto-merged ${merged} duplicate lead${merged===1?'':'s'} (same email/phone)`, 'info', 5000);
+      }
+    } catch (e) { console.warn('Auto-merge on load failed:', e); }
+  });
 }
 
 const moneyFmt = (n) => `$${(Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -678,7 +690,7 @@ async function renderQuotes() {
         <div class="page-subtitle">All quotes across every lead · proposals sent · revenue pipeline</div>
       </div>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-ghost" id="quotes-merge">⚠ Merge duplicates</button>
+        <button class="btn btn-ghost" id="quotes-merge" style="display:none">⚠ Review possible duplicates</button>
         <button class="btn btn-primary" id="quotes-new">+ New quote</button>
       </div>
     </div>
@@ -696,8 +708,22 @@ async function renderQuotes() {
     </div>
   `;
 
-  document.getElementById('quotes-new').addEventListener('click', openNewQuoteModal);
-  document.getElementById('quotes-merge').addEventListener('click', openMergeDuplicatesModal);
+  const newBtn = document.getElementById('quotes-new');
+  const mergeBtn = document.getElementById('quotes-merge');
+  newBtn.addEventListener('click', openNewQuoteModal);
+  mergeBtn.addEventListener('click', openMergeDuplicatesModal);
+
+  /* Show the merge button only if there are low-confidence groups (name+date
+   * matches) that need human eyes. High-confidence groups were auto-merged
+   * silently at admin load — but we re-run scan here too in case new dupes
+   * came in since auth. */
+  scanForDuplicateLeads().then(groups => {
+    const needsReview = groups.filter(g => g.confidence === 'name_date');
+    if (needsReview.length) {
+      mergeBtn.style.display = '';
+      mergeBtn.textContent = `⚠ Review ${needsReview.length} possible duplicate${needsReview.length===1?'':'s'}`;
+    }
+  }).catch(e => console.warn('Dedup scan failed:', e));
 
   const unsub = db.collection('quotes').orderBy('createdAt','desc').onSnapshot(snap => {
     const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -862,6 +888,91 @@ async function findDuplicateLead({ email, phone, name, eventDate }) {
   return null;
 }
 
+/* ─── Scanner ─── Returns { groups, byKeyType } where byKeyType classifies
+ * each group as 'email', 'phone', or 'name_date' based on the strongest
+ * match key that put its leads together. High-confidence (email/phone)
+ * groups can be auto-merged. */
+async function scanForDuplicateLeads() {
+  const snap = await db.collection('leads').get();
+  const leads = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const norm = (s) => String(s || '').trim().toLowerCase();
+  const digits = (s) => String(s || '').replace(/\D/g, '');
+
+  const keysForLead = (l) => {
+    const out = [];
+    const e = norm(l.email);
+    const p = digits(l.phone);
+    const nd = norm(l.name) && norm(l.eventDate) ? `nd:${norm(l.name)}|${norm(l.eventDate)}` : '';
+    if (e) out.push({ kind: 'email', key: `e:${e}` });
+    if (p.length >= 7) out.push({ kind: 'phone', key: `p:${p}` });
+    if (nd) out.push({ kind: 'name_date', key: nd });
+    return out;
+  };
+
+  const parent = new Map(); leads.forEach(l => parent.set(l.id, l.id));
+  const find = (x) => { while (parent.get(x) !== x) { parent.set(x, parent.get(parent.get(x))); x = parent.get(x); } return x; };
+  const union = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent.set(ra, rb); };
+
+  /* For each group root, track which key-kinds connected it. */
+  const groupKinds = new Map();
+  const keyToLead = new Map();
+  for (const l of leads) {
+    for (const { kind, key } of keysForLead(l)) {
+      if (keyToLead.has(key)) union(l.id, keyToLead.get(key));
+      else keyToLead.set(key, l.id);
+    }
+  }
+  for (const l of leads) {
+    for (const { kind } of keysForLead(l)) {
+      const root = find(l.id);
+      if (!groupKinds.has(root)) groupKinds.set(root, new Set());
+      groupKinds.get(root).add(kind);
+    }
+  }
+
+  const groupsMap = new Map();
+  for (const l of leads) {
+    const root = find(l.id);
+    if (!groupsMap.has(root)) groupsMap.set(root, []);
+    groupsMap.get(root).push(l);
+  }
+
+  const groups = [];
+  for (const [root, members] of groupsMap.entries()) {
+    if (members.length < 2) continue;
+    const kinds = groupKinds.get(root) || new Set();
+    /* Confidence: email > phone > name_date. */
+    const confidence = kinds.has('email') ? 'email'
+                     : kinds.has('phone') ? 'phone'
+                     : 'name_date';
+    groups.push({ members, confidence });
+  }
+  return groups;
+}
+
+/* Auto-merge any email/phone groups silently. Returns count merged. */
+async function autoMergeHighConfidence() {
+  let groups;
+  try { groups = await scanForDuplicateLeads(); }
+  catch (e) { console.warn('Auto-merge scan failed:', e); return 0; }
+  const safe = groups.filter(g => g.confidence === 'email' || g.confidence === 'phone');
+  if (!safe.length) return 0;
+  let merged = 0;
+  for (const g of safe) {
+    const sorted = [...g.members].sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
+    const keep = sorted[0];
+    const drop = sorted.slice(1).map(d => d.id);
+    try {
+      await mergeLeads(keep.id, drop);
+      merged += drop.length;
+    } catch (e) {
+      console.warn('Auto-merge failed for group:', keep.id, e);
+    }
+  }
+  return merged;
+}
+window.autoMergeHighConfidence = autoMergeHighConfidence;
+
 /* ─── Merge-duplicates tool ─── Scans leads, groups by email/phone, surfaces
  * groups of 2+ for one-click merge. Kept lead is the OLDEST (by createdAt or
  * doc id fallback). Younger leads' notes, tasks, quotes, call_bookings are
@@ -874,64 +985,25 @@ async function openMergeDuplicatesModal() {
   `, { wide: true });
 
   const body = document.getElementById('md-body');
-  let snap;
-  try { snap = await db.collection('leads').get(); }
+  let groups;
+  try { groups = await scanForDuplicateLeads(); }
   catch (e) { body.innerHTML = `<div style="color:#E05252">Failed to load leads: ${e.message}</div>`; return; }
 
-  const leads = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  const norm = (s) => String(s || '').trim().toLowerCase();
-  const digits = (s) => String(s || '').replace(/\D/g, '');
+  /* Only show low-confidence groups here. High-confidence (email/phone)
+   * groups are handled silently by autoMergeHighConfidence(). */
+  const reviewGroups = groups.filter(g => g.confidence === 'name_date');
 
-  /* Build group keys per lead — emails, phones (≥7 digits), and
-   * name+eventDate combos. A lead can join multiple keys; we merge groups
-   * that share any member via a union-find sweep. */
-  const keysForLead = (l) => {
-    const out = [];
-    const e = norm(l.email);
-    const p = digits(l.phone);
-    const nd = norm(l.name) && norm(l.eventDate) ? `nd:${norm(l.name)}|${norm(l.eventDate)}` : '';
-    if (e) out.push(`e:${e}`);
-    if (p.length >= 7) out.push(`p:${p}`);
-    if (nd) out.push(nd);
-    return out;
-  };
-
-  /* Union-find so a chain (A=B by email, B=C by phone) becomes one group. */
-  const parent = new Map(); // leadId → leadId
-  const find = (x) => { while (parent.get(x) !== x) { parent.set(x, parent.get(parent.get(x))); x = parent.get(x); } return x; };
-  const union = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent.set(ra, rb); };
-  leads.forEach(l => parent.set(l.id, l.id));
-
-  const keyToLead = new Map(); // first lead seen for that key
-  for (const l of leads) {
-    for (const k of keysForLead(l)) {
-      if (keyToLead.has(k)) union(l.id, keyToLead.get(k));
-      else keyToLead.set(k, l.id);
-    }
-  }
-
-  const groupsMap = new Map();
-  for (const l of leads) {
-    const root = find(l.id);
-    if (!groupsMap.has(root)) groupsMap.set(root, []);
-    groupsMap.get(root).push(l);
-  }
-
-  const groups = [...groupsMap.values()].filter(g => g.length >= 2);
-
-  if (!groups.length) {
-    body.innerHTML = `<div style="padding:20px;text-align:center;color:#22c55e">✓ No duplicates found.</div>`;
+  if (!reviewGroups.length) {
+    body.innerHTML = `<div style="padding:20px;text-align:center;color:#22c55e">✓ No duplicates need review.</div>`;
     return;
   }
 
   body.innerHTML = `
     <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.5">
-      Found <strong>${groups.length}</strong> duplicate group${groups.length===1?'':'s'}.
-      For each group, the <strong>oldest</strong> lead is kept and the younger ones are merged into it
-      (notes, tasks, quotes, and call bookings are reassigned, then the younger leads are deleted).
+      Found <strong>${reviewGroups.length}</strong> possible duplicate group${reviewGroups.length===1?'':'s'} that need your eyes — these matched on <em>same name + same event date</em> only (no shared email or phone), so I won't auto-merge. Review each one and merge if it's really the same person.
     </p>
     <div style="display:flex;flex-direction:column;gap:14px">
-      ${groups.map((g, i) => {
+      ${reviewGroups.map(({ members: g }, i) => {
         const sorted = [...g].sort((a,b) => (a.createdAt?.toMillis?.()||0) - (b.createdAt?.toMillis?.()||0));
         const keep = sorted[0];
         const drop = sorted.slice(1);
