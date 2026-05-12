@@ -480,6 +480,7 @@ async function renderQuotes() {
         <div class="page-subtitle">All quotes across every lead · proposals sent · revenue pipeline</div>
       </div>
       <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" id="quotes-merge">⚠ Merge duplicates</button>
         <button class="btn btn-primary" id="quotes-new">+ New quote</button>
       </div>
     </div>
@@ -498,6 +499,7 @@ async function renderQuotes() {
   `;
 
   document.getElementById('quotes-new').addEventListener('click', openNewQuoteModal);
+  document.getElementById('quotes-merge').addEventListener('click', openMergeDuplicatesModal);
 
   const unsub = db.collection('quotes').orderBy('createdAt','desc').onSnapshot(snap => {
     const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -594,13 +596,32 @@ function openNewQuoteModal() {
     }, 200);
   });
 
-  /* Create new lead */
+  /* Create new lead — with email/phone-based duplicate guard */
   document.getElementById('nq-create').addEventListener('click', async () => {
     const name = document.getElementById('nq-name').value.trim();
+    const email = document.getElementById('nq-email').value.trim().toLowerCase();
+    const phone = document.getElementById('nq-phone').value.trim().replace(/\D/g, '');
     if (!name) { alert('Name is required.'); return; }
+
+    /* Block on duplicate match (email > phone > name+date). Offer to open existing instead. */
+    try {
+      const existing = await findDuplicateLead({ email, phone, name });
+      if (existing) {
+        const useExisting = confirm(
+          `Looks like this lead already exists:\n\n  ${existing.name || '(no name)'} — ${existing.email || existing.phone || ''}\n\n` +
+          `OK = open the existing card and quote from there\nCancel = create anyway (probably the wrong call)`
+        );
+        if (useExisting) {
+          closeModal();
+          setTimeout(() => openLeadModal(existing.id), 100);
+          return;
+        }
+      }
+    } catch (e) { console.warn('Dedup check failed (continuing):', e); }
+
     const leadData = {
       name,
-      email:      document.getElementById('nq-email').value.trim(),
+      email,
       phone:      document.getElementById('nq-phone').value.trim(),
       eventType:  document.getElementById('nq-event').value.trim() || 'Wedding',
       eventDate:  document.getElementById('nq-date').value || '',
@@ -621,6 +642,173 @@ function openNewQuoteModal() {
     }
   });
 }
+
+/* ─── Duplicate detection ─── Match by email (case-insensitive), then phone
+ * (digits only), then name+eventDate. Skips empty values. */
+async function findDuplicateLead({ email, phone, name, eventDate }) {
+  const snap = await db.collection('leads').get();
+  const norm = (s) => String(s || '').trim().toLowerCase();
+  const digits = (s) => String(s || '').replace(/\D/g, '');
+  const e = norm(email), p = digits(phone), n = norm(name), d = norm(eventDate);
+
+  for (const doc of snap.docs) {
+    const l = doc.data();
+    if (e && norm(l.email) === e) return { id: doc.id, ...l };
+    if (p && digits(l.phone) === p && p.length >= 7) return { id: doc.id, ...l };
+    if (n && d && norm(l.name) === n && norm(l.eventDate) === d) return { id: doc.id, ...l };
+  }
+  return null;
+}
+
+/* ─── Merge-duplicates tool ─── Scans leads, groups by email/phone, surfaces
+ * groups of 2+ for one-click merge. Kept lead is the OLDEST (by createdAt or
+ * doc id fallback). Younger leads' notes, tasks, quotes, call_bookings are
+ * reassigned to the kept lead, then younger leads are deleted. */
+async function openMergeDuplicatesModal() {
+  openModal('Merge duplicate leads', `
+    <div id="md-body">
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px">Scanning leads for duplicates by email and phone…</div>
+    </div>
+  `, { wide: true });
+
+  const body = document.getElementById('md-body');
+  let snap;
+  try { snap = await db.collection('leads').get(); }
+  catch (e) { body.innerHTML = `<div style="color:#E05252">Failed to load leads: ${e.message}</div>`; return; }
+
+  const leads = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const norm = (s) => String(s || '').trim().toLowerCase();
+  const digits = (s) => String(s || '').replace(/\D/g, '');
+
+  /* Group by email and phone — collect every group of 2+ */
+  const groupsMap = new Map();
+  const seenIds = new Set();
+
+  for (const l of leads) {
+    const e = norm(l.email);
+    const p = digits(l.phone);
+    const key = e || (p.length >= 7 ? p : null);
+    if (!key) continue;
+    if (!groupsMap.has(key)) groupsMap.set(key, []);
+    groupsMap.get(key).push(l);
+  }
+
+  const groups = [...groupsMap.values()].filter(g => g.length >= 2);
+
+  if (!groups.length) {
+    body.innerHTML = `<div style="padding:20px;text-align:center;color:#22c55e">✓ No duplicates found.</div>`;
+    return;
+  }
+
+  body.innerHTML = `
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.5">
+      Found <strong>${groups.length}</strong> duplicate group${groups.length===1?'':'s'}.
+      For each group, the <strong>oldest</strong> lead is kept and the younger ones are merged into it
+      (notes, tasks, quotes, and call bookings are reassigned, then the younger leads are deleted).
+    </p>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      ${groups.map((g, i) => {
+        const sorted = [...g].sort((a,b) => (a.createdAt?.toMillis?.()||0) - (b.createdAt?.toMillis?.()||0));
+        const keep = sorted[0];
+        const drop = sorted.slice(1);
+        return `
+          <div style="border:1px solid var(--border);border-radius:10px;padding:12px" data-group="${i}">
+            <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:6px">Group ${i+1} · ${keep.email || keep.phone || ''}</div>
+            <div style="background:rgba(34,197,94,0.10);border:1px solid rgba(34,197,94,0.3);border-radius:8px;padding:8px;margin-bottom:6px">
+              <div style="font-size:11px;color:#22c55e;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px">Keep (oldest)</div>
+              <div style="font-size:13px"><strong>${keep.name || '(no name)'}</strong> · ${keep.eventDate || ''} · ${keep.stage || ''}</div>
+              <div style="font-size:11px;color:var(--text-muted)">id: ${keep.id}</div>
+            </div>
+            ${drop.map(d => `
+              <div style="background:rgba(224,82,82,0.08);border:1px solid rgba(224,82,82,0.3);border-radius:8px;padding:8px;margin-bottom:4px">
+                <div style="font-size:11px;color:#E05252;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px">Merge & delete</div>
+                <div style="font-size:13px"><strong>${d.name || '(no name)'}</strong> · ${d.eventDate || ''} · ${d.stage || ''}</div>
+                <div style="font-size:11px;color:var(--text-muted)">id: ${d.id}</div>
+              </div>`).join('')}
+            <button class="btn btn-primary btn-sm md-merge" data-keep="${keep.id}" data-drop="${drop.map(d=>d.id).join(',')}" data-name="${keep.name || ''}">Merge this group</button>
+          </div>`;
+      }).join('')}
+    </div>
+  `;
+
+  body.querySelectorAll('.md-merge').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const keepId = btn.dataset.keep;
+      const dropIds = btn.dataset.drop.split(',').filter(Boolean);
+      const keepName = btn.dataset.name;
+      if (!confirm(`Merge ${dropIds.length} lead${dropIds.length===1?'':'s'} into ${keepName || keepId}?\n\nThis cannot be undone.`)) return;
+      btn.disabled = true;
+      btn.textContent = 'Merging…';
+      try {
+        await mergeLeads(keepId, dropIds);
+        btn.textContent = '✓ Merged';
+        btn.closest('[data-group]').style.opacity = '0.5';
+        showToast(`Merged ${dropIds.length+1} leads into ${keepName}`);
+      } catch (e) {
+        console.error(e);
+        btn.disabled = false;
+        btn.textContent = 'Retry';
+        alert('Merge failed — see console.');
+      }
+    });
+  });
+}
+
+async function mergeLeads(keepId, dropIds) {
+  const keepRef = db.collection('leads').doc(keepId);
+  const keepDoc = await keepRef.get();
+  if (!keepDoc.exists) throw new Error('Keep lead does not exist');
+  let keep = keepDoc.data();
+  const mergedNotes = Array.isArray(keep.notes) ? [...keep.notes] : [];
+  const mergedTasks = Array.isArray(keep.tasks) ? [...keep.tasks] : [];
+
+  for (const dropId of dropIds) {
+    const dropDoc = await db.collection('leads').doc(dropId).get();
+    if (!dropDoc.exists) continue;
+    const d = dropDoc.data();
+
+    /* Fold in notes + tasks */
+    if (Array.isArray(d.notes)) mergedNotes.push(...d.notes);
+    if (Array.isArray(d.tasks)) mergedTasks.push(...d.tasks);
+
+    /* Fill any blank fields on keep from drop */
+    ['phone','venue','eventType','eventDate','guestCount','budget','message','source','priority','followUpDate']
+      .forEach(k => { if (!keep[k] && d[k]) keep[k] = d[k]; });
+
+    /* Reassign related docs */
+    const [quotes, bookings] = await Promise.all([
+      db.collection('quotes').where('leadId','==',dropId).get(),
+      db.collection('call_bookings').where('leadId','==',dropId).get()
+    ]);
+    const batch = db.batch();
+    quotes.forEach(q => batch.update(q.ref, { leadId: keepId, leadName: keep.name || dropDoc.data().name }));
+    bookings.forEach(b => batch.update(b.ref, { leadId: keepId, name: keep.name || dropDoc.data().name }));
+    await batch.commit();
+
+    /* Delete the dropped lead */
+    await db.collection('leads').doc(dropId).delete();
+    logActivity('merge', 'leads', dropId, `Merged into ${keep.name || keepId}`, { mergedInto: keepId });
+  }
+
+  /* Save the consolidated keep doc */
+  await keepRef.update({
+    notes: mergedNotes,
+    tasks: mergedTasks,
+    phone: keep.phone || '',
+    venue: keep.venue || '',
+    eventType: keep.eventType || '',
+    eventDate: keep.eventDate || '',
+    guestCount: keep.guestCount || '',
+    budget: keep.budget || '',
+    message: keep.message || '',
+    source: keep.source || '',
+    priority: keep.priority || '',
+    followUpDate: keep.followUpDate || '',
+    updatedAt: TS()
+  });
+}
+
+window.openMergeDuplicatesModal = openMergeDuplicatesModal;
 
 window.openNewQuoteModal = openNewQuoteModal;
 
