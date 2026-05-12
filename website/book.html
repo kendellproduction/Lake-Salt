@@ -659,14 +659,10 @@
     <div class="step-inner">
       <span class="eyebrow">Step 3 · The crowd</span>
       <h1 class="q">How many <em>guests</em>?</h1>
-      <p class="sub">A rough range is fine — we'll firm it up on the call.</p>
+      <p class="sub">Exact number — even a best estimate. This drives the quote.</p>
 
-      <button class="choice" data-pick="guestCount" data-val="Under 30"><span class="label-main">Under 30</span><span class="arrow">→</span></button>
-      <button class="choice" data-pick="guestCount" data-val="30–75"><span class="label-main">30 – 75</span><span class="arrow">→</span></button>
-      <button class="choice" data-pick="guestCount" data-val="75–150"><span class="label-main">75 – 150</span><span class="arrow">→</span></button>
-      <button class="choice" data-pick="guestCount" data-val="150–300"><span class="label-main">150 – 300</span><span class="arrow">→</span></button>
-      <button class="choice" data-pick="guestCount" data-val="300+"><span class="label-main">300+</span><span class="arrow">→</span></button>
-      <button class="choice" data-pick="guestCount" data-val="Not sure yet"><span class="label-main">Not sure yet</span><span class="arrow">→</span></button>
+      <input id="guestCount" type="number" inputmode="numeric" min="1" max="2000" placeholder="e.g. 120" required
+        style="width:100%;max-width:280px;margin:1rem auto 0;display:block;padding:1rem 1.2rem;font-size:1.4rem;text-align:center;border:1px solid rgba(255,255,255,0.2);border-radius:14px;background:rgba(255,255,255,0.04);color:inherit;font-family:inherit;" />
     </div>
   </section>
 
@@ -1151,6 +1147,17 @@
       setTimeout(() => goTo(currentStep + 1), 220);
     });
   });
+
+  /* Guest count input */
+  const guestCountEl = document.getElementById('guestCount');
+  if (guestCountEl) {
+    if (state.guestCount) guestCountEl.value = state.guestCount;
+    guestCountEl.addEventListener('input', () => {
+      const n = parseInt(guestCountEl.value.trim(), 10);
+      state.guestCount = (n && n > 0) ? String(n) : '';
+      refreshNextButton();
+    });
+  }
 
   /* Date input */
   const eventDateEl = document.getElementById('eventDate');
