@@ -60,12 +60,15 @@ service cloud.firestore {
     match /settings/{id} { allow read, write: if isAdmin(); }
 
     // quotes/{id} — admins do anything. Clients who hold the quote URL get
-    // a single-doc read (so the public proposal page works), and a tightly
-    // scoped UPDATE that can ONLY set the acceptance fields and only when
-    // the quote isn't already accepted. They can't change line items,
-    // discounts, the total, or any other field.
+    // a single-doc GET (so the public proposal page works), but NOT list/
+    // query access — preventing anyone from enumerating every quote in the
+    // database via `db.collection('quotes').get()`. Their UPDATE is tightly
+    // scoped to the acceptance fields and only allowed when the quote
+    // isn't already accepted. They can't touch line items, totals, or any
+    // other quote.
     match /quotes/{id} {
-      allow read:   if isAdmin() || true;
+      allow get:    if true;                                   // single doc by ID — public
+      allow list:   if isAdmin();                              // no enumeration
       allow create, delete: if isAdmin();
       allow update: if isAdmin() ||
         (

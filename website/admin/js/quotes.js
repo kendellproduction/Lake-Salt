@@ -560,14 +560,25 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
     }
   }
 
-  /* Save a quote at the given status. Lock does NOT change the lead stage —
-   * only Send does. Status values: 'draft' | 'locked' | 'sent'. */
+  /* Save a quote at the given status.
+   *
+   * Save semantics (no orphan docs):
+   *   • Draft or Locked: UPDATE the prior doc if it exists and is itself
+   *     draft/locked. Otherwise create a new doc.
+   *   • Sent / Accepted: never overwrite. Always create a new version so
+   *     history is preserved.
+   *
+   * Lock does NOT change the lead stage — only Send does. */
   async function saveQuote(status, sendMeta = null) {
     const calc = calcQuote(state.q);
     if ((status === 'locked' || status === 'sent') && !state.q.leadId) {
       alert('Link a lead before locking or sending the quote.');
       return null;
     }
+    const now = TS();
+    const me = currentUser?.displayName || currentUser?.email || 'Admin';
+
+    /* The data that always overwrites on save */
     const payload = {
       leadId: state.q.leadId,
       leadName: state.q.leadName,
@@ -604,42 +615,64 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
       notes: state.q.notes,
       status,
       expiresAt: new Date(Date.now() + QUOTE_DEFAULTS.quoteExpiryDays * 86400000).toISOString().slice(0,10),
-      createdAt: TS(),
-      createdBy: currentUser?.displayName || currentUser?.email || 'Admin'
+      updatedAt: now,
+      updatedBy: me
     };
-    if (status === 'locked') payload.lockedAt = TS();
+    if (status === 'locked') payload.lockedAt = now;
     if (status === 'sent') {
-      payload.lockedAt = TS();
-      payload.sentAt = TS();
-      payload.sentBy = currentUser?.displayName || currentUser?.email || 'Admin';
+      payload.lockedAt = now;
+      payload.sentAt = now;
+      payload.sentBy = me;
       if (sendMeta) payload.sentVia = sendMeta;
     }
 
     try {
-      const ref = await db.collection('quotes').add(payload);
+      /* Reuse-existing-doc rule: only when the prior doc is itself draft or
+       * locked AND we're saving as draft or locked. Sent/accepted always
+       * forks to a new version. */
+      const canReuse = state.priorQuoteId
+        && (state.priorStatus === 'draft' || state.priorStatus === 'locked')
+        && (status === 'draft' || status === 'locked');
+
+      let quoteId;
+      if (canReuse) {
+        await db.collection('quotes').doc(state.priorQuoteId).update(payload);
+        quoteId = state.priorQuoteId;
+      } else {
+        payload.createdAt = now;
+        payload.createdBy = me;
+        const ref = await db.collection('quotes').add(payload);
+        quoteId = ref.id;
+      }
+
+      /* Track the now-current quote in the in-memory state so the next save
+       * targets the same doc instead of creating yet another version. */
+      state.priorQuoteId = quoteId;
+      state.priorStatus = status;
+
       const action = status === 'sent' ? 'quote_sent' : status === 'locked' ? 'quote_locked' : 'quote_saved';
-      const verb = status === 'sent' ? 'Sent' : status === 'locked' ? 'Locked' : 'Saved';
-      logActivity(action, 'quotes', ref.id,
+      const verb = canReuse ? 'Updated' : (status === 'sent' ? 'Sent' : status === 'locked' ? 'Locked' : 'Saved');
+      logActivity(action, 'quotes', quoteId,
         `${verb} quote for ${state.q.leadName || 'lead'} — ${moneyFmt(calc.total)}${sendMeta ? ' via ' + sendMeta : ''}`,
-        { total: calc.total, leadId: state.q.leadId });
+        { total: calc.total, leadId: state.q.leadId, reusedDoc: canReuse });
 
       /* Mirror summary on the lead. Only Send moves the stage. */
       if (state.q.leadId) {
         const update = {
-          latestQuoteId: ref.id,
+          latestQuoteId: quoteId,
           latestQuoteTotal: calc.total,
           latestQuoteStatus: status,
-          updatedAt: TS()
+          updatedAt: now
         };
         if (status === 'sent') update.stage = 'Proposal Sent';
         await db.collection('leads').doc(state.q.leadId).update(update);
       }
       const toast = status === 'sent' ? '📤 Marked as sent — stage moved to Proposal Sent'
-                  : status === 'locked' ? '🔒 Price locked'
-                  : 'Draft saved';
+                  : status === 'locked' ? (canReuse ? '🔒 Price locked' : '🔒 New version locked')
+                  : (canReuse ? 'Draft updated' : 'Draft saved');
       showToast(toast);
       loadHistory();
-      return ref.id;
+      return quoteId;
     } catch (err) {
       console.error('Save quote failed:', err);
       alert('Could not save quote — see console.');

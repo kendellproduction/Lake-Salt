@@ -215,9 +215,25 @@
 
     <div class="panel totals">
       <div class="panel-label">Pricing</div>
-      <div class="line"><div class="line-label">Subtotal</div><div class="line-amt">${m(quote.subtotal)}</div></div>
-      ${quote.peakApplied ? `<div class="line"><div class="line-label">Peak season adjustment</div><div class="line-amt">+${m(quote.peakAdj)}</div></div>` : ''}
-      ${quote.discountAmt > 0 ? `<div class="line"><div class="line-label">Discount</div><div class="line-amt" style="color:#22c55e">−${m(quote.discountAmt)}</div></div>` : ''}
+      ${quote.totalOverride != null
+        ? `
+          <!-- Top-down pricing: line items are informational; total is the package price. -->
+          <div class="line">
+            <div class="line-label">Itemized value</div>
+            <div class="line-amt">${m(quote.computedTotal || quote.subtotal)}</div>
+          </div>
+          ${quote.targetAdjustment && Math.abs(quote.targetAdjustment) > 1
+            ? `<div class="line">
+                 <div class="line-label">Package adjustment</div>
+                 <div class="line-amt" style="color:${quote.targetAdjustment > 0 ? 'var(--charcoal)' : '#22c55e'}">${quote.targetAdjustment > 0 ? '+' : '−'}${m(Math.abs(quote.targetAdjustment))}</div>
+               </div>`
+            : ''}
+        `
+        : `
+          <div class="line"><div class="line-label">Subtotal</div><div class="line-amt">${m(quote.subtotal)}</div></div>
+          ${quote.peakApplied ? `<div class="line"><div class="line-label">Peak season adjustment</div><div class="line-amt">+${m(quote.peakAdj)}</div></div>` : ''}
+          ${quote.discountAmt > 0 ? `<div class="line"><div class="line-label">Discount</div><div class="line-amt" style="color:#22c55e">−${m(quote.discountAmt)}</div></div>` : ''}
+        `}
       <div class="grand line">
         <div class="line-label">Total</div>
         <div class="line-amt">${m(quote.total)}</div>

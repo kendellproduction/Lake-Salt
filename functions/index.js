@@ -540,3 +540,82 @@ exports.markBooked = onCall(async (request) => {
 
   return { success: true, ...result };
 });
+
+
+/* ═════════════════════════════════════════════════════════════════════════
+   onQuoteAccepted — runs when a client accepts their public proposal.
+   The public-page write only touches the quote doc (rules don't allow
+   unauthenticated writes to leads or activity). This trigger picks up
+   that quote.update, advances the linked lead's stage, and writes an
+   activity entry so the dashboard surfaces it.
+   ───────────────────────────────────────────────────────────────────────── */
+const { onDocumentUpdated } = require('firebase-functions/v2/firestore');
+
+exports.onQuoteAccepted = onDocumentUpdated('quotes/{quoteId}', async (event) => {
+  const before = event.data?.before?.data() || {};
+  const after  = event.data?.after?.data()  || {};
+
+  /* Only act on the transition: was NOT accepted before → IS accepted now. */
+  const wasAccepted = !!before.clientAcceptedAt;
+  const nowAccepted = !!after.clientAcceptedAt;
+  if (wasAccepted || !nowAccepted) return null;
+
+  const quoteId  = event.params.quoteId;
+  const leadId   = after.leadId;
+  const leadName = after.leadName || 'a client';
+  const sig      = after.clientAcceptedSignature || 'client';
+  const total    = after.total || 0;
+
+  /* Advance the linked lead's stage. Booked-Tentative is the right stop:
+   * the client has signed off on the quote, but the deposit isn't paid yet
+   * — that's what bumps it to fully Booked. */
+  if (leadId) {
+    try {
+      await db.collection('leads').doc(leadId).update({
+        stage: 'Booked-Tentative',
+        latestQuoteStatus: 'accepted',
+        latestQuoteAcceptedAt: admin.firestore.FieldValue.serverTimestamp(),
+        latestQuoteAcceptedBy: sig,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    } catch (e) {
+      console.error('Failed to advance lead stage on quote accept:', e);
+    }
+  }
+
+  /* Activity log — visible on the admin dashboard's recent-activity feed. */
+  try {
+    await db.collection('activity').add({
+      action: 'quote_accepted',
+      collection: 'quotes',
+      docId: quoteId,
+      summary: `🎉 ${leadName} ACCEPTED the proposal — $${Math.round(total).toLocaleString('en-US')} (signed: ${sig})`,
+      userId: 'client',
+      userName: sig,
+      metadata: { leadId, total, signature: sig },
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (e) {
+    console.error('Failed to write activity entry on quote accept:', e);
+  }
+
+  /* Owner notification — high-visibility "needs Kendell's attention" entry
+   * in the kendell_followups collection (already surfaced in the admin UI). */
+  if (leadId) {
+    try {
+      await db.collection('kendell_followups').add({
+        type: 'quote_accepted',
+        leadId,
+        leadName,
+        title: `🎉 ${leadName} accepted their quote — send deposit invoice`,
+        notes: `Quote accepted by ${sig} for $${Math.round(total).toLocaleString('en-US')}. Send the 30% deposit invoice to lock the date.`,
+        status: 'open',
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    } catch (e) {
+      console.error('Failed to create owner followup on quote accept:', e);
+    }
+  }
+
+  return null;
+});
