@@ -207,7 +207,7 @@
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
   <link rel="preconnect" href="https://images.unsplash.com" crossorigin />
   <link rel="dns-prefetch" href="https://api.emailjs.com" />
-  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1543007630-9710e4a00a20?w=1600&q=70&fit=crop" fetchpriority="high" />
+  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1600&q=70&fit=crop" fetchpriority="high" />
   <!-- GSAP -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
@@ -689,6 +689,8 @@
 
     @media (prefers-reduced-motion: reduce) {
       .twinkle-field span, .drift-field span { animation: none; opacity: 0.5; }
+      .marquee-inner { animation: none !important; }
+      .scroll-line { animation: none !important; }
     }
 
     .landing-inner {
@@ -2960,7 +2962,7 @@
         rgba(255,190,50,.06) 91%,
         rgba(255,60,90,.3) 100%
       );
-      filter: blur(18px);
+      filter: blur(10px);
       opacity: 0.7;
       transition: opacity 0.4s;
     }
@@ -5222,13 +5224,19 @@ function buildReviewCard(r) {
   if (!card) return;
   if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   let angle = 0;
-  let timer = null;
-  const tick = () => {
-    angle = (angle + 2) % 360;
+  let rafId = null;
+  let lastT = 0;
+  const tick = (t) => {
+    if (rafId === null) return;
+    const dt = lastT ? (t - lastT) : 16.67;
+    lastT = t;
+    // ~2deg per 40ms = 50deg/sec; advance proportionally to elapsed time.
+    angle = (angle + 50 * (dt / 1000)) % 360;
     card.style.setProperty('--holo-angle', angle + 'deg');
+    rafId = requestAnimationFrame(tick);
   };
-  const start = () => { if (!timer) timer = setInterval(tick, 40); };
-  const stop  = () => { if (timer) { clearInterval(timer); timer = null; } };
+  const start = () => { if (rafId === null) { lastT = 0; rafId = requestAnimationFrame(tick); } };
+  const stop  = () => { if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; } };
   if ('IntersectionObserver' in window) {
     const io = new IntersectionObserver(entries => {
       entries[0].isIntersecting ? start() : stop();
@@ -6073,22 +6081,46 @@ window.addEventListener('scroll', () => {
 });
 
 /* ─── CUSTOM CURSOR ─── */
-const dot = document.getElementById('cursor-dot');
-const ring = document.getElementById('cursor-ring');
-let mx = 0, my = 0, rx = 0, ry = 0;
-
-document.addEventListener('mousemove', e => {
-  mx = e.clientX; my = e.clientY;
-  gsap.to(dot, { x: mx, y: my, duration: 0.06, ease: 'none' });
-});
-
-function animateCursor() {
-  rx += (mx - rx) * 0.12;
-  ry += (my - ry) * 0.12;
-  gsap.set(ring, { x: rx, y: ry });
-  requestAnimationFrame(animateCursor);
-}
-animateCursor();
+// Skip entirely on touch/coarse-pointer devices and when reduced motion is requested.
+// Sleep the rAF loop once the ring has caught up to the dot — wake on mousemove.
+(function setupCursor() {
+  const dot = document.getElementById('cursor-dot');
+  const ring = document.getElementById('cursor-ring');
+  if (!dot || !ring) return;
+  const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (coarse || reduced) {
+    // Hide the custom cursor visuals so they don't sit in the corner.
+    dot.style.display = 'none';
+    ring.style.display = 'none';
+    return;
+  }
+  let mx = 0, my = 0, rx = 0, ry = 0;
+  let running = false;
+  function animateCursor() {
+    rx += (mx - rx) * 0.12;
+    ry += (my - ry) * 0.12;
+    gsap.set(ring, { x: rx, y: ry });
+    if (Math.abs(mx - rx) + Math.abs(my - ry) < 0.5 || document.hidden) {
+      running = false;
+      return;
+    }
+    requestAnimationFrame(animateCursor);
+  }
+  function wake() {
+    if (running || document.hidden) return;
+    running = true;
+    requestAnimationFrame(animateCursor);
+  }
+  document.addEventListener('mousemove', e => {
+    mx = e.clientX; my = e.clientY;
+    gsap.to(dot, { x: mx, y: my, duration: 0.06, ease: 'none' });
+    wake();
+  }, { passive: true });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) wake();
+  });
+})();
 
 /* ─── SCROLL ANIMATIONS (GSAP + ScrollTrigger) ─── */
 // Section headings — clip reveal
@@ -6138,13 +6170,20 @@ document.querySelectorAll('.g-item').forEach((el, i) => {
   });
 });
 
-// Hero parallax
-window.addEventListener('scroll', () => {
+// Hero parallax (rAF-throttled, cached element, passive listener)
+(function setupHeroParallax() {
   const heroBg = document.getElementById('hero-bg');
-  if (heroBg) {
-    gsap.set(heroBg, { y: window.scrollY * 0.35 });
-  }
-});
+  if (!heroBg) return;
+  let ticking = false;
+  window.addEventListener('scroll', () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      gsap.set(heroBg, { y: window.scrollY * 0.35 });
+      ticking = false;
+    });
+  }, { passive: true });
+})();
 
 // Stats section — clip reveal
 gsap.from('.stats-section', {
