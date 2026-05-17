@@ -95,6 +95,130 @@ function suggestPeak(eventDate) {
   return { isPeak: false, reason: '' };
 }
 
+/* ═════════════════════════════════════════════════════════════════════════
+   LEARNING FROM PAST QUOTES — Tier 1 (lookup) + backward-fit support.
+
+   findSimilarQuotes(filters) → past quotes that "look like" this event:
+     · same eventType (loose match)
+     · guestCount within ±25% (or no filter if guests unknown)
+     · within the last 18 months
+     · excludes drafts (we learn from what you actually quoted)
+
+   Returns { all, accepted, median, min, max, acceptRate, ratios } where:
+     · ratios = average proportion of total that went to each line type
+       across accepted quotes. Used by the backward-fit so when you set
+       a target total, the breakdown auto-fills in your usual shape.
+   ───────────────────────────────────────────────────────────────────────── */
+async function findSimilarQuotes({ eventType, guestCount, leadId } = {}) {
+  let snap;
+  try { snap = await db.collection('quotes').get(); }
+  catch (e) { console.warn('Quote history fetch failed:', e); return emptyInsights(); }
+
+  const norm = (s) => String(s || '').toLowerCase().trim();
+  const targetType = norm(eventType);
+  const targetGuests = Number(guestCount) || 0;
+  const eighteenMonthsAgo = Date.now() - 18 * 30 * 86400000;
+
+  const all = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    /* Exclude the lead we're currently quoting from its own history */
+    .filter(q => !leadId || q.leadId !== leadId)
+    /* Drafts are noise — only learn from what you committed to */
+    .filter(q => q.status === 'locked' || q.status === 'sent' || q.status === 'accepted')
+    /* Recent enough to be price-relevant */
+    .filter(q => {
+      const t = q.createdAt?.toMillis?.() || 0;
+      return t === 0 || t >= eighteenMonthsAgo;
+    });
+
+  /* eventType match: loose, just startsWith on the lead's eventType */
+  const typeMatched = targetType
+    ? all.filter(q => norm(q.lineItems?.eventType || q.eventType || '').includes(targetType.split(' ')[0]))
+    : all;
+
+  /* guestCount window: ±25% */
+  const guestMatched = targetGuests
+    ? typeMatched.filter(q => {
+        const g = Number(q.lineItems?.guestCount) || 0;
+        return g >= targetGuests * 0.75 && g <= targetGuests * 1.25;
+      })
+    : typeMatched;
+
+  /* If guest filter wiped everything, fall back to type-only matches */
+  const similar = guestMatched.length >= 2 ? guestMatched : typeMatched;
+  if (!similar.length) return emptyInsights();
+
+  const accepted = similar.filter(q => q.status === 'accepted');
+  const sortedByTotal = [...similar].sort((a, b) => (a.total || 0) - (b.total || 0));
+  const median = sortedByTotal[Math.floor(sortedByTotal.length / 2)]?.total || 0;
+  const min = sortedByTotal[0]?.total || 0;
+  const max = sortedByTotal[sortedByTotal.length - 1]?.total || 0;
+  const acceptRate = similar.length ? accepted.length / similar.length : 0;
+
+  /* Ratio breakdown — only computed from ACCEPTED quotes (those are the
+   * shapes that worked). Average of (line_total / quote_total) per line. */
+  const sample = accepted.length >= 3 ? accepted : (similar.length >= 3 ? similar : []);
+  const ratios = computeBreakdownRatios(sample);
+
+  return { all: similar, accepted, median, min, max, acceptRate, ratios, sampleSize: similar.length, acceptedSize: accepted.length };
+}
+
+function emptyInsights() {
+  return { all: [], accepted: [], median: 0, min: 0, max: 0, acceptRate: 0, ratios: null, sampleSize: 0, acceptedSize: 0 };
+}
+
+function computeBreakdownRatios(quotes) {
+  if (!quotes.length) return null;
+  const sums = { bartender: 0, menu: 0, offMenu: 0, travel: 0, custom: 0 };
+  let n = 0;
+  for (const q of quotes) {
+    const total = q.total;
+    if (!total || total <= 0) continue;
+    const li = q.lineItems || {};
+    const bartender = (li.serviceHours||0) * (li.bartenderRate||0) * (li.bartenders||0);
+    const menu = li.customMenuFee || 0;
+    const offMenu = li.offMenuEnabled ? (li.offMenuQty||0) * (li.offMenuPrice||0) : 0;
+    const travel = li.travelFee || 0;
+    const custom = Array.isArray(li.custom) ? li.custom.reduce((s,c) => s + (Number(c.price)||0), 0) : 0;
+    sums.bartender += bartender / total;
+    sums.menu      += menu / total;
+    sums.offMenu   += offMenu / total;
+    sums.travel    += travel / total;
+    sums.custom    += custom / total;
+    n++;
+  }
+  if (!n) return null;
+  return {
+    bartender: sums.bartender / n,
+    menu:      sums.menu / n,
+    offMenu:   sums.offMenu / n,
+    travel:    sums.travel / n,
+    custom:    sums.custom / n
+  };
+}
+
+/* Distribute a target total across line items using historical ratios.
+ * Mutates the state object's fields directly. Used when the user sets a
+ * top-down total and we want the breakdown to "fit" automatically. */
+function distributeToTarget(q, targetTotal, ratios) {
+  if (!ratios || !targetTotal) return;
+  /* Allocate menu first (most common big chunk). Bartender block has fixed
+   * structure (hours × rate × count), so we hold hours+bartenders+rate
+   * constant and back-fit ONLY the menu fee and travel; if there's still
+   * a delta, it stays as the totalOverride's targetAdjustment. */
+  const bartenderTotal = (q.serviceHours||0) * (q.bartenderRate||0) * (q.bartenders||0);
+  const offMenuTotal = q.offMenuEnabled ? (q.offMenuQty||0) * (q.offMenuPrice||0) : 0;
+  const customSum = (q.lineItems||[]).reduce((s,c) => s + (Number(c.price)||0), 0);
+
+  /* Reserve the fixed parts; what's left goes to menu + travel proportionally. */
+  const reserved = bartenderTotal + offMenuTotal + customSum;
+  const remaining = Math.max(0, targetTotal - reserved);
+  const menuShare = ratios.menu || 0.5;
+  const travelShare = ratios.travel || 0.1;
+  const total = menuShare + travelShare || 1;
+  q.customMenuFee = Math.round(remaining * (menuShare / total));
+  q.travelFee     = Math.round(remaining * (travelShare / total));
+}
+
 /* ─── In-memory quote state (per active builder instance) ─── */
 function makeInitialQuote(lead) {
   const guests = parseGuests(lead?.guestCount);
@@ -334,6 +458,8 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
           <div id="qb-budget-slot">${budgetBadgeHTML(q, calc)}</div>
         </div>
 
+        <div id="qb-insights-slot"></div>
+
         <!-- BARTENDER + TRAVEL -->
         <div class="qb-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px">
           <label class="qb-field"><span>Service hours</span>
@@ -500,6 +626,16 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
       state.q.totalOverride = parseFloat(e.target.value) || 0;
       repaintTotals();
     });
+    /* When the user finishes typing a target, auto-distribute across line
+     * items using their historical breakdown ratios (if we have them). */
+    container.querySelector('#qb-override-val')?.addEventListener('change', (e) => {
+      const target = parseFloat(e.target.value) || 0;
+      if (target > 0 && state.insights?.ratios) {
+        distributeToTarget(state.q, target, state.insights.ratios);
+        render();
+        showToast(`Auto-distributed line items to hit ${moneyFmt(target)}`);
+      }
+    });
 
     /* Budget badge sits inside #qb-budget-slot which gets repainted by
      * repaintTotals(); delegate the click so it survives repaints. */
@@ -516,6 +652,61 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
     container.querySelector('#qb-copy')?.addEventListener('click', () => copyToClipboard(quoteText(state.q, calc)));
 
     loadHistory();
+    loadInsights();
+  }
+
+  /* Fetches & renders the "from your history" panel. Cached on state so we
+   * don't re-query Firestore on every render. Refresh by clearing
+   * state.insights before calling. */
+  async function loadInsights() {
+    const slot = document.getElementById('qb-insights-slot');
+    if (!slot) return;
+    if (state.insights === undefined) {
+      slot.innerHTML = `<div class="text-muted" style="font-size:11px;padding:6px 0">Loading history…</div>`;
+      try {
+        state.insights = await findSimilarQuotes({
+          eventType: lead?.eventType,
+          guestCount: state.q.guestCount,
+          leadId: state.q.leadId
+        });
+      } catch (e) {
+        console.warn(e); state.insights = emptyInsights();
+      }
+    }
+    const ins = state.insights;
+    if (!ins || ins.sampleSize === 0) {
+      slot.innerHTML = `<div style="font-size:11px;color:var(--text-muted);padding:6px 10px;background:rgba(255,255,255,0.02);border:1px dashed var(--border);border-radius:8px;margin-bottom:12px">📊 No similar past quotes yet — once you've quoted 3–5 more events like this, suggestions will appear here.</div>`;
+      return;
+    }
+    const acceptColor = ins.acceptRate >= 0.6 ? '#22c55e' : ins.acceptRate >= 0.3 ? '#FACC15' : '#E05252';
+    slot.innerHTML = `
+      <div style="background:linear-gradient(135deg,rgba(59,130,246,0.10),rgba(168,85,247,0.08));border:1px solid rgba(59,130,246,0.30);border-radius:10px;padding:10px 12px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">
+          <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:#A8B5D9">📊 Your similar quotes</div>
+          <div style="font-size:11px;color:var(--text-muted)">
+            ${ins.sampleSize} found${ins.acceptedSize?` · <span style="color:${acceptColor};font-weight:700">${Math.round(ins.acceptRate*100)}% accepted</span>`:''}
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px;text-align:center">
+          <div><div style="font-size:10px;color:var(--text-muted);letter-spacing:.08em;text-transform:uppercase">Min</div><div style="font-size:14px;font-weight:600">${moneyFmt(ins.min)}</div></div>
+          <div><div style="font-size:10px;color:var(--gold);letter-spacing:.08em;text-transform:uppercase;font-weight:700">Median</div><div style="font-size:18px;font-weight:700;color:var(--gold)">${moneyFmt(ins.median)}</div></div>
+          <div><div style="font-size:10px;color:var(--text-muted);letter-spacing:.08em;text-transform:uppercase">Max</div><div style="font-size:14px;font-weight:600">${moneyFmt(ins.max)}</div></div>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+          <button type="button" id="qb-use-median" class="btn btn-secondary btn-sm" style="flex:1;font-size:12px;padding:6px 8px">Use ${moneyFmt(ins.median)} as target ${ins.ratios?' + auto-fill':''}</button>
+        </div>
+        ${ins.ratios ? `<div style="font-size:10px;color:var(--text-muted);margin-top:6px;line-height:1.5">
+          Typical breakdown: ${Math.round(ins.ratios.menu*100)}% menu · ${Math.round(ins.ratios.bartender*100)}% labor · ${Math.round(ins.ratios.travel*100)}% travel${ins.ratios.custom>0.02?` · ${Math.round(ins.ratios.custom*100)}% extras`:''}
+        </div>` : ''}
+      </div>
+    `;
+    document.getElementById('qb-use-median')?.addEventListener('click', () => {
+      const target = ins.median;
+      state.q.totalOverride = target;
+      if (ins.ratios) distributeToTarget(state.q, target, ins.ratios);
+      render();
+      showToast(`Set target to ${moneyFmt(target)}${ins.ratios?' + auto-distributed line items':''}`);
+    });
   }
 
   /* Read every numeric/text input into state.q WITHOUT touching the DOM.
