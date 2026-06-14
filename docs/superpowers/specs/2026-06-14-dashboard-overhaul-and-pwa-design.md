@@ -31,6 +31,17 @@ Rule of thumb the dashboard follows:
 - **Money stats** (revenue / costs / profit) → `events` + `expenses` + `payments`.
 - **Pipeline widgets** (upcoming, deals, lead flow) → `leads`.
 
+### Dashboard layout (top → bottom)
+
+1. **Alerts strip** (only when something is flagged)
+2. **Date filter** + **stat cards** (clickable)
+3. **Action row** — Upcoming Events · Deals to Close · Lead Flow
+4. **Insight row** — Money Made · Event Size & Profitability · Website Analytics
+   (each ending in a 💡 suggestion)
+
+Actionable sits above historical on purpose: the top of the page answers "what do I do today,"
+the bottom answers "how is the business doing."
+
 ### A1. Global date filter
 
 A segmented control at the top of the dashboard, driving every stat card and money widget.
@@ -87,6 +98,32 @@ Visual affordance: cards get a hover state + a small "↗ view" hint so it's obv
   - **Mini funnel**: counts at each stage (New → Contacted → Proposal → Booked) with the overall
     conversion % (Booked+Completed ÷ total). Makes the stall point visible.
 
+### A3b. Insight / history widgets (with suggestions)
+
+Below the action widgets. These are about understanding the business, and **every one ends with a
+one-line 💡 suggestion** derived from its own numbers (see A6). All respect the date filter.
+
+**4. Money Made** — the history view you asked for.
+- Source: `events` revenue in range. Shows total made, # of events, and a small bar/line of
+  revenue by month so you can see the shape of the year.
+- Suggestion example: "Your three biggest months were Aug, Dec, Jun — all corporate. Push corporate
+  outreach into your slow months (Jan–Mar)."
+
+**5. Event Size & Profitability** — efficiency stats.
+- Source: `events` (+ matched `expenses`/`payments` per `eventId` for margin).
+- Metrics: avg guests/event, avg revenue/event, **revenue per guest**, avg **margin %**, and a
+  breakdown by event type (Corporate vs Private vs Wedding).
+- Suggestion example: "Corporate events net 71% margin vs 48% for private — every corporate booking is
+  worth ~2 private ones. Prioritize corporate leads in Deals to Close."
+
+**6. Website Analytics** — from the `page_events` collection.
+- Source: `page_events` in range. Metrics: unique sessions (visitors), top pages, traffic sources
+  (referrer + UTM), and a **booking funnel**: visits to `book.html` → form interactions → leads created.
+- The high-value join: tie `page_events` UTM/referrer to `leads.source` to show **which channels
+  actually produce booked business**, not just traffic.
+- Suggestion example: "book.html got 210 visits but only 6 form starts — the form is your drop-off
+  point, tighten it." or "Instagram drove 40% of traffic but 0 booked leads — traffic ≠ customers."
+
 ### A4. Alerts strip
 
 A banner that renders **only when something is flagged**, at the very top of the dashboard.
@@ -106,6 +143,19 @@ Flag sources:
 
 Each alert row: icon, plain-English summary, timestamp, and a dismiss (✕). Severity color-coded
 (red = security/deletion, amber = financial anomaly).
+
+### A6. Suggestion engine
+
+A small rule-based helper (`getSuggestion(widgetType, stats)`) that returns one plain-English,
+actionable sentence per insight widget. Not AI/LLM — deterministic rules over the computed stats, so
+it's fast, free, and predictable. Examples of the rule shapes:
+- Money Made → identify peak vs slow months, recommend outreach timing.
+- Profitability → compare margins across event types, recommend which to prioritize.
+- Website → detect funnel drop-off (high views ÷ low form starts) or high-traffic-low-conversion sources.
+- Lead Flow → name the best-converting source, recommend doubling down.
+
+Rules live in one file so they're easy to tune. Each returns `null` when there isn't enough data
+(widget then hides its suggestion line rather than showing a guess).
 
 ### A5. Supporting changes (small, necessary)
 
