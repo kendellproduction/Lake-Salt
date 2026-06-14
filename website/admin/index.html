@@ -6,6 +6,12 @@
   <title>Lake Salt — Admin</title>
   <base href="/admin/" />
   <link rel="stylesheet" href="admin.css" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#1A1412" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="LS Admin" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 </head>
 <body>
 
@@ -181,6 +187,16 @@
 <script src="js/notes.js"></script>
 <script src="js/quotes.js"></script>
 <script src="js/settings.js"></script>
+
+<!-- ─── PWA: register service worker (installable + offline shell) ─── -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/admin/service-worker.js', { scope: '/admin/' })
+        .catch(err => console.warn('SW registration failed:', err));
+    });
+  }
+</script>
 
 </body>
 </html>
