@@ -114,7 +114,43 @@ function initAuth() {
   });
 }
 
+/* Log a sign-in to the activity feed once per browser session. Flags the
+ * sign-in as a new device when this browser's fingerprint hasn't been seen
+ * before — the dashboard alerts strip surfaces those. */
+function logSignin(user) {
+  try {
+    if (sessionStorage.getItem('ls_signin_logged')) return;
+    sessionStorage.setItem('ls_signin_logged', '1');
+
+    let deviceId = localStorage.getItem('ls_device_id');
+    if (!deviceId) {
+      deviceId = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem('ls_device_id', deviceId);
+    }
+    let known = [];
+    try { known = JSON.parse(localStorage.getItem('ls_known_devices') || '[]'); } catch (e) {}
+    const newDevice = !known.includes(deviceId);
+    if (newDevice) { known.push(deviceId); localStorage.setItem('ls_known_devices', JSON.stringify(known)); }
+
+    const ua = navigator.userAgent || '';
+    const os = /Mac/.test(ua) ? 'Mac' : /Win/.test(ua) ? 'Windows' : /iPhone|iPad/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : 'device';
+    const browser = /Chrome/.test(ua) ? 'Chrome' : /Safari/.test(ua) ? 'Safari' : /Firefox/.test(ua) ? 'Firefox' : 'browser';
+    const device = `${browser} on ${os}`;
+
+    db.collection('activity').add({
+      action: 'signin',
+      collection: 'admins',
+      docId: user.uid,
+      summary: `${user.displayName || user.email} signed in`,
+      userName: user.displayName || user.email,
+      metadata: { device, newDevice, deviceId },
+      createdAt: TS()
+    });
+  } catch (e) { /* never block sign-in on logging */ }
+}
+
 function onAuthed(user, role) {
+  logSignin(user);
   const authScreen = document.getElementById('auth-screen');
   const adminApp   = document.getElementById('admin-app');
 

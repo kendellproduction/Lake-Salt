@@ -240,6 +240,7 @@ function escapeHtmlSafe(s) {
 function stageColor(stage) {
   const map = {
     'New Lead':         '#1A9E8F',
+    'Expo Email Sent':  '#06b6d4',
     'Call Scheduled':   '#3b82f6',
     'Contacted':        '#C9A84C',
     'Proposal Sent':    '#a855f7',
@@ -254,6 +255,7 @@ function stageColor(stage) {
 function stageBadgeClass(stage) {
   const map = {
     'New Lead':         'badge-new-lead',
+    'Expo Email Sent':  'badge-contacted',
     'Call Scheduled':   'badge-contacted',
     'Contacted':        'badge-contacted',
     'Proposal Sent':    'badge-proposal',
@@ -320,122 +322,12 @@ db.collection('inventory').onSnapshot(snap => {
 });
 
 // ══════════════════════════════════════
-// DASHBOARD MODULE — with P&L card + activity feed
+// DASHBOARD MODULE
 // ══════════════════════════════════════
-async function renderDashboard() {
-  const c = document.getElementById('module-container');
-  /* Expo-related quick links live on the Expos hub now (admin/js/expo.js). */
-  c.innerHTML = `
-    <div class="page-header">
-      <div>
-        <div class="page-title">Dashboard</div>
-        <div class="page-subtitle">Welcome back, ${currentUser?.displayName?.split(' ')[0] || 'Kendell'}</div>
-      </div>
-    </div>
-    <div id="upcoming-calls"></div>
-    <div class="stat-grid" id="dash-stats">
-      ${[1,2,3,4,5].map(()=>`<div class="stat-card"><div class="skeleton skeleton-line w-1/4" style="height:11px;margin-bottom:10px;"></div><div class="skeleton skeleton-line w-1/2" style="height:28px;"></div></div>`).join('')}
-    </div>
-    <div class="dashboard-grid">
-      <div class="card" style="grid-column:span 2 / span 2">
-        <div class="card-header"><span class="card-title">Recent Leads</span></div>
-        <div id="dash-leads">Loading…</div>
-      </div>
-      <div class="card">
-        <div class="card-header"><span class="card-title">Recent Activity</span></div>
-        <div id="dash-activity" class="activity-list"><div class="text-muted" style="font-size:13px;padding:12px">Loading…</div></div>
-      </div>
-    </div>`;
+// renderDashboard() now lives in js/dashboard.js (cockpit: date filter,
+// clickable stat cards, action widgets, insight widgets, alerts strip).
+// renderUpcomingCalls() above is still used by it.
 
-  // Fetch stats in parallel — added call_bookings for the upcoming-calls banner
-  const nowTs = firebase.firestore.Timestamp.now();
-  const [leadsSnap, eventsSnap, expensesSnap, paymentsSnap, bartSnap, activitySnap, callsSnap] = await Promise.all([
-    db.collection('leads').get(),
-    db.collection('events').get(),
-    db.collection('expenses').get(),
-    db.collection('payments').get(),
-    db.collection('bartenders').where('status','==','Active').get(),
-    db.collection('activity').orderBy('createdAt','desc').limit(15).get(),
-    db.collection('call_bookings').where('slotStart', '>=', nowTs).orderBy('slotStart', 'asc').limit(5).get()
-  ]);
-
-  /* Render the upcoming-calls banner ABOVE the stat grid so it can't be missed. */
-  renderUpcomingCalls(callsSnap);
-
-  const revenue   = eventsSnap.docs.reduce((s, d) => s + (d.data().revenue || 0), 0);
-  const totalExp  = expensesSnap.docs.reduce((s, d) => s + (d.data().amount || 0), 0);
-  const totalPay  = paymentsSnap.docs.reduce((s, d) => s + (d.data().amount || 0), 0);
-  const netProfit = revenue - totalExp - totalPay;
-  const openLeads = leadsSnap.docs.filter(d => !['Completed','Lost'].includes(d.data().stage)).length;
-
-  // P&L trend arrow (compare this month vs last month)
-  const now = new Date();
-  const thisMonth = now.getMonth();
-  const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
-  const thisMonthRev = eventsSnap.docs.filter(d => {
-    const dt = d.data().date;
-    return dt && new Date(dt).getMonth() === thisMonth;
-  }).reduce((s,d) => s + (d.data().revenue||0), 0);
-  const lastMonthRev = eventsSnap.docs.filter(d => {
-    const dt = d.data().date;
-    return dt && new Date(dt).getMonth() === lastMonth;
-  }).reduce((s,d) => s + (d.data().revenue||0), 0);
-  const trendArrow = thisMonthRev >= lastMonthRev ? '↑' : '↓';
-  const trendColor = thisMonthRev >= lastMonthRev ? 'var(--green)' : 'var(--red)';
-
-  document.getElementById('dash-stats').innerHTML = `
-    <div class="stat-card gold"><div class="stat-label">Revenue</div><div class="stat-value">${fmtMoney(revenue)}</div><div class="stat-sub">${eventsSnap.size} events</div></div>
-    <div class="stat-card red"><div class="stat-label">Costs</div><div class="stat-value">${fmtMoney(totalExp + totalPay)}</div><div class="stat-sub">expenses + labor</div></div>
-    <div class="stat-card" style="border-left:3px solid ${netProfit>=0?'var(--green)':'var(--red)'}"><div class="stat-label">Net Profit</div><div class="stat-value" style="color:${netProfit>=0?'var(--green)':'var(--red)'}">${fmtMoney(netProfit)}</div><div class="stat-sub"><span style="color:${trendColor}">${trendArrow}</span> vs last month</div></div>
-    <div class="stat-card teal"><div class="stat-label">Open Leads</div><div class="stat-value">${openLeads}</div></div>
-    <div class="stat-card"><div class="stat-label">Active Bartenders</div><div class="stat-value">${bartSnap.size}</div></div>`;
-
-  // Recent leads
-  const recentLeads = leadsSnap.docs
-    .sort((a,b) => (b.data().createdAt?.seconds||0) - (a.data().createdAt?.seconds||0))
-    .slice(0, 6);
-
-  document.getElementById('dash-leads').innerHTML = recentLeads.length ? `
-    <div class="table-wrap">
-    <table><thead><tr>
-      <th>Name</th><th>Event</th><th>Date</th><th>Stage</th>
-    </tr></thead><tbody>
-    ${recentLeads.map(d => {
-      const l = d.data();
-      return `<tr style="cursor:pointer" onclick="loadModule('crm')">
-        <td><strong>${l.name||'—'}</strong><br><span class="text-muted">${l.email||''}</span></td>
-        <td>${l.eventType||'—'}</td>
-        <td>${l.eventDate||'—'}</td>
-        <td><span class="badge ${stageBadgeClass(l.stage)}">${l.stage||'New Lead'}</span></td>
-      </tr>`;
-    }).join('')}
-    </tbody></table></div>` : `<div class="empty-state"><div class="empty-icon">🎯</div><div class="empty-title">No leads yet</div><div class="empty-sub">Form submissions will appear here</div></div>`;
-
-  // Activity feed
-  const activityEl = document.getElementById('dash-activity');
-  if (activitySnap.empty) {
-    activityEl.innerHTML = `<div class="text-muted" style="font-size:13px;padding:12px">No recent activity</div>`;
-  } else {
-    const actionIcons = {
-      created: '🟢', updated: '🔵', deleted: '🔴',
-      status_changed: '🟡', uploaded: '📎'
-    };
-    activityEl.innerHTML = activitySnap.docs.map(d => {
-      const a = d.data();
-      const icon = actionIcons[a.action] || '⚪';
-      const time = a.createdAt?.toDate ? a.createdAt.toDate().toLocaleString('en-US', {
-        month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
-      }) : '';
-      return `<div class="activity-item">
-        <span class="activity-dot">${icon}</span>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:12px;line-height:1.4">${a.summary||a.action}</div>
-          <div style="font-size:11px;color:var(--text-muted)">${a.userName||'Admin'} · ${time}</div>
-        </div>
-      </div>`;
-    }).join('');
-  }
-}
 
 // ══════════════════════════════════════
 // TOOL OVERLAY — opens brand guide, content creator,

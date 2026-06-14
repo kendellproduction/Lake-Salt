@@ -1175,3 +1175,104 @@ td { padding: 11px 12px; font-size: 12.5px; }
   .upcoming-call-open > div:last-child { display: none; } /* drop the → */
   .upcoming-call-cancel { width: 52px !important; font-size: 22px !important; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   DASHBOARD COCKPIT (dashboard.js)
+   ═══════════════════════════════════════════════════════════════════════ */
+.dash-filter { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 16px; }
+.dash-filter-chip {
+  font-family: inherit; font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
+  padding: 6px 14px; border-radius: 999px; cursor: pointer;
+  border: 1.5px solid var(--border); background: transparent; color: var(--text);
+  transition: all 0.15s ease;
+}
+.dash-filter-chip:hover { border-color: var(--gold); }
+.dash-filter-chip.active { background: var(--gold); color: #1A1412; border-color: var(--gold); }
+
+/* Clickable stat cards */
+.stat-card.clickable {
+  cursor: pointer; text-align: left; width: 100%; font-family: inherit;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+.stat-card.clickable:hover { transform: translateY(-2px); border-color: var(--gold); }
+.stat-view { opacity: 0; font-size: 11px; color: var(--gold); transition: opacity 0.12s ease; }
+.stat-card.clickable:hover .stat-view { opacity: 1; }
+
+/* Widget rows */
+.dash-row {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px;
+}
+@media (max-width: 1100px) { .dash-row { grid-template-columns: 1fr; } }
+
+/* List-style widgets (Upcoming, Deals) */
+.dash-list { display: flex; flex-direction: column; gap: 6px; }
+.dash-list-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px;
+  padding: 9px 11px; cursor: pointer; text-align: left; font-family: inherit; color: inherit;
+  transition: background 0.12s ease, border-color 0.12s ease; width: 100%;
+}
+.dash-list-row:hover { background: rgba(201,168,76,0.07); border-color: rgba(201,168,76,0.3); }
+.dash-row-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.dash-row-title { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dash-row-sub { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dash-row-side { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.dash-row-amt { font-size: 13px; font-weight: 700; color: var(--gold); }
+
+.badge-green { background: rgba(92,175,106,0.18); color: var(--green); }
+.badge-amber { background: rgba(201,168,76,0.18); color: var(--gold); }
+
+.dash-link {
+  margin-top: 8px; background: none; border: none; color: var(--gold); cursor: pointer;
+  font-family: inherit; font-size: 12px; font-weight: 600; padding: 4px 0;
+}
+
+/* Bar rows (lead source, margins, top pages) */
+.dash-sub-label { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 6px; }
+.dash-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.dash-bar-label { font-size: 12px; color: var(--text); min-width: 90px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-bar { flex: 1; height: 7px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; }
+.dash-bar-fill { display: block; height: 100%; background: var(--gold); border-radius: 4px; }
+.dash-bar-val { font-size: 12px; font-weight: 600; color: var(--text-muted); min-width: 34px; text-align: right; }
+
+/* Funnel */
+.dash-funnel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; color: var(--text); }
+.dash-funnel span { white-space: nowrap; }
+.dash-conv { margin-top: 6px; font-size: 12px; font-weight: 700; color: var(--gold); }
+
+/* Money widget */
+.dash-big { font-size: 26px; font-weight: 800; color: var(--gold); margin-bottom: 12px; }
+.dash-big-sub { font-size: 12px; font-weight: 400; color: var(--text-muted); margin-left: 8px; }
+.dash-months { display: flex; align-items: flex-end; justify-content: space-between; gap: 3px; height: 76px; }
+.dash-month { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; flex: 1; }
+.dash-month-bar { width: 100%; max-width: 14px; border-radius: 2px 2px 0 0; }
+.dash-month-lbl { font-size: 9px; color: var(--text-muted); margin-top: 3px; }
+
+/* Metric grids (profitability, website) */
+.dash-metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.dash-metric-v { font-size: 17px; font-weight: 700; color: var(--text); }
+.dash-metric-l { font-size: 10px; color: var(--text-muted); }
+
+/* Suggestion line */
+.dash-suggestion {
+  margin-top: 12px; padding: 8px 11px; font-size: 12px; line-height: 1.45;
+  background: rgba(201,168,76,0.08); border: 1px solid rgba(201,168,76,0.22);
+  border-radius: 8px; color: var(--text);
+}
+
+/* Empty states inside widgets */
+.dash-empty { text-align: center; padding: 22px 10px; color: var(--text-muted); font-size: 13px; }
+.dash-empty-icon { font-size: 26px; margin-bottom: 6px; opacity: 0.7; }
+
+/* Alerts strip */
+.dash-alert-row {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--navy-card); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; margin-bottom: 6px;
+}
+.dash-alert-text { flex: 1; font-size: 13px; color: var(--text); }
+.dash-alert-x {
+  background: none; border: none; color: var(--text-muted); cursor: pointer;
+  font-size: 14px; padding: 2px 6px; border-radius: 4px;
+}
+.dash-alert-x:hover { color: var(--text); background: rgba(255,255,255,0.06); }

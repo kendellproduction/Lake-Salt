@@ -275,6 +275,11 @@ function expenseFormHTML(e = {}) {
         </select></div>
     </div>
     <div class="form-row">
+      <div class="form-group"><label class="form-label">State <span style="color:var(--text-muted);font-weight:400">(for out-of-state flagging)</span></label>
+        <input class="form-input" name="state" value="${e.state||'UT'}" maxlength="2" placeholder="UT" style="text-transform:uppercase"/></div>
+      <div class="form-group"></div>
+    </div>
+    <div class="form-row">
       <div class="form-group"><label class="form-label">Linked Event</label>
         <select class="form-select" name="eventId">
           <option value="">— None —</option>
@@ -321,9 +326,11 @@ async function saveNewExpense(ev) {
 
   data.amount = Number(data.amount);
   data.taxDeductible = data.taxDeductible === 'true';
+  data.state = (data.state || '').toUpperCase().trim();
   data.createdAt = TS();
   if (!data.eventId) delete data.eventId;
   if (!data.notes)   delete data.notes;
+  if (!data.state)   delete data.state;
 
   const btn = ev.target.querySelector('[type=submit]');
   btn.disabled = true; btn.textContent = 'Saving…';
@@ -353,8 +360,10 @@ async function saveExpenseEdit(ev, id) {
 
   data.amount = Number(data.amount);
   data.taxDeductible = data.taxDeductible === 'true';
+  data.state = (data.state || '').toUpperCase().trim();
   data.updatedAt = TS();
   if (!data.eventId) delete data.eventId;
+  if (!data.state)   delete data.state;
 
   const btn = ev.target.querySelector('[type=submit]');
   btn.disabled = true; btn.textContent = 'Saving…';
