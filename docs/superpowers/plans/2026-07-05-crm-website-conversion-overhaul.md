@@ -21,9 +21,9 @@
 - ✅ Task 8 — About page + fixed dead footer link (commit)
 - ✅ Task 9 — dedicated /weddings page + eventType pre-fill CTA (commit)
 - ✅ Task 10 — removed 222MB .MOV files + recompressed oversized images (commit)
-- ⬜ Task 11 — nurture engine (data model, templates, admin panel, dry-run) — buildable now
-- ⏸️ Task 12 — nurture send: needs transport decision (recommend Resend) + arming, both Kendell
-- ⬜ Task 13 — quote-outcome dashboard — buildable now
+- ✅ Task 11 — nurture engine (data model, templates, tier assignment, admin panel, seed script) — dry-run, verified (commit). NOTE: seed script NOT yet run against prod (`node scripts/seed-nurture-templates.js --write`) — safe to run when ready.
+- ⏸️ Task 12 — nurture send: dry-run queue-writer buildable now; LIVE send needs transport (recommend Resend) + arming, both Kendell
+- ⬜ Task 13 — quote-outcome dashboard — buildable now (NEXT)
 - ⬜ Task 14 — nurture reporting + reply-pause — buildable now (dry-run)
 
 **Global conventions:**
