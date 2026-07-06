@@ -22,9 +22,14 @@
 - ✅ Task 9 — dedicated /weddings page + eventType pre-fill CTA (commit)
 - ✅ Task 10 — removed 222MB .MOV files + recompressed oversized images (commit)
 - ✅ Task 11 — nurture engine (data model, templates, tier assignment, admin panel, seed script) — dry-run, verified (commit). NOTE: seed script NOT yet run against prod (`node scripts/seed-nurture-templates.js --write`) — safe to run when ready.
-- ⏸️ Task 12 — nurture send: dry-run queue-writer buildable now; LIVE send needs transport (recommend Resend) + arming, both Kendell
-- ⬜ Task 13 — quote-outcome dashboard — buildable now (NEXT)
-- ⬜ Task 14 — nurture reporting + reply-pause — buildable now (dry-run)
+- ✅ Task 12 (dry-run) — dailyNurtureRun writes queue + fail-safe live path (commit). ⏸️ LIVE send still needs transport (Resend) + arming — both Kendell.
+- ✅ Task 13 — quote-outcome dashboard: win rate, days-to-close, lost reasons (commit)
+- ✅ Task 14 — reply-pause + weekly report (commit)
+
+**REMAINING (both gated on Kendell — loop stopped, nothing else to build):**
+1. Task 6 — Google Places API key + Place ID → real reviews on the site.
+2. Task 12 live sending — pick email sender (recommend Resend), wire `sendNurtureEmail()`, run seed `--write`, assign tiers, then arm.
+3. Deploy when ready: `firebase deploy && git push origin main` (Cloud Function changes need a deploy to take effect).
 
 **Global conventions:**
 - Each task: read the current file first, make the change, verify, then commit. Commit messages use the existing `type(scope): summary` style and end with the `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>` trailer.
