@@ -3797,7 +3797,7 @@
     <!-- Step 2: Drinks -->
     <div class="ob-panel" id="ob-p2">
       <h2 class="onboarding-q">What's on the<br/><em>menu?</em></h2>
-      <p class="onboarding-sub">Pick everything you'd like — mix and match</p>
+      <p class="onboarding-sub">Pick everything you'd like — the more we know about your taste, the closer our package options will be to what you actually want.</p>
       <div class="ob-chip-groups" id="ob-drinks">
 
         <div class="ob-chip-group">
@@ -4007,12 +4007,18 @@
     <!-- Step 6: Budget -->
     <div class="ob-panel" id="ob-p6">
       <h2 class="onboarding-q">What's your<br/><em>budget?</em></h2>
-      <p class="onboarding-sub">Help us understand your investment range</p>
-      <input class="ob-input" id="ob-budget" type="text" placeholder="e.g., $500, $2000–3000, flexible, etc." />
+      <p class="onboarding-sub">Budget + drink interests = we send you a couple package options that actually fit. No back-and-forth.</p>
+      <select class="ob-input" id="ob-budget">
+        <option value="">Still figuring it out</option>
+        <option value="Under $1,000">Under $1,000</option>
+        <option value="$1,000–$1,500">$1,000 – $1,500</option>
+        <option value="$1,500–$2,500">$1,500 – $2,500 (most weddings)</option>
+        <option value="$2,500–$4,000">$2,500 – $4,000</option>
+        <option value="$4,000+">$4,000+</option>
+      </select>
       <div class="ob-nav">
         <button class="ob-back" onclick="obGoTo(5)">← Back</button>
         <div style="display:flex;align-items:center;gap:0.6rem;">
-          <button class="ob-skip-step" onclick="obNext()">Skip</button>
           <button class="ob-next-btn" onclick="obNext()">Next →</button>
         </div>
       </div>
@@ -4694,6 +4700,10 @@
         <img src="images/IMG_2494.jpeg" alt="Lake Salt team at Oktoberfest themed corporate event" loading="lazy" />
         <div class="g-overlay"><span class="g-caption">Oktoberfest at Adobe</span></div>
       </div>
+      <div class="g-item" onclick="openLbGallery(8)">
+        <img src="images/expo-booth-2026.jpg" alt="Three signature Lake Salt mocktails on the bar at the SLC Bridal Expo 2026 — red, green, and yellow" loading="lazy" />
+        <div class="g-overlay"><span class="g-caption">SLC Bridal Expo 2026</span></div>
+      </div>
     </div>
   </div>
 </section>
@@ -5044,12 +5054,20 @@
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Bar Catering Budget <span style="font-weight:400;opacity:0.5;">(optional)</span></label>
-          <input type="text" name="budget" class="form-input" placeholder="e.g. $1,500 — helps us tailor the best plan for you" />
+          <label class="form-label">Bar Catering Budget</label>
+          <select name="budget" class="form-input">
+            <option value="">Still figuring it out</option>
+            <option value="Under $1,000">Under $1,000</option>
+            <option value="$1,000–$1,500">$1,000 – $1,500</option>
+            <option value="$1,500–$2,500">$1,500 – $2,500 (most weddings)</option>
+            <option value="$2,500–$4,000">$2,500 – $4,000</option>
+            <option value="$4,000+">$4,000+</option>
+          </select>
+          <p style="margin:6px 2px 0;font-size:12.5px;line-height:1.5;color:rgba(250,248,244,0.6);">Tell us your budget and what you'd like on the bar — we'll send a couple package options instead of bouncing emails back and forth.</p>
         </div>
         <div class="form-group">
           <label class="form-label">Tell Us About Your Event</label>
-          <textarea name="message" class="form-textarea" placeholder="Vision, theme, special requests, questions..."></textarea>
+          <textarea name="message" class="form-textarea" placeholder="Drinks/menu interests, vision, theme, special requests..."></textarea>
         </div>
         <input type="hidden" name="email" id="form-email-hidden" />
         <input type="hidden" name="event_time" id="form-event-time" />
@@ -6285,6 +6303,7 @@ const galleryImages = [
   'images/IMG_8469.jpeg',
   'images/IMG_6903.jpeg',
   'images/IMG_2494.jpeg',
+  'images/expo-booth-2026.jpg',
 ];
 let currentLbIndex = -1;
 
