@@ -60,6 +60,9 @@ async function renderDashboard() {
       <div class="card"><div class="card-header"><span class="card-title">💰 Money Made</span></div><div id="w-money">Loading…</div></div>
       <div class="card"><div class="card-header"><span class="card-title">⚖️ Event Size & Profitability</span></div><div id="w-profit">Loading…</div></div>
       <div class="card"><div class="card-header"><span class="card-title">🌐 Website Analytics</span></div><div id="w-web">Loading…</div></div>
+    </div>
+    <div class="dash-row" id="dash-cohort-row">
+      <div class="card"><div class="card-header"><span class="card-title">🎪 Wedding Expo Cohort — Funnel</span></div><div id="w-cohort">Loading…</div></div>
     </div>`;
 
   // Fetch everything in parallel
@@ -123,6 +126,46 @@ function renderAll() {
   renderMoneyWidget(range);
   renderProfitWidget(range);
   renderWebWidget(range);
+  renderCohortFunnelWidget();
+}
+
+/* ── Insight widget: Wedding Expo cohort funnel ───────────────────────────
+ * Rolls the 90 expo leads up into a conversion funnel + booked revenue, so the
+ * cohort's performance is visible on the dashboard (not just filtered in CRM). */
+function renderCohortFunnelWidget() {
+  const el = document.getElementById('w-cohort');
+  if (!el) return;
+  const COHORT = 'WeddingExpo2026-05-09';
+  const stageOrder = ['New Lead','Expo Email Sent','Call Scheduled','Contacted','Proposal Sent','Booked-Tentative','Booked','Completed','Lost'];
+  const idx = s => stageOrder.indexOf(s || 'New Lead');
+
+  const leads = (_dashData.leads || []).filter(l => l.campaign === COHORT);
+  if (!leads.length) { el.innerHTML = emptyState('🎪', 'No expo-cohort leads yet'); return; }
+
+  const total     = leads.length;
+  const contacted = leads.filter(l => l.stage !== 'Lost' && idx(l.stage) >= idx('Contacted')).length;
+  const proposal  = leads.filter(l => l.stage !== 'Lost' && idx(l.stage) >= idx('Proposal Sent')).length;
+  const bookedSet = leads.filter(l => ['Booked','Completed'].includes(l.stage));
+  const booked    = bookedSet.length;
+  const lost      = leads.filter(l => l.stage === 'Lost').length;
+  const revenue   = bookedSet.reduce((s,l) => s + (l.latestQuoteTotal || 0), 0);
+
+  const bar = (label, n) => {
+    const pct = total ? Math.round(n / total * 100) : 0;
+    return `<div class="dash-bar-row"><span class="dash-bar-label">${label}</span>
+      <span class="dash-bar"><span class="dash-bar-fill" style="width:${pct}%"></span></span>
+      <span class="dash-bar-val">${n} · ${pct}%</span></div>`;
+  };
+  el.innerHTML = `
+    ${bar('Captured', total)}
+    ${bar('Contacted+', contacted)}
+    ${bar('Proposal sent+', proposal)}
+    ${bar('Booked', booked)}
+    <div class="dash-list-row" style="margin-top:8px;border-top:1px solid rgba(255,255,255,0.08);padding-top:8px">
+      <div class="dash-row-main"><span class="dash-row-title">💰 Booked revenue</span>
+        <span class="dash-row-sub">${lost} lost · ${total - contacted - lost} not yet worked</span></div>
+      <span class="badge" style="background:var(--gold)22;color:var(--gold)">$${Math.round(revenue).toLocaleString('en-US')}</span>
+    </div>`;
 }
 
 /* ── Stat cards (clickable) ───────────────────────────────────────────── */
