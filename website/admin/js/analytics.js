@@ -41,6 +41,20 @@ async function renderAnalytics() {
       </div>
     </div>
     <div class="card">
+      <div class="card-header"><span class="card-title">📄 Quote Performance — is price ever the blocker?</span></div>
+      <div class="stat-grid" id="quote-perf-stats" style="margin-bottom:16px"></div>
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="card-title" style="margin-bottom:14px">Why quotes are lost</div>
+          <canvas id="chart-lost-reasons"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="card-title" style="margin-bottom:14px">Win rate by quoted price</div>
+          <div id="win-by-band"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
       <div class="card-header">
         <span class="card-title">Event Records</span>
       </div>
@@ -48,15 +62,17 @@ async function renderAnalytics() {
     </div>`;
 
   // Fetch data
-  const [eventsSnap, expensesSnap, paymentsSnap] = await Promise.all([
+  const [eventsSnap, expensesSnap, paymentsSnap, quotesSnap] = await Promise.all([
     db.collection('events').orderBy('date','desc').get(),
     db.collection('expenses').get(),
-    db.collection('payments').get()
+    db.collection('payments').get(),
+    db.collection('quotes').get().catch(()=>({docs:[]}))
   ]);
 
   const allEvents   = eventsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   const allExpenses = expensesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   const allPayments = paymentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const allQuotes   = (quotesSnap.docs || []).map(d => ({ id: d.id, ...d.data() }));
 
   // Apply date range filter
   const range = document.getElementById('analytics-range')?.value || 'ytd';
@@ -204,6 +220,86 @@ async function renderAnalytics() {
     <button class="btn btn-primary" onclick="openAddEventModal()">+ Log Event</button></div>`;
 
   document.getElementById('events-table').innerHTML = tableHTML;
+
+  renderQuotePerformance(allQuotes);
+}
+
+/* ── Quote performance: win rate, days-to-close, lost reasons ──────────────
+ * Uses the outcome data captured on quotes (outcome='won'|'lost', lostReason,
+ * sentAt, wonAt). Computed all-time — win rate is a cumulative metric. If
+ * 'Price' rarely shows up as a lost reason, that confirms pricing isn't the
+ * blocker. */
+function renderQuotePerformance(quotes) {
+  const statsEl = document.getElementById('quote-perf-stats');
+  if (!statsEl) return;
+
+  const won  = quotes.filter(q => q.outcome === 'won');
+  const lost = quotes.filter(q => q.outcome === 'lost');
+  const decided = won.length + lost.length;
+  const winRate = decided ? Math.round((won.length / decided) * 100) : 0;
+
+  // Avg days-to-close (wonAt − sentAt) for won quotes with both timestamps.
+  const toDate = t => t && t.toDate ? t.toDate() : (t ? new Date(t) : null);
+  const closeDays = won.map(q => {
+    const s = toDate(q.sentAt), w = toDate(q.wonAt);
+    return (s && w) ? (w - s) / 86400000 : null;
+  }).filter(d => d !== null && d >= 0);
+  const avgClose = closeDays.length ? Math.round(closeDays.reduce((a,b)=>a+b,0)/closeDays.length) : null;
+
+  statsEl.innerHTML = `
+    <div class="stat-card green"><div class="stat-label">Win Rate</div><div class="stat-value">${decided ? winRate + '%' : '—'}</div><div class="stat-sub">${won.length} won / ${lost.length} lost</div></div>
+    <div class="stat-card gold"><div class="stat-label">Decided Quotes</div><div class="stat-value">${decided}</div><div class="stat-sub">${quotes.length - decided} still open</div></div>
+    <div class="stat-card"><div class="stat-label">Avg Days to Close</div><div class="stat-value">${avgClose !== null ? avgClose : '—'}</div><div class="stat-sub">sent → accepted</div></div>
+    <div class="stat-card red"><div class="stat-label">Top Lost Reason</div><div class="stat-value" style="font-size:18px">${topLostReason(lost) || '—'}</div><div class="stat-sub">${lost.length} lost total</div></div>`;
+
+  // Lost-reason breakdown (doughnut).
+  const reasons = {};
+  lost.forEach(q => { const r = q.lostReason || 'Unknown'; reasons[r] = (reasons[r]||0) + 1; });
+  const reasonLabels = Object.keys(reasons);
+  const lostCtx = document.getElementById('chart-lost-reasons')?.getContext('2d');
+  if (lostCtx) {
+    if (analyticsCharts.lostReasons) { try { analyticsCharts.lostReasons.destroy(); } catch(e){} }
+    if (reasonLabels.length) {
+      analyticsCharts.lostReasons = new Chart(lostCtx, {
+        type: 'doughnut',
+        data: {
+          labels: reasonLabels,
+          datasets: [{ data: reasonLabels.map(r => reasons[r]),
+            backgroundColor: ['#C9A84C','#B07B4A','#8a5a3a','#6b7280','#4b5563','#374151'] }]
+        },
+        options: { plugins: { legend: { position: 'bottom', labels: { color: '#F5F1E8' } } } }
+      });
+    } else {
+      lostCtx.canvas.parentElement.insertAdjacentHTML('beforeend', '<p class="text-muted" style="font-size:13px">No lost quotes recorded yet — as you mark leads Lost with a reason, this fills in.</p>');
+    }
+  }
+
+  // Win rate by quoted-price band.
+  const bands = [
+    { label: 'Under $1k', min: 0, max: 1000 },
+    { label: '$1k–$2k', min: 1000, max: 2000 },
+    { label: '$2k–$3k', min: 2000, max: 3000 },
+    { label: '$3k+', min: 3000, max: Infinity }
+  ];
+  const bandEl = document.getElementById('win-by-band');
+  if (bandEl) {
+    bandEl.innerHTML = bands.map(b => {
+      const inBand = q => { const t = q.total || 0; return t >= b.min && t < b.max; };
+      const w = won.filter(inBand).length, l = lost.filter(inBand).length, d = w + l;
+      const rate = d ? Math.round(w/d*100) : null;
+      return `<div class="dash-bar-row" style="margin-bottom:8px">
+        <span class="dash-bar-label" style="min-width:70px">${b.label}</span>
+        <span class="dash-bar" style="flex:1"><span class="dash-bar-fill" style="width:${rate||0}%"></span></span>
+        <span class="dash-bar-val">${rate !== null ? rate + '% (' + d + ')' : 'no data'}</span></div>`;
+    }).join('');
+  }
+}
+
+function topLostReason(lost) {
+  if (!lost.length) return null;
+  const counts = {};
+  lost.forEach(q => { const r = q.lostReason || 'Unknown'; counts[r] = (counts[r]||0)+1; });
+  return Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0];
 }
 
 // ── Event Modal ──
