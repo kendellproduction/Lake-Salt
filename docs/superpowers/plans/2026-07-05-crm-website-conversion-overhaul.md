@@ -17,7 +17,14 @@
 - ✅ Task 4 — auto +3d nudge on quote send + expiry flag (commit)
 - ✅ Task 5 — expo-cohort funnel on dashboard (commit)
 - ⏸️ Task 6 — Google Reviews: BLOCKED, needs API key + Place ID from Kendell
-- ⬜ Tasks 7–14 — pending (7,8,9,10,11,13,14 are buildable now; 12 arming needs Kendell)
+- ✅ Task 7 — budget range selector + funnel copy + pricing consistency (commit)
+- ✅ Task 8 — About page + fixed dead footer link (commit)
+- ✅ Task 9 — dedicated /weddings page + eventType pre-fill CTA (commit)
+- ✅ Task 10 — removed 222MB .MOV files + recompressed oversized images (commit)
+- ⬜ Task 11 — nurture engine (data model, templates, admin panel, dry-run) — buildable now
+- ⏸️ Task 12 — nurture send: needs transport decision (recommend Resend) + arming, both Kendell
+- ⬜ Task 13 — quote-outcome dashboard — buildable now
+- ⬜ Task 14 — nurture reporting + reply-pause — buildable now (dry-run)
 
 **Global conventions:**
 - Each task: read the current file first, make the change, verify, then commit. Commit messages use the existing `type(scope): summary` style and end with the `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>` trailer.
