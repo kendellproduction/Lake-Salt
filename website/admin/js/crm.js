@@ -352,6 +352,13 @@ function renderTaskList(tasks, leadId) {
 async function updateLeadStage(id, stage) {
   const l = crmLeads[id];
   const oldStage = l?.stage || 'New Lead';
+
+  // Moving to Lost: capture a reason first so we learn WHY deals die.
+  if (stage === 'Lost' && oldStage !== 'Lost') {
+    openLostReasonModal(id);
+    return;
+  }
+
   await db.collection('leads').doc(id).update({ stage, updatedAt: TS() });
 
   // Activity log
@@ -376,6 +383,50 @@ async function updateLeadStage(id, stage) {
   showToast(`Moved to ${stage}`, 'success');
   closeModal();
 }
+
+const LOST_REASONS = ['Price', 'Went with competitor', 'Went DIY / self-serve', 'Date unavailable', 'Ghosted / no response', 'Other'];
+
+function openLostReasonModal(id) {
+  const opts = LOST_REASONS.map(r => `<option value="${r}">${r}</option>`).join('');
+  openModal('Why was this lead lost?', `
+    <p class="text-muted" style="font-size:13px;margin-bottom:12px">Capturing the reason builds your win/loss data — so you can see whether price is ever really the blocker.</p>
+    <label class="qb-field"><span>Reason</span>
+      <select class="form-select" id="lost-reason-select">${opts}</select>
+    </label>
+    <label class="qb-field" style="margin-top:10px"><span>Notes (optional)</span>
+      <textarea class="form-input" id="lost-reason-note" rows="3" placeholder="Anything useful — competitor name, budget gap, etc."></textarea>
+    </label>
+    <button class="btn btn-primary" style="margin-top:14px" onclick="confirmLostReason('${id}')">Mark as Lost</button>
+  `);
+}
+
+async function confirmLostReason(id) {
+  const l = crmLeads[id];
+  const oldStage = l?.stage || 'New Lead';
+  const lostReason     = document.getElementById('lost-reason-select')?.value || 'Other';
+  const lostReasonNote = document.getElementById('lost-reason-note')?.value?.trim() || '';
+
+  await db.collection('leads').doc(id).update({
+    stage: 'Lost', lostReason, lostReasonNote, lostAt: TS(), updatedAt: TS()
+  });
+
+  // Mirror the outcome onto the linked quote so win/loss analytics stay complete.
+  if (l?.latestQuoteId) {
+    try {
+      await db.collection('quotes').doc(l.latestQuoteId).update({ outcome: 'lost', lostReason, lostReasonNote });
+    } catch (e) { console.warn('Could not mark linked quote lost:', e); }
+  }
+
+  logActivity('status_changed', 'leads', id,
+    `Marked '${l?.name || 'Lead'}' Lost — ${lostReason}`,
+    { oldStage, newStage: 'Lost', lostReason });
+
+  showToast('Marked as Lost', 'success');
+  closeModal();
+}
+
+window.openLostReasonModal = openLostReasonModal;
+window.confirmLostReason = confirmLostReason;
 
 async function addNote(leadId) {
   const input = document.getElementById(`note-input-${leadId}`);

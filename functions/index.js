@@ -566,6 +566,17 @@ exports.onQuoteAccepted = onDocumentUpdated('quotes/{quoteId}', async (event) =>
   const sig      = after.clientAcceptedSignature || 'client';
   const total    = after.total || 0;
 
+  /* Record the win on the quote itself (for win/loss analytics). Safe against
+   * re-trigger: the guard above returns early once the quote is already accepted. */
+  try {
+    await event.data.after.ref.update({
+      outcome: 'won',
+      wonAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (e) {
+    console.error('Failed to set quote outcome=won:', e);
+  }
+
   /* Advance the linked lead's stage. Booked-Tentative is the right stop:
    * the client has signed off on the quote, but the deposit isn't paid yet
    * — that's what bumps it to fully Booked. */
