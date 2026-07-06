@@ -24,6 +24,7 @@ const MODULES = {
   marketing:   () => renderMarketing(),
   notes:       () => renderNotes(),
   quotes:      () => renderQuotes(),
+  nurture:     () => renderNurture(),
   settings:    () => renderSettings()
 };
 

@@ -41,6 +41,10 @@ service cloud.firestore {
     match /call_bookings/{id}    { allow read, write: if isAdmin(); }
     // kendell_followups: manual Chase-invoice tasks; created by Cloud Function; admin only.
     match /kendell_followups/{id} { allow read, write: if isAdmin(); }
+    // nurture_queue / nurture_reports: dry-run send previews + weekly reports,
+    //   written by the nurture Cloud Functions (admin SDK); admin read/write.
+    match /nurture_queue/{id}   { allow read, write: if isAdmin(); }
+    match /nurture_reports/{id} { allow read, write: if isAdmin(); }
 
     // ── Analytics: anonymous page_view / wizard_step events. Public CREATE
     //    only (never read/update/delete from the client). Admins can read.
