@@ -64,7 +64,7 @@ async function renderDashboard() {
 
   // Fetch everything in parallel
   const nowTs = firebase.firestore.Timestamp.now();
-  const [leadsSnap, eventsSnap, expensesSnap, paymentsSnap, bartSnap, activitySnap, callsSnap, pageSnap] = await Promise.all([
+  const [leadsSnap, eventsSnap, expensesSnap, paymentsSnap, bartSnap, activitySnap, callsSnap, pageSnap, followupsSnap] = await Promise.all([
     db.collection('leads').get(),
     db.collection('events').get(),
     db.collection('expenses').get(),
@@ -72,7 +72,8 @@ async function renderDashboard() {
     db.collection('bartenders').where('status','==','Active').get(),
     db.collection('activity').orderBy('createdAt','desc').limit(50).get(),
     db.collection('call_bookings').where('slotStart', '>=', nowTs).orderBy('slotStart', 'asc').limit(5).get(),
-    db.collection('page_events').orderBy('timestamp','desc').limit(2000).get().catch(()=>({docs:[]}))
+    db.collection('page_events').orderBy('timestamp','desc').limit(2000).get().catch(()=>({docs:[]})),
+    db.collection('kendell_followups').where('status','==','open').get().catch(()=>({docs:[]}))
   ]);
 
   renderUpcomingCalls(callsSnap);
@@ -85,6 +86,7 @@ async function renderDashboard() {
     payments: paymentsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
     activity: activitySnap.docs.map(d => ({ id: d.id, ...d.data() })),
     pageEvents: (pageSnap.docs || []).map(d => ({ id: d.id, ...d.data() })),
+    followups: (followupsSnap.docs || []).map(d => ({ id: d.id, ...d.data() })),
     bartenders: bartSnap.size
   };
 
@@ -338,7 +340,13 @@ function renderWebWidget(range) {
 function renderAlerts() {
   const d = _dashData;
   const dismissed = getDismissedAlerts();
+  const followupAlerts = (d.followups || []).map(f => ({
+    id: 'followup_' + f.id,
+    summary: f.title || 'Follow-up needed',
+    severity: f.type === 'quote_accepted' ? 'red' : 'gold'
+  }));
   const alerts = [
+    ...followupAlerts,
     ...DashCore.detectExpenseAnomalies(d.expenses, {}),
     ...DashCore.detectActivityAlerts(d.activity, {})
   ].filter(a => a.id && !dismissed.includes(a.id));

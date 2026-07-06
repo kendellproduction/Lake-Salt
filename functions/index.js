@@ -2,6 +2,7 @@
  * these names and can't be migrated back to Gen 1. v2 callable handlers
  * receive a single `request` parameter with `.data`, `.auth`, etc. */
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { onSchedule } = require('firebase-functions/v2/scheduler');
 const admin = require('firebase-admin');
 
 admin.initializeApp();
@@ -67,6 +68,47 @@ async function requireAdmin(request) {
  * - Returns 15-min call slots over the next CALL_WINDOW_DAYS, weekdays,
  *   5:00–7:30 PM Mountain, minus slots that already have a call_bookings doc.
  * ══════════════════════════════════════════════════════════════════════════ */
+/* ─── Daily follow-up scan ────────────────────────────────────────────────
+ * Turns the dormant `followUpDate` field into real, visible reminders. Runs
+ * every morning: any lead whose follow-up date has arrived (and isn't already
+ * Booked/Completed/Lost) gets a `kendell_followups` entry — surfaced on the
+ * dashboard alerts strip. Idempotent: skips a lead that already has an open
+ * follow-up reminder of this type, so re-runs never duplicate. */
+exports.dailyFollowupScan = onSchedule(
+  { schedule: '0 8 * * *', timeZone: 'America/Denver' },
+  async () => {
+    const today = ymd(new Date());
+    const snap = await db.collection('leads')
+      .where('followUpDate', '<=', today).get();
+
+    let created = 0;
+    for (const doc of snap.docs) {
+      const lead = doc.data();
+      if (!lead.followUpDate) continue;                       // skip empty strings
+      if (['Booked', 'Completed', 'Lost'].includes(lead.stage)) continue;
+
+      const existing = await db.collection('kendell_followups')
+        .where('leadId', '==', doc.id)
+        .where('type', '==', 'followup_due')
+        .where('status', '==', 'open').limit(1).get();
+      if (!existing.empty) continue;
+
+      await db.collection('kendell_followups').add({
+        type: 'followup_due',
+        leadId: doc.id,
+        leadName: lead.name || 'lead',
+        title: `⏰ Follow up with ${lead.name || 'this lead'} (due ${lead.followUpDate})`,
+        notes: `${lead.eventType || 'Event'}${lead.eventDate ? ' · ' + lead.eventDate : ''} — reach out; the follow-up date has arrived.`,
+        status: 'open',
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      created++;
+    }
+    console.log(`dailyFollowupScan created ${created} follow-up reminders`);
+    return null;
+  }
+);
+
 exports.getCallSlots = onCall(async (request) => {
   const data = (request && request.data) || {};
   const daysAhead = Math.min(Math.max(parseInt(data && data.daysAhead, 10) || CALL_WINDOW_DAYS, 1), 30);
