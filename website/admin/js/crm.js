@@ -2,7 +2,7 @@
    MODULE 1 — CRM & LEAD PIPELINE
 ══════════════════════════════════════ */
 
-const CRM_STAGES = ['New Lead', 'Call Scheduled', 'Contacted', 'Proposal Sent', 'Booked-Tentative', 'Booked', 'Completed', 'Lost'];
+const CRM_STAGES = ['New Lead', 'Expo Email Sent', 'Call Scheduled', 'Contacted', 'Proposal Sent', 'Booked-Tentative', 'Booked', 'Completed', 'Lost'];
 
 /* Campaign cohorts — track at-event lead generation. */
 const CRM_COHORTS = [

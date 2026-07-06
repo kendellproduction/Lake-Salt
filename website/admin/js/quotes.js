@@ -13,29 +13,71 @@
    Margin is computed silently and shown to admin only (never in copy text).
    ───────────────────────────────────────────────────────────────────────── */
 
+/* ─────────────────────────────────────────────────────────────────────────
+ * PRICING MODEL — cost-plus-margin (Kendell's real model, 2026-06-18)
+ *
+ *   Cost Basis = (# bartenders × flat pay each) + supplies + travel
+ *   Quote      = Cost Basis ÷ (1 − target margin)
+ *
+ * Profit = Quote − Cost Basis. The margin slider drives it, with two guards:
+ *   • PROFIT CAP (weddings/private): once %-based profit would exceed
+ *     profitCapTrigger ($1,000), stop scaling and cap profit at a flat
+ *     profitCapValue ($1,100 — $100 buffer over a clean $1,000). This is an
+ *     anti-overcharge ceiling for normal-size events; raise it for much
+ *     larger events.
+ *   • PROFIT FLOOR (Adobe/corporate): never make LESS than profitFloorCorp
+ *     ($1,000) on a corporate event — and the cap does NOT apply to them.
+ *   • MARGIN FLOOR: never quote below marginFloorPct (40%).
+ *
+ * Bartender pay is a FLAT per-event amount Kendell sets (not hourly). Tips
+ * are kept by staff and are NOT part of this calc.
+ * ───────────────────────────────────────────────────────────────────────── */
 const DEFAULT_QUOTE_DEFAULTS = {
-  bartenderRate: 45,        // $/hr per bartender (charged to client)
-  bartenderCostHr: 22,      // $/hr per bartender (your cost — for margin)
-  travelBase: 75,
+  /* Labor: flat pay PER BARTENDER for the event (Kendell's cost, not hourly) */
+  bartenderPayDefault: 250,   // typical flat pay per bartender; edit per quote
+  bartendersPerGuests: 60,    // 1 bartender per N guests (cocktail service)
+
+  /* Event costs */
+  suppliesDefault: 200,       // cups, ice, garnishes, mixers — edit per event
+  travelBase: 0,              // travel/gas for out-of-area; built into cost
+
   hoursDefault: 5,
-  bartendersPerGuests: 75,
 
-  /* Lake Salt offers a curated custom menu of cocktails + mocktails.
-   * No "Full Bar" tier. Off-menu requests are a separate per-drink charge. */
-  customMenuFeeDefault: 450,
-  offMenuPerDrink: 12,
+  /* Margin targets by event type (what % of the quote is profit) */
+  marginLargePct: 60,         // large weddings/events — start here
+  marginSmallPct: 40,         // small private events
+  marginCorpPct: 65,          // Adobe / corporate repeat
+  marginFloorPct: 40,         // hard floor — never quote below this margin
 
-  depositPct: 30,
-  saturdayPeakMultiplier: 1.15,
-  peakMonths: [5, 6, 9, 10],  // May, June, Sept, Oct (1-indexed)
+  /* Profit cap (anti-overcharge ceiling for weddings/private) */
+  profitCapTrigger: 1000,     // once %-based profit would exceed this…
+  profitCapValue: 1100,       // …cap profit flat here ($100 buffer)
+
+  /* Profit floor for corporate (Adobe can afford it; cap doesn't apply) */
+  profitFloorCorp: 1000,
+
+  depositPct: 10,             // 10% deposit holds the date (per Kendell)
   discountPresets: [
     { label: 'Returning client', pct: 5 },
     { label: 'Military / first-responder', pct: 10 },
     { label: 'Match competitor', pct: 8 }
   ],
-  quoteExpiryDays: 14,
-  menuCostPctOfRevenue: 0.30 // rough COGS % on the custom-menu fee, for margin
+  quoteExpiryDays: 14
 };
+
+/* Event-type → which margin default + whether the profit cap applies.
+ * Corporate gets the floor (make MORE), everyone else gets the cap. */
+function pricingProfileForEventType(eventType) {
+  const t = String(eventType || '').toLowerCase();
+  if (t.includes('corp') || t.includes('adobe') || t.includes('company') || t.includes('business')) {
+    return { kind: 'corporate', marginKey: 'marginCorpPct', applyCap: false, applyCorpFloor: true };
+  }
+  if (t.includes('wedding')) {
+    return { kind: 'wedding', marginKey: 'marginLargePct', applyCap: true, applyCorpFloor: false };
+  }
+  /* private / birthday / party / default */
+  return { kind: 'private', marginKey: 'marginSmallPct', applyCap: true, applyCorpFloor: false };
+}
 
 let QUOTE_DEFAULTS = { ...DEFAULT_QUOTE_DEFAULTS };
 
@@ -79,20 +121,6 @@ function parseGuests(g) {
   // Handles "150", "150-300", "150–300"
   const m = String(g).match(/(\d+)/);
   return m ? parseInt(m[1], 10) : 100;
-}
-
-function suggestPeak(eventDate) {
-  if (!eventDate) return { isPeak: false, reason: '' };
-  const d = new Date(eventDate);
-  if (isNaN(d)) return { isPeak: false, reason: '' };
-  const day = d.getDay();         // 0=Sun, 6=Sat
-  const month = d.getMonth() + 1; // 1-indexed
-  const isSat = day === 6;
-  const isPeakMonth = QUOTE_DEFAULTS.peakMonths.includes(month);
-  if (isSat && isPeakMonth) return { isPeak: true, reason: 'Saturday in peak season' };
-  if (isSat) return { isPeak: true, reason: 'Saturday' };
-  if (isPeakMonth) return { isPeak: true, reason: 'Peak season' };
-  return { isPeak: false, reason: '' };
 }
 
 /* ═════════════════════════════════════════════════════════════════════════
@@ -166,22 +194,29 @@ function emptyInsights() {
   return { all: [], accepted: [], median: 0, min: 0, max: 0, acceptRate: 0, ratios: null, sampleSize: 0, acceptedSize: 0 };
 }
 
+/* Tolerant of both new (bartenders×bartenderPay + supplies + travel) and
+ * legacy (serviceHours×bartenderRate×bartenders + customMenuFee + travelFee)
+ * saved quotes. Guards every field against undefined. */
 function computeBreakdownRatios(quotes) {
   if (!quotes.length) return null;
-  const sums = { bartender: 0, menu: 0, offMenu: 0, travel: 0, custom: 0 };
+  const sums = { bartender: 0, supplies: 0, travel: 0, custom: 0 };
   let n = 0;
   for (const q of quotes) {
     const total = q.total;
     if (!total || total <= 0) continue;
     const li = q.lineItems || {};
-    const bartender = (li.serviceHours||0) * (li.bartenderRate||0) * (li.bartenders||0);
-    const menu = li.customMenuFee || 0;
-    const offMenu = li.offMenuEnabled ? (li.offMenuQty||0) * (li.offMenuPrice||0) : 0;
-    const travel = li.travelFee || 0;
+    /* New model: flat pay per bartender. Legacy: hours×rate×count. */
+    const bartender = li.bartenderPay != null
+      ? (li.bartenders||0) * (li.bartenderPay||0)
+      : (li.serviceHours||0) * (li.bartenderRate||0) * (li.bartenders||0);
+    /* New: supplies. Legacy: customMenuFee + off-menu folded in as supplies. */
+    const supplies = li.supplies != null
+      ? (li.supplies||0)
+      : ((li.customMenuFee||0) + (li.offMenuEnabled ? (li.offMenuQty||0)*(li.offMenuPrice||0) : 0));
+    const travel = (li.travel != null ? li.travel : li.travelFee) || 0;
     const custom = Array.isArray(li.custom) ? li.custom.reduce((s,c) => s + (Number(c.price)||0), 0) : 0;
     sums.bartender += bartender / total;
-    sums.menu      += menu / total;
-    sums.offMenu   += offMenu / total;
+    sums.supplies  += supplies / total;
     sums.travel    += travel / total;
     sums.custom    += custom / total;
     n++;
@@ -189,8 +224,7 @@ function computeBreakdownRatios(quotes) {
   if (!n) return null;
   return {
     bartender: sums.bartender / n,
-    menu:      sums.menu / n,
-    offMenu:   sums.offMenu / n,
+    supplies:  sums.supplies / n,
     travel:    sums.travel / n,
     custom:    sums.custom / n
   };
@@ -199,59 +233,53 @@ function computeBreakdownRatios(quotes) {
 /* Distribute a target total across line items using historical ratios.
  * Mutates the state object's fields directly. Used when the user sets a
  * top-down total and we want the breakdown to "fit" automatically. */
-function distributeToTarget(q, targetTotal, ratios) {
-  if (!ratios || !targetTotal) return;
-  /* Allocate menu first (most common big chunk). Bartender block has fixed
-   * structure (hours × rate × count), so we hold hours+bartenders+rate
-   * constant and back-fit ONLY the menu fee and travel; if there's still
-   * a delta, it stays as the totalOverride's targetAdjustment. */
-  const bartenderTotal = (q.serviceHours||0) * (q.bartenderRate||0) * (q.bartenders||0);
-  const offMenuTotal = q.offMenuEnabled ? (q.offMenuQty||0) * (q.offMenuPrice||0) : 0;
-  const customSum = (q.lineItems||[]).reduce((s,c) => s + (Number(c.price)||0), 0);
-
-  /* Reserve the fixed parts; what's left goes to menu + travel proportionally. */
-  const reserved = bartenderTotal + offMenuTotal + customSum;
-  const remaining = Math.max(0, targetTotal - reserved);
-  const menuShare = ratios.menu || 0.5;
-  const travelShare = ratios.travel || 0.1;
-  const total = menuShare + travelShare || 1;
-  q.customMenuFee = Math.round(remaining * (menuShare / total));
-  q.travelFee     = Math.round(remaining * (travelShare / total));
+/* In the cost-plus-margin model the cost inputs (bartenders, pay, supplies,
+ * travel) are fixed by the event itself — they aren't dials we stretch to hit
+ * a target. So when the user sets a top-down total we simply record it as the
+ * override; calcQuote() captures the gap as targetAdjustment. We leave the
+ * cost inputs untouched. Kept as a no-op-ish helper for call-site
+ * compatibility. */
+function distributeToTarget(q, targetTotal /*, ratios */) {
+  if (!targetTotal) return;
+  q.totalOverride = Math.round(targetTotal);
 }
 
-/* ─── In-memory quote state (per active builder instance) ─── */
+/* ─── In-memory quote state (per active builder instance) ───
+ * New cost-plus-margin model. We keep a few legacy fields (serviceHours,
+ * lineItems, discount, totalOverride) because the surrounding UI/history/save
+ * code still references them and old saved quotes carry them. */
 function makeInitialQuote(lead) {
   const guests = parseGuests(lead?.guestCount);
-  const peak = suggestPeak(lead?.eventDate);
   const budget = parseBudget(lead?.budget);
+  const profile = pricingProfileForEventType(lead?.eventType);
   return {
     leadId: lead?.id || null,
     leadName: lead?.name || '',
+    eventType: lead?.eventType || '',
     guestCount: guests,
     serviceHours: QUOTE_DEFAULTS.hoursDefault,
+
+    /* COST INPUTS (the real model) */
     bartenders: Math.max(1, Math.ceil(guests / QUOTE_DEFAULTS.bartendersPerGuests)),
-    bartenderRate: QUOTE_DEFAULTS.bartenderRate,
-    travelFee: QUOTE_DEFAULTS.travelBase,
+    bartenderPay: QUOTE_DEFAULTS.bartenderPayDefault,   // flat $ per bartender
+    supplies: QUOTE_DEFAULTS.suppliesDefault,           // cups/ice/garnish/mixers
+    travel: QUOTE_DEFAULTS.travelBase,                  // gas/out-of-area
 
-    /* Custom drink menu — Lake Salt's actual offering. Flat fee.
-     * Off-menu requests are an optional per-drink upcharge. */
-    customMenuFee: QUOTE_DEFAULTS.customMenuFeeDefault,
-    offMenuEnabled: false,
-    offMenuQty: 0,
-    offMenuPrice: QUOTE_DEFAULTS.offMenuPerDrink,
+    /* MARGIN: profile-driven default; user adjusts the slider */
+    pricingKind: profile.kind,                          // wedding | private | corporate
+    marginPct: QUOTE_DEFAULTS[profile.marginKey],
+    applyProfitCap: profile.applyCap,                   // weddings/private
+    applyCorpFloor: profile.applyCorpFloor,             // corporate
 
-    /* User-defined line items: [{ label, price }] */
+    /* Optional user-defined add-ons that go straight to the client price
+     * (already-profit items, e.g. rental glassware passthrough). */
     lineItems: [],
 
-    peakApplied: peak.isPeak,
-    peakReason: peak.reason,
-    peakMultiplier: QUOTE_DEFAULTS.saturdayPeakMultiplier,
     discountType: 'pct',  // 'pct' | 'amt'
     discountValue: 0,
     depositPct: QUOTE_DEFAULTS.depositPct,
 
-    /* Top-down override. When set, this becomes the quoted total and an
-     * "Adjustment to target" line is implied in the breakdown. */
+    /* Top-down override — set your own final total, profit recomputes. */
     totalOverride: null,
 
     notes: '',
@@ -279,70 +307,95 @@ function parseBudget(b) {
   return { value: n, raw, valid: n >= 300 && n <= 50000 };
 }
 
-/* Pure calc — no DOM. Returns the full breakdown including a derived
- * "targetAdjustment" line when the user has set a top-down totalOverride. */
+/* Pure calc — no DOM. COST-PLUS-MARGIN model.
+ *
+ *   costBasis = bartenders×pay + supplies + travel
+ *   base quote from margin = costBasis ÷ (1 − margin%)
+ *   then apply profit cap (weddings/private) or corp floor (corporate),
+ *   then add any client-facing line-item add-ons, then discount,
+ *   then honor a manual totalOverride.
+ *
+ * The returned shape stays backward-compatible with the save/history/view
+ * code: it still exposes subtotal, discountAmt, computedTotal, total,
+ * hasOverride, targetAdjustment, deposit, costEstimate, profit, marginPct,
+ * and a breakdown object. */
 function calcQuote(q) {
-  const bartenderTotal = (q.serviceHours || 0) * (q.bartenderRate || 0) * (q.bartenders || 0);
-  const menuTotal = q.customMenuFee || 0;
-  const offMenuTotal = q.offMenuEnabled ? (q.offMenuQty || 0) * (q.offMenuPrice || 0) : 0;
+  const bartenderTotal = (q.bartenders || 0) * (q.bartenderPay || 0);
+  const supplies = Number(q.supplies) || 0;
+  const travel = Number(q.travel) || 0;
   const lineItemTotal = (q.lineItems || []).reduce((s, li) => s + (Number(li.price) || 0), 0);
 
-  const subtotal = bartenderTotal + menuTotal + offMenuTotal + lineItemTotal + (q.travelFee || 0);
-  const peakAdj = q.peakApplied ? subtotal * (q.peakMultiplier - 1) : 0;
-  const beforeDiscount = subtotal + peakAdj;
-  const discountAmt = q.discountType === 'pct'
-    ? beforeDiscount * (q.discountValue / 100)
-    : (q.discountValue || 0);
-  const computedTotal = Math.max(0, beforeDiscount - discountAmt);
+  /* True cost of delivering the event (line-item add-ons are treated as
+   * client-facing passthrough/profit, NOT cost). */
+  const costBasis = bartenderTotal + supplies + travel;
 
-  /* Top-down: if user set an override, that's the real total. The difference
-   * vs computed becomes a visible "Adjustment to target" line. */
+  /* Margin-driven price on the cost basis */
+  const marginPctInput = Math.min(Math.max(Number(q.marginPct) || 0, 0), 95);
+  const marginFloor = QUOTE_DEFAULTS.marginFloorPct || 40;
+  const effectiveMargin = Math.max(marginPctInput, marginFloor); // never below floor
+  let priceFromMargin = costBasis / (1 - effectiveMargin / 100);
+  let profitFromMargin = priceFromMargin - costBasis;
+
+  /* PROFIT CAP (weddings/private): once %-based profit would exceed the
+   * trigger, stop scaling and cap profit flat. Anti-overcharge ceiling. */
+  let capApplied = false;
+  if (q.applyProfitCap && profitFromMargin > QUOTE_DEFAULTS.profitCapTrigger) {
+    priceFromMargin = costBasis + QUOTE_DEFAULTS.profitCapValue;
+    profitFromMargin = QUOTE_DEFAULTS.profitCapValue;
+    capApplied = true;
+  }
+
+  /* CORP FLOOR (Adobe/corporate): make at least profitFloorCorp; cap N/A. */
+  let corpFloorApplied = false;
+  if (q.applyCorpFloor && profitFromMargin < QUOTE_DEFAULTS.profitFloorCorp) {
+    priceFromMargin = costBasis + QUOTE_DEFAULTS.profitFloorCorp;
+    profitFromMargin = QUOTE_DEFAULTS.profitFloorCorp;
+    corpFloorApplied = true;
+  }
+
+  /* Add client-facing add-ons on top, then discount. */
+  const subtotal = priceFromMargin + lineItemTotal;
+  const discountAmt = q.discountType === 'pct'
+    ? subtotal * ((q.discountValue || 0) / 100)
+    : (q.discountValue || 0);
+  const computedTotal = Math.max(0, subtotal - discountAmt);
+
+  /* Manual override wins. */
   const hasOverride = q.totalOverride != null && !isNaN(q.totalOverride);
   const total = hasOverride ? Number(q.totalOverride) : computedTotal;
   const targetAdjustment = hasOverride ? total - computedTotal : 0;
 
   const deposit = total * ((q.depositPct || 0) / 100);
 
-  /* Margin estimate: bartender labor + custom menu COGS + travel/line-items at ~40% cost. */
-  const laborCost = (q.serviceHours || 0) * (QUOTE_DEFAULTS.bartenderCostHr || 0) * (q.bartenders || 0);
-  const menuCost = (menuTotal + offMenuTotal) * (QUOTE_DEFAULTS.menuCostPctOfRevenue || 0.3);
-  const travelCost = (q.travelFee || 0) * 0.4;
-  const lineCost = lineItemTotal * 0.4;
-  const costEstimate = laborCost + menuCost + travelCost + lineCost;
+  /* Real profit/margin against the TRUE cost basis (line items are profit). */
+  const costEstimate = costBasis;
   const profit = total - costEstimate;
   const marginPct = total > 0 ? (profit / total) * 100 : 0;
 
   return {
-    subtotal, peakAdj, beforeDiscount, discountAmt,
-    computedTotal, total, hasOverride, targetAdjustment,
+    subtotal, discountAmt, computedTotal, total, hasOverride, targetAdjustment,
     deposit, costEstimate, profit, marginPct,
-    breakdown: { bartenderTotal, menuTotal, offMenuTotal, lineItemTotal, travelFee: q.travelFee || 0 }
+    costBasis, priceFromMargin, effectiveMargin,
+    capApplied, corpFloorApplied,
+    /* legacy fields some callers read */
+    peakAdj: 0, beforeDiscount: subtotal,
+    breakdown: { bartenderTotal, supplies, travel, lineItemTotal }
   };
 }
 
-/* Markdown-style quote text for copy/email. Margin NEVER included. */
+/* Client-facing quote text for copy/email. Kendell's rule: quote ONE clean
+ * total — no itemized cost breakdown, no bartender pay, supplies, margin, or
+ * profit. Just the total, the deposit, the alcohol note, and validity. */
 function quoteText(q, calc) {
-  const lineItemLines = (q.lineItems || [])
-    .filter(li => (li.label || '').trim() || (li.price || 0) > 0)
-    .map(li => `• ${li.label || 'Add-on'}: ${moneyFmt(li.price)}`);
   const lines = [
     `Lake Salt Bartending — Quote for ${q.leadName || 'your event'}`,
     `─────────────────────────────────────`,
-    `Bartenders: ${q.bartenders} × ${q.serviceHours} hrs @ ${moneyFmt(q.bartenderRate)}/hr = ${moneyFmt(calc.breakdown.bartenderTotal)}`,
-    `Custom drink menu (cocktails + mocktails): ${moneyFmt(calc.breakdown.menuTotal)}`,
-    q.offMenuEnabled && calc.breakdown.offMenuTotal > 0
-      ? `Off-menu requests: ${q.offMenuQty} × ${moneyFmt(q.offMenuPrice)} = ${moneyFmt(calc.breakdown.offMenuTotal)}`
-      : null,
-    `Travel: ${moneyFmt(q.travelFee)}`,
-    ...lineItemLines,
-    `─────────────────────────────────────`,
-    `Subtotal: ${moneyFmt(calc.subtotal)}`,
-    q.peakApplied ? `Peak adjustment (${q.peakReason}, +${Math.round((q.peakMultiplier-1)*100)}%): ${moneyFmt(calc.peakAdj)}` : null,
-    calc.discountAmt > 0 ? `Discount: −${moneyFmt(calc.discountAmt)}` : null,
+    `${q.bartenders} professional bartender${q.bartenders === 1 ? '' : 's'} · custom drink menu (cocktails + mocktails)`,
     ``,
     `TOTAL: ${moneyFmt(calc.total)}`,
     `Deposit to lock the date (${q.depositPct}%): ${moneyFmt(calc.deposit)}`,
     ``,
+    `Alcohol not included.`,
     `Quote valid for ${QUOTE_DEFAULTS.quoteExpiryDays} days.`,
     q.notes ? `\nNotes: ${q.notes}` : ''
   ].filter(Boolean);
@@ -380,8 +433,8 @@ function showBudgetMath(q, calc) {
  * it in place without rebuilding the whole builder DOM. */
 function totalsGridHTML(q, calc) {
   return `
-    <div class="text-muted">Subtotal</div><div style="text-align:right">${moneyFmt(calc.subtotal)}</div>
-    ${q.peakApplied?`<div class="text-muted">Peak adj.</div><div style="text-align:right">+${moneyFmt(calc.peakAdj)}</div>`:''}
+    <div class="text-muted">Cost basis</div><div style="text-align:right">${moneyFmt(calc.costBasis)}</div>
+    <div class="text-muted">Margin %</div><div style="text-align:right">${Math.round(calc.effectiveMargin)}%${calc.capApplied?` <span style="color:#FACC15;font-size:11px">profit capped at ${moneyFmt(QUOTE_DEFAULTS.profitCapValue)}</span>`:''}${calc.corpFloorApplied?` <span style="color:#3b82f6;font-size:11px">corp floor ${moneyFmt(QUOTE_DEFAULTS.profitFloorCorp)}</span>`:''}</div>
     ${calc.discountAmt>0?`<div class="text-muted">Discount</div><div style="text-align:right;color:#22c55e">−${moneyFmt(calc.discountAmt)}</div>`:''}
     <div class="text-muted">Computed total</div><div style="text-align:right;${calc.hasOverride?'text-decoration:line-through;opacity:.7':''}">${moneyFmt(calc.computedTotal)}</div>
     ${calc.hasOverride && calc.targetAdjustment !== 0 ? `<div class="text-muted">Adjustment to target</div><div style="text-align:right;color:${calc.targetAdjustment>0?'#FACC15':'#22c55e'}">${calc.targetAdjustment>0?'+':''}${moneyFmt(calc.targetAdjustment)}</div>`:''}
@@ -421,19 +474,22 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
       if (!doc.exists) return;
       const saved = doc.data();
       const li = saved.lineItems || {};
+      /* Map NEW saved fields back. OLD saved quotes only have legacy fields
+       * (bartenderRate/customMenuFee/etc.) — fall back to defaults so we never
+       * crash, and best-effort approximate cost inputs from the legacy shape. */
+      const legacyBartenderTotal = (li.serviceHours||0) * (li.bartenderRate||0) * (li.bartenders||0);
+      const legacySupplies = (li.customMenuFee||0) + (li.offMenuEnabled ? (li.offMenuQty||0)*(li.offMenuPrice||0) : 0);
       Object.assign(state.q, {
-        serviceHours:   li.serviceHours   ?? state.q.serviceHours,
-        bartenders:     li.bartenders     ?? state.q.bartenders,
-        bartenderRate:  li.bartenderRate  ?? state.q.bartenderRate,
-        travelFee:      li.travelFee      ?? state.q.travelFee,
-        customMenuFee:  li.customMenuFee  ?? state.q.customMenuFee,
-        offMenuEnabled: li.offMenuEnabled ?? state.q.offMenuEnabled,
-        offMenuQty:     li.offMenuQty     ?? state.q.offMenuQty,
-        offMenuPrice:   li.offMenuPrice   ?? state.q.offMenuPrice,
+        bartenders:     li.bartenders   ?? state.q.bartenders,
+        bartenderPay:   li.bartenderPay ?? (li.bartenders ? Math.round(legacyBartenderTotal / li.bartenders) : state.q.bartenderPay),
+        supplies:       li.supplies     ?? (legacySupplies || state.q.supplies),
+        travel:         li.travel       ?? li.travelFee ?? state.q.travel,
+        marginPct:      li.marginPct      ?? state.q.marginPct,
+        pricingKind:    li.pricingKind    ?? state.q.pricingKind,
+        applyProfitCap: li.applyProfitCap ?? state.q.applyProfitCap,
+        applyCorpFloor: li.applyCorpFloor ?? state.q.applyCorpFloor,
         guestCount:     li.guestCount     ?? state.q.guestCount,
         lineItems:      Array.isArray(li.custom) ? [...li.custom] : state.q.lineItems,
-        peakApplied:    saved.peakApplied ?? state.q.peakApplied,
-        peakReason:     saved.peakReason  ?? state.q.peakReason,
         discountType:   saved.discountType ?? state.q.discountType,
         discountValue:  saved.discountValue ?? state.q.discountValue,
         depositPct:     saved.depositPct  ?? state.q.depositPct,
@@ -460,37 +516,30 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
 
         <div id="qb-insights-slot"></div>
 
-        <!-- BARTENDER + TRAVEL -->
+        <!-- COST INPUTS -->
         <div class="qb-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px">
-          <label class="qb-field"><span>Service hours</span>
-            <input type="number" min="0" step="0.5" id="qb-hours" value="${q.serviceHours}" class="form-input qb-input"></label>
           <label class="qb-field"><span>Bartenders</span>
             <input type="number" min="0" step="1" id="qb-bartenders" value="${q.bartenders}" class="form-input qb-input"></label>
-          <label class="qb-field"><span>Rate ($/hr per bartender)</span>
-            <input type="number" min="0" step="5" id="qb-rate" value="${q.bartenderRate}" class="form-input qb-input"></label>
-          <label class="qb-field"><span>Travel fee</span>
-            <input type="number" min="0" step="25" id="qb-travel" value="${q.travelFee}" class="form-input qb-input"></label>
+          <label class="qb-field"><span>Flat pay per bartender ($)</span>
+            <input type="number" min="0" step="25" id="qb-pay" value="${q.bartenderPay}" class="form-input qb-input"></label>
+          <label class="qb-field"><span>Supplies ($)</span>
+            <input type="number" min="0" step="25" id="qb-supplies" value="${q.supplies}" class="form-input qb-input"></label>
+          <label class="qb-field"><span>Travel ($)</span>
+            <input type="number" min="0" step="25" id="qb-travel" value="${q.travel}" class="form-input qb-input"></label>
         </div>
 
-        <!-- DRINK MENU (Lake Salt's real model: custom curated menu, flat fee) -->
+        <!-- MARGIN -->
         <div style="margin-top:14px;padding:12px;border:1px solid var(--border);border-radius:10px">
-          <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:8px">Custom drink menu</div>
-          <label class="qb-field"><span>Menu fee (cocktails + mocktails, curated)</span>
-            <input type="number" min="0" step="25" id="qb-menu" value="${q.customMenuFee}" class="form-input qb-input"></label>
-
-          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:10px">
-            <input type="checkbox" id="qb-offmenu" ${q.offMenuEnabled?'checked':''}>
-            <span>Allow off-menu requests (generic drinks beyond the curated menu)</span>
-          </label>
-          ${q.offMenuEnabled ? `
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin-top:8px;padding-left:24px">
-              <label class="qb-field"><span>Expected off-menu drinks</span>
-                <input type="number" min="0" step="1" id="qb-offqty" value="${q.offMenuQty}" class="form-input qb-input"></label>
-              <label class="qb-field"><span>Per drink ($)</span>
-                <input type="number" min="0" step="1" id="qb-offprice" value="${q.offMenuPrice}" class="form-input qb-input"></label>
-            </div>
-            <div class="text-muted" id="qb-offmenu-expected" style="font-size:11px;margin-top:4px;padding-left:24px">${moneyFmt((q.offMenuQty||0)*(q.offMenuPrice||0))} expected</div>
-          `: ''}
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+            <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">Target margin</div>
+            <div id="qb-margin-label" style="font-size:13px;font-weight:700;color:var(--gold)">${Math.round(calc.effectiveMargin)}% · ${moneyFmt(calc.profit)} profit</div>
+          </div>
+          <input type="range" id="qb-margin" min="40" max="80" step="1" value="${q.marginPct}" style="width:100%;accent-color:var(--gold)">
+          <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+            <button type="button" class="qb-margin-preset btn btn-ghost" data-margin="60" data-kind="wedding" style="padding:2px 10px;font-size:11px">Wedding 60%</button>
+            <button type="button" class="qb-margin-preset btn btn-ghost" data-margin="40" data-kind="private" style="padding:2px 10px;font-size:11px">Private 40%</button>
+            <button type="button" class="qb-margin-preset btn btn-ghost" data-margin="65" data-kind="corporate" style="padding:2px 10px;font-size:11px">Corporate 65%</button>
+          </div>
         </div>
 
         <!-- USER-DEFINED LINE ITEMS -->
@@ -510,15 +559,8 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
           }
         </div>
 
-        <!-- PEAK + DISCOUNT -->
-        <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div style="padding:10px 12px;border:1px dashed var(--border);border-radius:8px">
-            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
-              <input type="checkbox" id="qb-peak" ${q.peakApplied?'checked':''}>
-              <span>Peak +${Math.round((q.peakMultiplier-1)*100)}%</span>
-            </label>
-            ${q.peakReason?`<div class="text-muted" style="font-size:11px;margin-top:4px;margin-left:24px">${q.peakReason}</div>`:''}
-          </div>
+        <!-- DISCOUNT -->
+        <div style="margin-top:14px">
           <div style="padding:10px 12px;border:1px dashed var(--border);border-radius:8px">
             <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:6px">Discount</div>
             <div style="display:flex;gap:6px;align-items:center">
@@ -576,10 +618,24 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
     container.querySelectorAll('.qb-input').forEach(el => {
       el.addEventListener('input', () => { readFieldsIntoState(); repaintTotals(); });
     });
-    container.querySelector('#qb-offmenu')?.addEventListener('change', (e) => {
-      state.q.offMenuEnabled = e.target.checked; render();
+    container.querySelector('#qb-margin')?.addEventListener('input', (e) => {
+      state.q.marginPct = parseFloat(e.target.value) || 0;
+      repaintTotals();
     });
-    container.querySelector('#qb-peak')?.addEventListener('change', (e) => { state.q.peakApplied = e.target.checked; render(); });
+    container.querySelectorAll('.qb-margin-preset').forEach(b => {
+      b.addEventListener('click', () => {
+        state.q.marginPct = parseFloat(b.dataset.margin) || state.q.marginPct;
+        state.q.pricingKind = b.dataset.kind;
+        if (b.dataset.kind === 'corporate') {
+          state.q.applyProfitCap = false;
+          state.q.applyCorpFloor = true;
+        } else {
+          state.q.applyProfitCap = true;
+          state.q.applyCorpFloor = false;
+        }
+        render();
+      });
+    });
     container.querySelector('#qb-disctype')?.addEventListener('change', (e) => { state.q.discountType = e.target.value; repaintTotals(); });
     container.querySelector('#qb-discval')?.addEventListener('input', (e) => { state.q.discountValue = parseFloat(e.target.value) || 0; repaintTotals(); });
     container.querySelectorAll('.qb-preset').forEach(b => {
@@ -696,7 +752,7 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
           <button type="button" id="qb-use-median" class="btn btn-secondary btn-sm" style="flex:1;font-size:12px;padding:6px 8px">Use ${moneyFmt(ins.median)} as target ${ins.ratios?' + auto-fill':''}</button>
         </div>
         ${ins.ratios ? `<div style="font-size:10px;color:var(--text-muted);margin-top:6px;line-height:1.5">
-          Typical breakdown: ${Math.round(ins.ratios.menu*100)}% menu · ${Math.round(ins.ratios.bartender*100)}% labor · ${Math.round(ins.ratios.travel*100)}% travel${ins.ratios.custom>0.02?` · ${Math.round(ins.ratios.custom*100)}% extras`:''}
+          Typical breakdown: ${Math.round(ins.ratios.bartender*100)}% labor · ${Math.round(ins.ratios.supplies*100)}% supplies · ${Math.round(ins.ratios.travel*100)}% travel${ins.ratios.custom>0.02?` · ${Math.round(ins.ratios.custom*100)}% extras`:''}
         </div>` : ''}
       </div>
     `;
@@ -720,15 +776,12 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
       const n = fn(el.value);
       return isNaN(n) ? 0 : n;
     };
-    q.serviceHours    = v('qb-hours') ?? q.serviceHours;
     q.bartenders      = v('qb-bartenders', s => parseInt(s, 10)) ?? q.bartenders;
-    q.bartenderRate   = v('qb-rate') ?? q.bartenderRate;
-    q.travelFee       = v('qb-travel') ?? q.travelFee;
-    q.customMenuFee   = v('qb-menu') ?? q.customMenuFee;
-    if (q.offMenuEnabled) {
-      q.offMenuQty   = v('qb-offqty', s => parseInt(s, 10)) ?? q.offMenuQty;
-      q.offMenuPrice = v('qb-offprice') ?? q.offMenuPrice;
-    }
+    q.bartenderPay    = v('qb-pay') ?? q.bartenderPay;
+    q.supplies        = v('qb-supplies') ?? q.supplies;
+    q.travel          = v('qb-travel') ?? q.travel;
+    const marginEl = document.getElementById('qb-margin');
+    if (marginEl) q.marginPct = parseFloat(marginEl.value) || q.marginPct;
     const discEl = document.getElementById('qb-discval');
     if (discEl) q.discountValue = parseFloat(discEl.value) || 0;
   }
@@ -741,8 +794,8 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
     if (totals) totals.innerHTML = totalsGridHTML(state.q, calc);
     const slot = document.getElementById('qb-budget-slot');
     if (slot) slot.innerHTML = budgetBadgeHTML(state.q, calc);
-    const offExp = document.getElementById('qb-offmenu-expected');
-    if (offExp) offExp.textContent = `${moneyFmt((state.q.offMenuQty||0)*(state.q.offMenuPrice||0))} expected`;
+    const marginLabel = document.getElementById('qb-margin-label');
+    if (marginLabel) marginLabel.textContent = `${Math.round(calc.effectiveMargin)}% · ${moneyFmt(calc.profit)} profit`;
     const margin = document.getElementById('qb-margin-line');
     if (margin) {
       const c = calc.marginPct >= 50 ? '#22c55e' : calc.marginPct >= 35 ? '#FACC15' : '#E05252';
@@ -774,14 +827,14 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
       leadId: state.q.leadId,
       leadName: state.q.leadName,
       lineItems: {
-        serviceHours: state.q.serviceHours,
         bartenders: state.q.bartenders,
-        bartenderRate: state.q.bartenderRate,
-        travelFee: state.q.travelFee,
-        customMenuFee: state.q.customMenuFee,
-        offMenuEnabled: state.q.offMenuEnabled,
-        offMenuQty: state.q.offMenuQty,
-        offMenuPrice: state.q.offMenuPrice,
+        bartenderPay: state.q.bartenderPay,
+        supplies: state.q.supplies,
+        travel: state.q.travel,
+        marginPct: state.q.marginPct,
+        pricingKind: state.q.pricingKind,
+        applyProfitCap: state.q.applyProfitCap,
+        applyCorpFloor: state.q.applyCorpFloor,
         guestCount: state.q.guestCount,
         custom: [...(state.q.lineItems || [])]
       },
@@ -789,10 +842,6 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
       computedTotal: calc.computedTotal,
       targetAdjustment: calc.targetAdjustment,
       subtotal: calc.subtotal,
-      peakApplied: state.q.peakApplied,
-      peakMultiplier: state.q.peakMultiplier,
-      peakAdj: calc.peakAdj,
-      peakReason: state.q.peakReason,
       discountType: state.q.discountType,
       discountValue: state.q.discountValue,
       discountAmt: calc.discountAmt,
@@ -901,8 +950,8 @@ Thanks for considering Lake Salt for your event. I put together a custom proposa
 ${shareUrl}
 
 Quick highlights:
-• ${state.q.bartenders} bartender${state.q.bartenders===1?'':'s'} for ${state.q.serviceHours} hours
-• Custom drink menu (cocktails + mocktails)
+• ${state.q.bartenders} professional bartender${state.q.bartenders===1?'':'s'}
+• Custom drink menu (cocktails + mocktails) · alcohol not included
 • Total: ${moneyFmt(calc.total)} · ${state.q.depositPct}% deposit (${moneyFmt(calc.deposit)}) holds your date
 
 Have questions before you decide? Just reply — happy to talk it through.
@@ -912,7 +961,7 @@ Lake Salt Bartending
 lakesalt.us`;
 
     const smsBody =
-`Lake Salt — your quote is ready: ${moneyFmt(calc.total)} for ${state.q.bartenders} bartender${state.q.bartenders===1?'':'s'}, ${state.q.serviceHours} hrs.
+`Lake Salt — your quote is ready: ${moneyFmt(calc.total)} for ${state.q.bartenders} bartender${state.q.bartenders===1?'':'s'}.
 
 Full proposal + one-tap accept: ${shareUrl}
 
@@ -1548,8 +1597,15 @@ async function openQuoteViewModal(quoteId) {
   }
 
   const li = q.lineItems || {};
-  const bartenderTotal = (li.serviceHours||0) * (li.bartenderRate||0) * (li.bartenders||0);
-  const offMenuTotal = li.offMenuEnabled ? (li.offMenuQty||0) * (li.offMenuPrice||0) : 0;
+  /* New model: bartenders × flat pay. Legacy fallback: hours × rate × count. */
+  const hasNew = li.bartenderPay != null || li.supplies != null || li.travel != null;
+  const bartenderTotal = li.bartenderPay != null
+    ? (li.bartenders||0) * (li.bartenderPay||0)
+    : (li.serviceHours||0) * (li.bartenderRate||0) * (li.bartenders||0);
+  const suppliesTotal = li.supplies != null
+    ? (li.supplies||0)
+    : ((li.customMenuFee||0) + (li.offMenuEnabled ? (li.offMenuQty||0)*(li.offMenuPrice||0) : 0));
+  const travelTotal = (li.travel != null ? li.travel : li.travelFee) || 0;
   const customLines = Array.isArray(li.custom) ? li.custom.filter(l => (l.label||'').trim() || (l.price||0) > 0) : [];
   const status = q.clientAcceptedAt ? 'accepted' : (q.status || 'draft');
   const statusColor = status==='accepted'?'#22c55e':status==='locked'?'#FACC15':status==='sent'?'#3b82f6':status==='expired'?'#E05252':'var(--text-muted)';
@@ -1575,13 +1631,12 @@ async function openQuoteViewModal(quoteId) {
     <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px">
       <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:8px">Breakdown</div>
       <div style="display:grid;grid-template-columns:1fr auto;row-gap:6px;font-size:13px">
-        <div>Bartender service <span class="text-muted" style="font-size:11px">${li.bartenders||1} × ${li.serviceHours||0} hrs @ ${moneyFmt(li.bartenderRate)}/hr</span></div>
+        <div>Bartenders <span class="text-muted" style="font-size:11px">${li.bartenders||1} × ${moneyFmt(hasNew ? li.bartenderPay : (li.bartenders ? bartenderTotal/li.bartenders : 0))}</span></div>
         <div style="text-align:right">${moneyFmt(bartenderTotal)}</div>
-        <div>Custom drink menu</div>
-        <div style="text-align:right">${moneyFmt(li.customMenuFee||0)}</div>
-        ${li.offMenuEnabled && offMenuTotal>0 ? `<div>Off-menu (${li.offMenuQty} × ${moneyFmt(li.offMenuPrice)})</div><div style="text-align:right">${moneyFmt(offMenuTotal)}</div>`:''}
+        <div>Supplies</div>
+        <div style="text-align:right">${moneyFmt(suppliesTotal)}</div>
         <div>Travel</div>
-        <div style="text-align:right">${moneyFmt(li.travelFee||0)}</div>
+        <div style="text-align:right">${moneyFmt(travelTotal)}</div>
         ${customLines.map(c => `<div>${escapeHtmlSafe(c.label||'Add-on')}</div><div style="text-align:right">${moneyFmt(c.price)}</div>`).join('')}
       </div>
     </div>
@@ -1589,7 +1644,6 @@ async function openQuoteViewModal(quoteId) {
     <div style="background:linear-gradient(135deg,rgba(201,168,76,0.10),rgba(139,155,126,0.08));border:1px solid rgba(201,168,76,0.35);border-radius:10px;padding:12px;margin-bottom:12px">
       <div style="display:grid;grid-template-columns:1fr auto;row-gap:4px;font-size:13px">
         <div class="text-muted">Subtotal</div><div style="text-align:right">${moneyFmt(q.subtotal)}</div>
-        ${q.peakApplied?`<div class="text-muted">Peak adj.</div><div style="text-align:right">+${moneyFmt(q.peakAdj)}</div>`:''}
         ${q.discountAmt>0?`<div class="text-muted">Discount</div><div style="text-align:right;color:#22c55e">−${moneyFmt(q.discountAmt)}</div>`:''}
         ${q.totalOverride!=null && q.targetAdjustment ? `<div class="text-muted">Adjustment to target</div><div style="text-align:right">${q.targetAdjustment>0?'+':''}${moneyFmt(q.targetAdjustment)}</div>`:''}
         <div style="font-weight:700;color:var(--text);font-size:16px;margin-top:4px">Total</div>
@@ -1702,16 +1756,20 @@ function renderQuoteSettingsCard(mountId) {
       <div class="card-header"><span class="card-title">💰 Quote defaults</span></div>
       <p class="text-muted" style="font-size:13px;margin-bottom:14px;line-height:1.5">Pricing used as starting values when a new quote is created. Saves to Firestore so your phone and laptop share the same numbers. You always edit per-quote on top of these.</p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <label class="qb-field"><span>Bartender rate ($/hr, charged)</span><input type="number" id="qs-rate" value="${D.bartenderRate}" class="form-input"></label>
-        <label class="qb-field"><span>Bartender cost ($/hr, you pay)</span><input type="number" id="qs-cost" value="${D.bartenderCostHr}" class="form-input"></label>
+        <label class="qb-field"><span>Flat pay per bartender ($)</span><input type="number" id="qs-pay" value="${D.bartenderPayDefault}" class="form-input"></label>
+        <label class="qb-field"><span>Default supplies ($)</span><input type="number" id="qs-supplies" value="${D.suppliesDefault}" class="form-input"></label>
+        <label class="qb-field"><span>1 bartender per N guests</span><input type="number" id="qs-bpg" value="${D.bartendersPerGuests}" class="form-input"></label>
         <label class="qb-field"><span>Travel base ($)</span><input type="number" id="qs-travel" value="${D.travelBase}" class="form-input"></label>
         <label class="qb-field"><span>Default service hours</span><input type="number" id="qs-hours" value="${D.hoursDefault}" class="form-input"></label>
-        <label class="qb-field"><span>1 bartender per N guests</span><input type="number" id="qs-bpg" value="${D.bartendersPerGuests}" class="form-input"></label>
         <label class="qb-field"><span>Deposit %</span><input type="number" id="qs-dep" value="${D.depositPct}" class="form-input"></label>
-        <label class="qb-field"><span>Peak multiplier (e.g. 1.15)</span><input type="number" step="0.05" id="qs-peak" value="${D.saturdayPeakMultiplier}" class="form-input"></label>
+        <label class="qb-field"><span>Margin — large/wedding (%)</span><input type="number" id="qs-mlarge" value="${D.marginLargePct}" class="form-input"></label>
+        <label class="qb-field"><span>Margin — small/private (%)</span><input type="number" id="qs-msmall" value="${D.marginSmallPct}" class="form-input"></label>
+        <label class="qb-field"><span>Margin — corporate (%)</span><input type="number" id="qs-mcorp" value="${D.marginCorpPct}" class="form-input"></label>
+        <label class="qb-field"><span>Margin floor (%)</span><input type="number" id="qs-mfloor" value="${D.marginFloorPct}" class="form-input"></label>
+        <label class="qb-field"><span>Profit cap trigger ($)</span><input type="number" id="qs-captrig" value="${D.profitCapTrigger}" class="form-input"></label>
+        <label class="qb-field"><span>Profit cap value ($)</span><input type="number" id="qs-capval" value="${D.profitCapValue}" class="form-input"></label>
+        <label class="qb-field"><span>Corporate profit floor ($)</span><input type="number" id="qs-corpfloor" value="${D.profitFloorCorp}" class="form-input"></label>
         <label class="qb-field"><span>Quote expires after (days)</span><input type="number" id="qs-exp" value="${D.quoteExpiryDays}" class="form-input"></label>
-        <label class="qb-field"><span>Custom drink menu — default fee ($)</span><input type="number" id="qs-menu" value="${D.customMenuFeeDefault}" class="form-input"></label>
-        <label class="qb-field"><span>Off-menu request — default $/drink</span><input type="number" id="qs-off" value="${D.offMenuPerDrink}" class="form-input"></label>
       </div>
 
       <button class="btn btn-primary" id="qs-save" style="margin-top:14px">Save quote defaults</button>
@@ -1720,16 +1778,20 @@ function renderQuoteSettingsCard(mountId) {
 
   document.getElementById('qs-save').addEventListener('click', async () => {
     const updates = {
-      bartenderRate: +document.getElementById('qs-rate').value,
-      bartenderCostHr: +document.getElementById('qs-cost').value,
+      bartenderPayDefault: +document.getElementById('qs-pay').value,
+      suppliesDefault: +document.getElementById('qs-supplies').value,
+      bartendersPerGuests: +document.getElementById('qs-bpg').value,
       travelBase: +document.getElementById('qs-travel').value,
       hoursDefault: +document.getElementById('qs-hours').value,
-      bartendersPerGuests: +document.getElementById('qs-bpg').value,
       depositPct: +document.getElementById('qs-dep').value,
-      saturdayPeakMultiplier: +document.getElementById('qs-peak').value,
-      quoteExpiryDays: +document.getElementById('qs-exp').value,
-      customMenuFeeDefault: +document.getElementById('qs-menu').value,
-      offMenuPerDrink: +document.getElementById('qs-off').value
+      marginLargePct: +document.getElementById('qs-mlarge').value,
+      marginSmallPct: +document.getElementById('qs-msmall').value,
+      marginCorpPct: +document.getElementById('qs-mcorp').value,
+      marginFloorPct: +document.getElementById('qs-mfloor').value,
+      profitCapTrigger: +document.getElementById('qs-captrig').value,
+      profitCapValue: +document.getElementById('qs-capval').value,
+      profitFloorCorp: +document.getElementById('qs-corpfloor').value,
+      quoteExpiryDays: +document.getElementById('qs-exp').value
     };
     try {
       await saveQuoteDefaults(updates);
