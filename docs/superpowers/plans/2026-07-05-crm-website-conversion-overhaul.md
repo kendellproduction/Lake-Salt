@@ -10,6 +10,15 @@
 
 **Source spec:** `docs/superpowers/specs/2026-07-05-crm-website-conversion-overhaul-design.md`
 
+**PROGRESS (updated by /loop):**
+- ✅ Task 1 — quotes cost-plus-margin refactor shipped (commit)
+- ✅ Task 2 — won/lost outcome + lost-reason capture (commit)
+- ✅ Task 3 — daily follow-up scan + dashboard reminders (commit)
+- ✅ Task 4 — auto +3d nudge on quote send + expiry flag (commit)
+- ✅ Task 5 — expo-cohort funnel on dashboard (commit)
+- ⏸️ Task 6 — Google Reviews: BLOCKED, needs API key + Place ID from Kendell
+- ⬜ Tasks 7–14 — pending (7,8,9,10,11,13,14 are buildable now; 12 arming needs Kendell)
+
 **Global conventions:**
 - Each task: read the current file first, make the change, verify, then commit. Commit messages use the existing `type(scope): summary` style and end with the `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>` trailer.
 - "Push to production" (`firebase deploy` + `git push origin main`) is NOT done automatically mid-loop. Commit locally; leave deploy to Kendell unless he says otherwise.
