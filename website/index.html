@@ -5103,6 +5103,7 @@
         <li><a href="#weddings">Wedding Bartending</a></li>
         <li><a href="#services">Corporate Events</a></li>
         <li><a href="#services">Private Celebrations</a></li>
+        <li><a href="weddings.html">Wedding Bar Service</a></li>
         <li><a href="rentals.html">Bar &amp; Equipment Rentals</a></li>
         <li><a href="sales.html">Buy a Custom Bar</a></li>
         <li><a href="#dryhire">Dry Hire Info</a></li>
@@ -5112,7 +5113,7 @@
     <div>
       <div class="f-col-title">Company</div>
       <ul class="f-links">
-        <li><a href="#">About Us</a></li>
+        <li><a href="about.html">About Us</a></li>
         <li><a href="#gallery">Gallery</a></li>
         <li><a href="#reviews">Reviews</a></li>
         <li><a href="recipes.html">Recipes &amp; Tips</a></li>
@@ -6448,6 +6449,23 @@ function handleSubmit(e) {
 
   setInterval(rotateDrink, 3000);
 })();
+</script>
+
+<script>
+  /* Pre-fill the contact form's event type from a URL param, e.g.
+     index.html?eventType=Wedding#contact — used by the /weddings landing CTA. */
+  (function preselectEventType() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const want = (params.get('eventType') || '').trim().toLowerCase();
+      if (!want) return;
+      const map = { wedding: 'Wedding', corporate: 'Corporate Event', 'corporate event': 'Corporate Event', private: 'Private Celebration', 'private celebration': 'Private Celebration', themed: 'Themed Experience' };
+      const val = map[want];
+      if (!val) return;
+      const sel = document.querySelector('select[name="event_type"]');
+      if (sel) sel.value = val;
+    } catch (e) { /* no-op */ }
+  })();
 </script>
 
 </body>
