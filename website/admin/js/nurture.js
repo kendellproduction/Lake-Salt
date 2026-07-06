@@ -20,6 +20,7 @@ const NURTURE_DEFAULTS = { armed: false, dryRun: true, offer: '10% expo discount
 let _nurtureSettings = { ...NURTURE_DEFAULTS };
 let _nurtureTemplates = {};
 let _nurtureLeads = [];
+let _nurtureReport = null;
 
 function todayYMD() { return new Date().toISOString().slice(0, 10); }
 
@@ -62,15 +63,17 @@ async function renderNurture() {
     </div>
     <div id="nurture-body">Loading…</div>`;
 
-  // Load settings, templates, and cohort leads in parallel.
-  const [setDoc, tplDoc, leadsSnap] = await Promise.all([
+  // Load settings, templates, cohort leads, and the latest weekly report.
+  const [setDoc, tplDoc, leadsSnap, reportSnap] = await Promise.all([
     db.collection('settings').doc('nurture').get(),
     db.collection('settings').doc('nurture_templates').get(),
-    db.collection('leads').where('campaign', '==', NURTURE_COHORT).get()
+    db.collection('leads').where('campaign', '==', NURTURE_COHORT).get(),
+    db.collection('nurture_reports').orderBy('date', 'desc').limit(1).get().catch(() => ({ docs: [] }))
   ]);
   _nurtureSettings = { ...NURTURE_DEFAULTS, ...(setDoc.exists ? setDoc.data() : {}) };
   _nurtureTemplates = tplDoc.exists ? tplDoc.data() : {};
   _nurtureLeads = leadsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  _nurtureReport = (reportSnap.docs && reportSnap.docs[0]) ? reportSnap.docs[0].data() : null;
 
   renderNurtureBody();
 }
@@ -132,6 +135,13 @@ function renderNurtureBody() {
       </div>
     </div>
     <div class="stat-grid" style="margin-top:14px">${tierCards}</div>
+    ${_nurtureReport ? `<div class="card" style="margin-top:14px">
+      <div class="card-header"><span class="card-title">📊 Weekly report — week of ${_nurtureReport.weekStart || '—'}</span></div>
+      <div class="text-muted" style="font-size:13px">
+        ${_nurtureReport.queuedSends || 0} sends queued · ${_nurtureReport.liveRuns || 0} live runs ·
+        ${_nurtureReport.cohortBooked || 0} booked · ${_nurtureReport.cohortActive || 0} active · ${_nurtureReport.cohortPaused || 0} paused (in conversation)
+      </div>
+    </div>` : ''}
     <div id="nurture-queue" style="margin-top:14px"></div>`;
 }
 

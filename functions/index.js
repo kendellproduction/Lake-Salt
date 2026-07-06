@@ -140,6 +140,81 @@ exports.dailyFollowupScan = onSchedule(
   }
 );
 
+/* ─── Daily nurture run ───────────────────────────────────────────────────
+ * Computes which expo-cohort leads are due for their next nurture email and
+ * records the batch to nurture_queue/{today}. SENDS NOTHING unless
+ * settings/nurture.armed === true AND dryRun === false — and even then only if
+ * an email transport (sendNurtureEmail) has been wired (Task 12: Resend/etc.).
+ * Fail-safe: armed-but-no-transport logs and sends nothing, never advancing
+ * a lead's state, so no message is silently lost. */
+exports.dailyNurtureRun = onSchedule(
+  { schedule: '0 9 * * *', timeZone: 'America/Denver' },
+  async () => {
+    const today = ymd(new Date());
+    const [setSnap, tplSnap] = await Promise.all([
+      db.collection('settings').doc('nurture').get(),
+      db.collection('settings').doc('nurture_templates').get()
+    ]);
+    const cfg = Object.assign({ armed: false, dryRun: true, pacingDays: 2 },
+      setSnap.exists ? setSnap.data() : {});
+    const templates = tplSnap.exists ? tplSnap.data() : {};
+
+    const leadsSnap = await db.collection('leads')
+      .where('campaign', '==', CAMPAIGN_TAG_DEFAULT).get();
+    const closed = ['Booked', 'Booked-Tentative', 'Completed', 'Lost'];
+    const due = [];
+    leadsSnap.forEach(doc => {
+      const l = doc.data();
+      const st = l.nurtureState || {};
+      if (!l.nurtureTier) return;
+      if (st.paused) return;
+      if (closed.includes(l.stage)) return;
+      if (st.nextSendAt && st.nextSendAt > today) return;
+      due.push({ id: doc.id, tier: l.nurtureTier, name: l.name || '', email: l.email || '' });
+    });
+
+    const live = cfg.armed === true && cfg.dryRun === false;
+
+    // Always record the would-send batch (audit + panel preview).
+    await db.collection('nurture_queue').doc(today).set({
+      date: today, live, count: due.length,
+      leads: due.map(d => ({ id: d.id, tier: d.tier, name: d.name, email: d.email })),
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    if (!live) {
+      console.log(`dailyNurtureRun DRY-RUN: ${due.length} due (armed=${cfg.armed}, dryRun=${cfg.dryRun}) — nothing sent`);
+      return null;
+    }
+
+    // LIVE path. sendNurtureEmail is intentionally not yet defined — wiring a
+    // transport is Task 12 (Kendell picks Resend/SendGrid). typeof guard never
+    // throws on an undeclared identifier, so this fails safe until then.
+    if (typeof sendNurtureEmail !== 'function') {
+      console.error('dailyNurtureRun ARMED but no email transport wired — sending nothing. Configure sendNurtureEmail() first.');
+      return null;
+    }
+    let sent = 0;
+    for (const d of due) {
+      const tpl = templates['tier' + d.tier];
+      if (!tpl || !d.email) continue;
+      try {
+        await sendNurtureEmail(d, tpl, cfg);
+        const nextSendAt = ymd(new Date(Date.now() + (cfg.pacingDays || 2) * 86400000));
+        await db.collection('leads').doc(d.id).update({
+          'nurtureState.sendsCompleted': admin.firestore.FieldValue.increment(1),
+          'nurtureState.nextSendAt': nextSendAt
+        });
+        sent++;
+      } catch (e) {
+        console.error(`nurture send failed for ${d.email}:`, e);
+      }
+    }
+    console.log(`dailyNurtureRun LIVE: sent ${sent}/${due.length}`);
+    return null;
+  }
+);
+
 exports.getCallSlots = onCall(async (request) => {
   const data = (request && request.data) || {};
   const daysAhead = Math.min(Math.max(parseInt(data && data.daysAhead, 10) || CALL_WINDOW_DAYS, 1), 30);
@@ -734,3 +809,65 @@ exports.onQuoteSent = onDocumentUpdated('quotes/{quoteId}', async (event) => {
   }
   return null;
 });
+
+/* ─── Pause nurture when a lead becomes engaged ───────────────────────────
+ * Once a nurtured lead moves into a real conversation (call scheduled, proposal
+ * sent, booked) or is closed, stop the automated cadence so a human takes over
+ * and the lead never gets a canned nurture email mid-conversation. */
+exports.onLeadEngagedPauseNurture = onDocumentUpdated('leads/{leadId}', async (event) => {
+  const before = event.data?.before?.data() || {};
+  const after  = event.data?.after?.data()  || {};
+  if (!after.nurtureTier) return null;                       // not in the cadence
+  const st = after.nurtureState || {};
+  if (st.paused) return null;                                // already paused
+
+  const engaged = ['Call Scheduled', 'Proposal Sent', 'Booked-Tentative', 'Booked', 'Completed', 'Lost'];
+  if (engaged.includes(after.stage) && !engaged.includes(before.stage)) {
+    try {
+      await event.data.after.ref.update({
+        'nurtureState.paused': true,
+        'nurtureState.pausedReason': 'engaged: ' + after.stage
+      });
+    } catch (e) {
+      console.error('Failed to pause nurture on engagement:', e);
+    }
+  }
+  return null;
+});
+
+/* ─── Weekly nurture report ───────────────────────────────────────────────
+ * Summarizes the last 7 days of nurture-queue activity + cohort bookings into
+ * nurture_reports/{date}, surfaced in the admin Nurture panel. */
+exports.weeklyNurtureReport = onSchedule(
+  { schedule: '0 8 * * 1', timeZone: 'America/Denver' },   // Mondays 8am MT
+  async () => {
+    const now = new Date();
+    const weekAgo = ymd(new Date(now.getTime() - 7 * 86400000));
+    const today = ymd(now);
+
+    const queueSnap = await db.collection('nurture_queue')
+      .where('date', '>=', weekAgo).get();
+    let queued = 0, liveRuns = 0;
+    queueSnap.forEach(d => { const q = d.data(); queued += (q.count || 0); if (q.live) liveRuns++; });
+
+    const leadsSnap = await db.collection('leads')
+      .where('campaign', '==', CAMPAIGN_TAG_DEFAULT).get();
+    let booked = 0, active = 0, paused = 0;
+    leadsSnap.forEach(doc => {
+      const l = doc.data();
+      if (!l.nurtureTier) return;
+      if (['Booked', 'Completed'].includes(l.stage)) booked++;
+      else if ((l.nurtureState || {}).paused) paused++;
+      else active++;
+    });
+
+    await db.collection('nurture_reports').doc(today).set({
+      date: today, weekStart: weekAgo,
+      queuedSends: queued, liveRuns,
+      cohortBooked: booked, cohortActive: active, cohortPaused: paused,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    console.log(`weeklyNurtureReport: ${queued} queued, ${booked} booked, ${active} active, ${paused} paused`);
+    return null;
+  }
+);
