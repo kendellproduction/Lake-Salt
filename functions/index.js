@@ -104,7 +104,38 @@ exports.dailyFollowupScan = onSchedule(
       });
       created++;
     }
-    console.log(`dailyFollowupScan created ${created} follow-up reminders`);
+
+    /* Quote expiry: sent quotes that aren't won and have passed their expiry
+     * window get flagged + a one-time reminder (surfaced in the alerts strip). */
+    let expiredCount = 0;
+    try {
+      const defDoc = await db.collection('settings').doc('quote_defaults').get();
+      const expiryDays = (defDoc.exists && defDoc.data().quoteExpiryDays) || 14;
+      const now = new Date();
+      const qsnap = await db.collection('quotes').where('sentAt', '!=', null).get();
+      for (const qd of qsnap.docs) {
+        const q = qd.data();
+        if (q.outcome === 'won' || q.expired) continue;
+        const sentDate = q.sentAt.toDate ? q.sentAt.toDate() : new Date(q.sentAt);
+        const expiryDate = new Date(sentDate.getTime() + expiryDays * 24 * 60 * 60 * 1000);
+        if (expiryDate >= now) continue;
+        await qd.ref.update({ expired: true });
+        await db.collection('kendell_followups').add({
+          type: 'quote_expired',
+          leadId: q.leadId || null,
+          leadName: q.leadName || 'a client',
+          title: `📄 Quote for ${q.leadName || 'a client'} expired — follow up or re-send`,
+          notes: `Sent ${ymd(sentDate)}, no acceptance within ${expiryDays} days.`,
+          status: 'open',
+          createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        expiredCount++;
+      }
+    } catch (e) {
+      console.error('Quote-expiry scan failed:', e);
+    }
+
+    console.log(`dailyFollowupScan created ${created} follow-up reminders, flagged ${expiredCount} expired quotes`);
     return null;
   }
 );
@@ -670,5 +701,36 @@ exports.onQuoteAccepted = onDocumentUpdated('quotes/{quoteId}', async (event) =>
     }
   }
 
+  return null;
+});
+
+/* ─── Auto follow-up when a quote is sent ─────────────────────────────────
+ * When a quote transitions to "sent", schedule a +3-day nudge on the linked
+ * lead (unless a sooner follow-up is already set) so sent quotes never sit
+ * unanswered. The dailyFollowupScan then turns that date into a reminder. */
+exports.onQuoteSent = onDocumentUpdated('quotes/{quoteId}', async (event) => {
+  const before = event.data?.before?.data() || {};
+  const after  = event.data?.after?.data()  || {};
+
+  if (before.sentAt || !after.sentAt) return null;   // only on not-sent → sent
+  const leadId = after.leadId;
+  if (!leadId) return null;
+
+  const sentDate = after.sentAt.toDate ? after.sentAt.toDate() : new Date(after.sentAt);
+  const followUpStr = ymd(new Date(sentDate.getTime() + 3 * 24 * 60 * 60 * 1000));
+
+  try {
+    const leadRef = db.collection('leads').doc(leadId);
+    const lead = (await leadRef.get()).data() || {};
+    // Keep an existing sooner follow-up; otherwise set the +3-day nudge.
+    if (!lead.followUpDate || lead.followUpDate > followUpStr) {
+      await leadRef.update({
+        followUpDate: followUpStr,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    }
+  } catch (e) {
+    console.error('onQuoteSent follow-up scheduling failed:', e);
+  }
   return null;
 });
