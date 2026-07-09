@@ -4339,10 +4339,13 @@
   <div class="section-inner">
     <div class="dh-grid">
       <div class="dh-content">
-        <span class="eyebrow" style="display:block;">How We Work</span>
+        <span class="eyebrow" style="display:block;">How We Work · Dry Hire</span>
         <h2 class="wf-title" style="color:var(--white);">
           We're a <em>Dry Hire</em><br/>Bar Service
         </h2>
+        <p style="color:rgba(255,255,255,0.85);font-size:1.05rem;line-height:1.7;margin-bottom:1.5rem;max-width:34rem;">
+          "Dry hire" just means <strong style="color:var(--champagne);">you provide the alcohol and we handle everything else</strong> — the bartenders, the bar, mixers, garnishes, ice, glassware, setup, and breakdown. By Utah law the host supplies the alcohol, so this keeps your costs transparent and usually saves you hundreds compared to a traditional bar package.
+        </p>
         <div class="dh-callout">
           <div class="dh-callout-title">What This Means for You</div>
           <div class="dh-callout-text">
@@ -5025,7 +5028,7 @@
           </div>
           <div class="form-group">
             <label class="form-label">Event Start Time</label>
-            <input type="text" name="event_start_time" class="form-input" placeholder="e.g. 5:00 PM" />
+            <input type="text" name="event_start_time" class="form-input" placeholder="e.g. 5:00 PM" required />
           </div>
         </div>
         <div class="form-row">
@@ -5648,7 +5651,9 @@ function obFinish() {
   const venueTextEl   = document.getElementById('ob-venue-text');
   const dateEl        = document.getElementById('ob-date');
   const guestNumEl    = document.getElementById('ob-guest-num');
+  const startTimeEl   = document.getElementById('ob-time');
   const endTimeEl     = document.getElementById('ob-end-time');
+  if (startTimeEl && startTimeEl.value) obData.time = startTimeEl.value.trim();
   if (drinkDetailEl) obData.drinkDetail = drinkDetailEl.value.trim();
   if (venueTextEl)   obData.venueText   = venueTextEl.value.trim();
   // obData.date is set directly by the calendar picker (obCalSelect)
@@ -5666,6 +5671,7 @@ function obCheckRequiredFields() {
   const nameEl = document.getElementById('ob-name');
   const emailEl = document.getElementById('ob-email');
   const dateEl = document.getElementById('ob-date');
+  const startTimeEl = document.getElementById('ob-time');
   const endTimeEl = document.getElementById('ob-end-time');
   const venueChip = document.querySelector('.ob-chips[style*="display:flex"] .ob-chip.selected');
   const hasBuiltInBar = obData.hasBuiltInBar;
@@ -5673,11 +5679,12 @@ function obCheckRequiredFields() {
   const nameValid = nameEl?.value?.trim().length > 0;
   const emailValid = emailEl?.value?.trim().length > 0 && emailEl.value.includes('@');
   const dateValid = dateEl?.value?.trim() || obData.date;
+  const startTimeValid = startTimeEl?.value?.trim() || obData.time;
   const endTimeValid = endTimeEl?.value?.trim() || obData.endTime;
   const venueValid = obData.venue || obData.venueText?.trim().length > 0;
   const barValid = hasBuiltInBar && (hasBuiltInBar === 'yes' || hasBuiltInBar === 'no' || hasBuiltInBar === 'unsure');
 
-  return nameValid && emailValid && dateValid && endTimeValid && venueValid && barValid;
+  return nameValid && emailValid && dateValid && startTimeValid && endTimeValid && venueValid && barValid;
 }
 
 function obCheckAndSubmit() {
@@ -5701,6 +5708,7 @@ function obSubmitQuiz() {
   const venueTextEl   = document.getElementById('ob-venue-text');
   const dateEl        = document.getElementById('ob-date');
   const guestNumEl    = document.getElementById('ob-guest-num');
+  const startTimeEl   = document.getElementById('ob-time');
   const endTimeEl     = document.getElementById('ob-end-time');
 
   // Validate required fields
@@ -5719,6 +5727,7 @@ function obSubmitQuiz() {
   if (venueTextEl) obData.venueText = venueTextEl.value.trim();
   if (dateEl && dateEl.value && !obData.date) obData.date = dateEl.value.trim();
   if (guestNumEl) obData.guestNum = guestNumEl.value.trim();
+  if (startTimeEl && startTimeEl.value) obData.time = startTimeEl.value.trim();
   if (endTimeEl) obData.endTime = endTimeEl.value.trim();
 
   // Store in localStorage
