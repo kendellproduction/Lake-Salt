@@ -208,29 +208,8 @@
   <link rel="preconnect" href="https://images.unsplash.com" crossorigin />
   <link rel="dns-prefetch" href="https://api.emailjs.com" />
   <link rel="preload" as="image" href="https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1600&q=70&fit=crop" fetchpriority="high" />
-  <!-- GSAP -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
-  <!-- EmailJS -->
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-  <script>emailjs.init('S5_thaUg6waOnC7bZ');</script>
-  <!-- Firebase config (gitignored — keys never committed to repo) -->
-  <script src="firebase-config.js"></script>
-  <!-- Firebase SDK (lead capture to Firestore + Analytics for tracking) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics-compat.js"></script>
-  <script>
-    if (window.FIREBASE_CONFIG) {
-      firebase.initializeApp(window.FIREBASE_CONFIG);
-      window._db = firebase.firestore();
-      // Analytics is only initialized if measurementId is present in firebase-config.js.
-      // If not yet configured, trackEvent() falls back to console.log so events still surface in DevTools.
-      if (window.FIREBASE_CONFIG.measurementId) {
-        try { window._analytics = firebase.analytics(); } catch (e) { /* graceful fallback */ }
-      }
-    }
-  </script>
+  <!-- GSAP / EmailJS / Firebase script tags moved to end of <body> so content
+       paints before ~500KB of JS loads (they were render-blocking here). -->
   <!-- ANALYTICS — external script auto-tracks page views, clicks, scroll depth, session summary. -->
   <script src="/analytics.js" defer></script>
   <!-- Local trackEvent() helper for explicit conversion events (lead submitted, CTA clicked, quiz step).
@@ -3686,14 +3665,11 @@
       <button class="mn-mode-btn" id="mn-mb-all" onclick="switchMode('all'); closeMobileNav()">✨ All</button>
     </div>
   </div>
-  <a href="#weddings" id="mn-weddings" onclick="closeMobileNav()">Weddings</a>
-  <a href="#dryhire" onclick="closeMobileNav()">Dry Hire</a>
-  <a href="#services" onclick="closeMobileNav()">Services</a>
+  <a href="weddings.html" id="mn-weddings">Weddings</a>
   <a href="#pricing-packages" onclick="closeMobileNav()">Pricing</a>
   <a href="rentals.html">Rentals</a>
-  <a href="sales.html">Buy a Bar</a>
-  <a href="#gallery" onclick="closeMobileNav()">Gallery</a>
-  <a href="#faq" onclick="closeMobileNav()">FAQ</a>
+  <a href="recipes.html">Recipes</a>
+  <a href="about.html">About</a>
   <a href="#contact" class="mn-cta" onclick="closeMobileNav()">Book Now</a>
 </nav>
 
@@ -4059,13 +4035,11 @@
 <nav class="navbar" id="navbar">
   <a href="/" class="nav-logo" title="Back to start">Lake <span>Salt</span></a>
   <ul class="nav-links">
-    <li><a href="#weddings" class="accent" id="nav-weddings">Weddings</a></li>
-    <li><a href="#dryhire">Dry Hire</a></li>
-    <li><a href="#services">Services</a></li>
+    <li><a href="weddings.html" class="accent" id="nav-weddings">Weddings</a></li>
     <li><a href="#pricing-packages">Pricing</a></li>
     <li><a href="rentals.html">Rentals</a></li>
-    <li><a href="#gallery">Gallery</a></li>
     <li><a href="recipes.html">Recipes</a></li>
+    <li><a href="about.html">About</a></li>
   </ul>
   <div style="display:flex;align-items:center;gap:0.85rem;">
     <div class="nav-mode-switch" id="nav-mode-switch">
@@ -4387,8 +4361,8 @@
 
       <div class="dh-visual" id="corporate">
         <img
-          src="images/IMG_8497.jpeg"
-          alt="Lake Salt team bartending at Adobe Lehi campus"
+          src="images/IMG_8469.jpeg"
+          alt="Lake Salt bartender laughing while mixing drinks behind a client-stocked bar at a corporate event"
           class="dh-img" loading="lazy" />
         <div class="dh-stat-float">
           <div class="big">$0</div>
@@ -4433,7 +4407,7 @@
       <!-- CORPORATE -->
       <div class="service-card">
         <div class="sc-image sc-image-adobe">
-          <img src="images/IMG_8491.jpeg" alt="Lake Salt bartenders smiling behind a fully-stocked bar in front of the Adobe logo at Adobe Lehi" loading="lazy" />
+          <img src="images/IMG_8497.jpeg" alt="Two smiling Lake Salt bartenders behind the bar in front of the Adobe logo at Adobe Lehi" loading="lazy" />
           <div class="sc-tag tag-corporate">Corporate</div>
         </div>
         <div class="sc-body">
@@ -5156,6 +5130,31 @@
 <!-- ═══════════════════════════════════════════
      JAVASCRIPT
 ═══════════════════════════════════════════ -->
+<!-- Libraries load here (end of body) so the page paints before they arrive.
+     Order matters: each lib must precede the inline code below that uses it. -->
+<!-- GSAP -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<!-- EmailJS -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>emailjs.init('S5_thaUg6waOnC7bZ');</script>
+<!-- Firebase config (gitignored — keys never committed to repo) -->
+<script src="firebase-config.js"></script>
+<!-- Firebase SDK (lead capture to Firestore + Analytics for tracking) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics-compat.js"></script>
+<script>
+  if (window.FIREBASE_CONFIG) {
+    firebase.initializeApp(window.FIREBASE_CONFIG);
+    window._db = firebase.firestore();
+    // Analytics is only initialized if measurementId is present in firebase-config.js.
+    // If not yet configured, trackEvent() falls back to console.log so events still surface in DevTools.
+    if (window.FIREBASE_CONFIG.measurementId) {
+      try { window._analytics = firebase.analytics(); } catch (e) { /* graceful fallback */ }
+    }
+  }
+</script>
 <script>
 gsap.registerPlugin(ScrollTrigger);
 
@@ -5425,7 +5424,7 @@ function applyMode(mode, animate) {
       navWeddings.href = '#dryhire';
     } else {
       navWeddings.textContent = 'Weddings';
-      navWeddings.href = '#weddings';
+      navWeddings.href = 'weddings.html';   // dedicated wedding landing page
     }
   }
   const mnWeddings = document.getElementById('mn-weddings');
@@ -5435,7 +5434,7 @@ function applyMode(mode, animate) {
       mnWeddings.href = '#dryhire';
     } else {
       mnWeddings.textContent = 'Weddings';
-      mnWeddings.href = '#weddings';
+      mnWeddings.href = 'weddings.html';
     }
   }
 }
