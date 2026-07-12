@@ -86,7 +86,7 @@ One checker per worker task, dispatched fresh with **no access to the worker's r
 
 W1 → W2 → W3 → W4 → W5 → W6 → W7 → W8 → W9 (each: Worker → Checker → Boss commit)
 
-- [ ] W1 rules · C1 pass · commit
+- [x] W1 rules · C1 pass · commit
 - [ ] W2 compression · C2 pass · commit
 - [ ] W3 scan UI · C3 pass · commit
 - [ ] W4 function skeleton · C4 pass · commit
