@@ -210,7 +210,7 @@ function filterExpenses() {
       Showing ${filtered.length} expenses · Total: <strong style="color:var(--gold)">${fmtMoney(filteredTotal)}</strong>
     </div>
     <table><thead><tr>
-      <th>Date</th><th>Description</th><th>Vendor</th><th>Category</th><th>Event</th><th>Amount</th><th>Receipt</th><th></th>
+      <th>Date</th><th>Description</th><th>Vendor</th><th>Category</th><th>Event</th><th>Amount</th><th title="Scanned receipt">📎</th><th>Receipt</th><th></th>
     </tr></thead><tbody>
     ${filtered.map(e => `<tr>
       <td>${e.date || '—'}</td>
@@ -219,6 +219,7 @@ function filterExpenses() {
       <td><span class="badge">${e.category||'Misc'}</span></td>
       <td class="text-muted">${eventMap[e.eventId]||'—'}</td>
       <td class="text-gold"><strong>${fmtMoney(e.amount)}</strong></td>
+      <td title="Has receipt">${e.receiptPath ? '📎' : ''}</td>
       <td>${e.receiptUrl ? `<a href="${e.receiptUrl}" target="_blank" style="color:var(--teal);font-size:12px">View</a>` : '<span class="text-muted">—</span>'}</td>
       <td><button class="btn btn-ghost btn-sm" onclick="openExpenseModal('${e.id}')">Edit</button></td>
     </tr>`).join('')}
@@ -257,6 +258,15 @@ function openExpenseModal(id) {
     onOpen: () => {
       document.getElementById('expense-form').onsubmit = (ev) => saveExpenseEdit(ev, id);
       document.getElementById('receipt-input')?.addEventListener('change', (ev) => handleReceiptPreview(ev));
+      if (exp.receiptPath) {
+        storage.ref(exp.receiptPath).getDownloadURL().then(url => {
+          const t = document.getElementById('exp-receipt-thumb');
+          if (t) {
+            t.src = url;
+            t.onclick = () => window.open(url, '_blank');
+          }
+        }).catch(()=>{});
+      }
     }
   });
 }
@@ -322,6 +332,15 @@ function expenseFormHTML(e = {}) {
         </label>
       </div>
     </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Deduction Type</label>
+        <select class="form-select" name="deductionType" id="exp-deduction">
+          <option value="general" ${(e.deductionType||'general')==='general'?'selected':''}>General deduction</option>
+          <option value="event" ${(e.deductionType||'general')==='event'?'selected':''}>Event expense</option>
+        </select></div>
+      <div class="form-group"><label class="form-label">Payment Method</label>
+        <input class="form-input" name="paymentMethod" id="exp-payment" value="${e.paymentMethod||''}" placeholder="e.g. VISA ****4821"/></div>
+    </div>
     <div class="form-group">
       <label class="form-label">Receipt ${e.receiptUrl?'(replace)':''}</label>
       <label style="display:block;background:var(--navy-lt);border:2px dashed var(--navy-bd);border-radius:8px;padding:16px;text-align:center;cursor:pointer;transition:border-color 0.2s" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--navy-bd)'">
@@ -329,6 +348,7 @@ function expenseFormHTML(e = {}) {
         <div style="font-size:13px;color:var(--teal)">Tap to take photo or choose file</div>
         <input id="receipt-input" type="file" accept="image/*,application/pdf" capture="environment" style="display:none"/>
       </label>
+      ${e.receiptPath ? `<img id="exp-receipt-thumb" style="max-width:120px;max-height:120px;border-radius:8px;cursor:pointer;margin-top:8px;display:block" alt="Receipt"/>` : ''}
       ${e.receiptUrl ? `<a href="${e.receiptUrl}" target="_blank" style="font-size:12px;color:var(--teal);display:block;margin-top:4px">Current receipt ↗</a>` : ''}
       <div id="receipt-preview"></div>
     </div>
@@ -357,10 +377,14 @@ async function saveNewExpense(ev) {
   data.amount = Number(data.amount);
   data.taxDeductible = data.taxDeductible === 'true';
   data.state = (data.state || '').toUpperCase().trim();
+  data.deductionType = data.deductionType || null;
+  data.paymentMethod = data.paymentMethod || null;
   data.createdAt = TS();
   if (!data.eventId) delete data.eventId;
   if (!data.notes)   delete data.notes;
   if (!data.state)   delete data.state;
+  if (!data.deductionType) delete data.deductionType;
+  if (!data.paymentMethod) delete data.paymentMethod;
 
   const btn = ev.target.querySelector('[type=submit]');
   btn.disabled = true; btn.textContent = 'Saving…';
@@ -391,9 +415,13 @@ async function saveExpenseEdit(ev, id) {
   data.amount = Number(data.amount);
   data.taxDeductible = data.taxDeductible === 'true';
   data.state = (data.state || '').toUpperCase().trim();
+  data.deductionType = data.deductionType || null;
+  data.paymentMethod = data.paymentMethod || null;
   data.updatedAt = TS();
   if (!data.eventId) delete data.eventId;
   if (!data.state)   delete data.state;
+  if (!data.deductionType) delete data.deductionType;
+  if (!data.paymentMethod) delete data.paymentMethod;
 
   const btn = ev.target.querySelector('[type=submit]');
   btn.disabled = true; btn.textContent = 'Saving…';
