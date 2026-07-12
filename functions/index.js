@@ -978,12 +978,69 @@ exports.parseReceipt = onObjectFinalized(
   }
 );
 
-/* Stub — implemented in W5 (Claude vision call). */
 async function parseReceiptWithClaude(imageBuffer, nearbyEvents, apiKey) {
-  throw new Error('parseReceiptWithClaude not yet implemented (W5)');
+  const Anthropic = require('@anthropic-ai/sdk');
+  const client = new Anthropic({ apiKey });
+
+  const eventList = nearbyEvents.map(e => {
+    const d = e.date && e.date.toDate ? e.date.toDate() : new Date(e.date);
+    return `- id:${e.id} | ${e.name || e.title || 'Unnamed'} | ${isNaN(d) ? 'no date' : d.toISOString().slice(0, 10)}`;
+  }).join('\n') || '(none)';
+
+  const msg = await client.messages.create({
+    model: 'claude-sonnet-5',
+    max_tokens: 1500,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imageBuffer.toString('base64') } },
+        { type: 'text', text:
+`Parse this receipt for a mobile bartending business (Lake Salt). Return ONLY a JSON object, no markdown fences, with exactly these keys:
+merchant (string|null), date (YYYY-MM-DD string|null), total (number|null), tax (number|null),
+lineItems (array of {description:string, qty:number, price:number}),
+category (one of: ${RECEIPT_EXPENSE_CATEGORIES.join(', ')}),
+matchedEventId (string|null), matchConfidence (integer 0-100|null),
+deductionType ("event" or "general"), paymentMethod (string|null, e.g. "VISA ****4821").
+
+Candidate events (match by date proximity to the receipt date AND whether the purchased items plausibly serve that event, e.g. bulk drinks days before a wedding):
+${eventList}
+
+Rules: if no event plausibly fits, matchedEventId=null and deductionType="general". Recurring business categories (Insurance, Licensing, Marketing) bias toward "general". If the receipt is unreadable, return {"unreadable": true}.` }
+      ]
+    }]
+  });
+
+  const text = msg.content.filter(b => b.type === 'text').map(b => b.text).join('');
+  const jsonStart = text.indexOf('{');
+  const jsonEnd = text.lastIndexOf('}');
+  if (jsonStart === -1 || jsonEnd === -1) throw new Error('No JSON in Claude response');
+  return JSON.parse(text.slice(jsonStart, jsonEnd + 1));
 }
 
-/* Stub — implemented in W5 (writes parsed fields onto the expense doc). */
 async function applyParsedReceipt(expenseRef, parsed, nearbyEvents) {
-  throw new Error('applyParsedReceipt not yet implemented (W5)');
+  if (!parsed || parsed.unreadable) {
+    await expenseRef.update({ status: 'needs-review', description: 'Receipt unreadable' });
+    return;
+  }
+
+  const validCategory = RECEIPT_EXPENSE_CATEGORIES.includes(parsed.category) ? parsed.category : 'Misc';
+  const validEventId = parsed.matchedEventId && nearbyEvents.some(e => e.id === parsed.matchedEventId)
+    ? parsed.matchedEventId : null;
+  const receiptDate = parsed.date && !isNaN(Date.parse(parsed.date)) ? parsed.date : null;
+
+  await expenseRef.update({
+    status: receiptDate && parsed.total != null ? 'ok' : 'needs-review',
+    merchant: parsed.merchant || null,
+    date: receiptDate,
+    amount: typeof parsed.total === 'number' ? parsed.total : null,
+    tax: typeof parsed.tax === 'number' ? parsed.tax : null,
+    lineItems: Array.isArray(parsed.lineItems) ? parsed.lineItems : [],
+    category: validCategory,
+    eventId: validEventId,
+    matchConfidence: validEventId && Number.isFinite(parsed.matchConfidence) ? parsed.matchConfidence : null,
+    deductionType: validEventId ? 'event' : 'general',
+    paymentMethod: parsed.paymentMethod || null,
+    taxYear: receiptDate ? parseInt(receiptDate.slice(0, 4), 10) : null,
+    description: parsed.merchant ? `${parsed.merchant} receipt` : 'Scanned receipt',
+  });
 }
