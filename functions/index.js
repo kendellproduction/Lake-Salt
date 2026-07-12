@@ -927,6 +927,7 @@ exports.sendPushNotification = onDocumentCreated('notifications/{noteId}', async
  * it to Claude for parsing. Idempotent: skips unless status === 'processing'. */
 const { onObjectFinalized } = require('firebase-functions/v2/storage');
 const { defineSecret } = require('firebase-functions/params');
+const { isDuplicateReceipt, deriveTaxYear } = require('./receipt-utils');
 
 const anthropicApiKey = defineSecret('ANTHROPIC_API_KEY');
 
@@ -1028,6 +1029,19 @@ async function applyParsedReceipt(expenseRef, parsed, nearbyEvents) {
     ? parsed.matchedEventId : null;
   const receiptDate = parsed.date && !isNaN(Date.parse(parsed.date)) ? parsed.date : null;
 
+  // Duplicate detection: check if this receipt matches an existing expense
+  if (receiptDate && typeof parsed.total === 'number') {
+    const dupSnap = await expenseRef.parent
+      .where('merchant', '==', parsed.merchant || '')
+      .where('amount', '==', parsed.total)
+      .get();
+    const others = dupSnap.docs.filter(d => d.id !== expenseRef.id).map(d => d.data());
+    if (isDuplicateReceipt(parsed, others)) {
+      await expenseRef.update({ status: 'duplicate', merchant: parsed.merchant || null, date: receiptDate, amount: parsed.total, taxYear: deriveTaxYear(receiptDate), description: (parsed.merchant || 'Receipt') + ' (possible duplicate)' });
+      return;
+    }
+  }
+
   await expenseRef.update({
     status: receiptDate && parsed.total != null ? 'ok' : 'needs-review',
     merchant: parsed.merchant || null,
@@ -1040,7 +1054,7 @@ async function applyParsedReceipt(expenseRef, parsed, nearbyEvents) {
     matchConfidence: validEventId && Number.isFinite(parsed.matchConfidence) ? parsed.matchConfidence : null,
     deductionType: validEventId ? 'event' : 'general',
     paymentMethod: parsed.paymentMethod || null,
-    taxYear: receiptDate ? parseInt(receiptDate.slice(0, 4), 10) : null,
+    taxYear: deriveTaxYear(receiptDate),
     description: parsed.merchant ? `${parsed.merchant} receipt` : 'Scanned receipt',
   });
 }

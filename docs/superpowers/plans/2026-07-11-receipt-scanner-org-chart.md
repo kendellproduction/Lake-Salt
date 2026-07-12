@@ -91,7 +91,7 @@ W1 → W2 → W3 → W4 → W5 → W6 → W7 → W8 → W9 (each: Worker → Che
 - [x] W3 scan UI · C3 pass · commit
 - [x] W4 function skeleton · C4 pass · commit
 - [x] W5 Claude parsing · C5 pass · commit
-- [ ] W6 dup/taxYear utils · C6 pass · commit
+- [x] W6 dup/taxYear utils · C6 pass · commit (1 retry: vacuous-test mutation caught by C6, fixed)
 - [ ] W7 recent scans strip · C7 pass · commit
 - [ ] W8 modal/table · C8 pass · commit
 - [ ] W9 export · C9 pass · commit
@@ -101,4 +101,6 @@ W1 → W2 → W3 → W4 → W5 → W6 → W7 → W8 → W9 (each: Worker → Che
 
 *(Boss appends dated rulings here during execution.)*
 
+- **2026-07-11 · C6 round 1 · FAIL upheld.** Mutation testing caught a vacuous test: removing deriveTaxYear's date-validity guard survived the suite. Worker added `deriveTaxYear('2025-99-99') === null`; mutation now killed.
+- **2026-07-11 · C6 re-check scope flag · RULED: overruled.** Checker flagged package.json/new files as out of scope; those were in W6's original mandate — Boss's re-check prompt understated the allowed list. Checker error, not worker error.
 - **2026-07-11 · C3 dispute · RULED: exception granted.** Hidden scan input uses `style="display:none"` instead of a literal `hidden` attribute. Functionally identical; spec never mandated the literal attribute. No Constitution change.
