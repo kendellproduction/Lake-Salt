@@ -95,7 +95,7 @@ W1 → W2 → W3 → W4 → W5 → W6 → W7 → W8 → W9 (each: Worker → Che
 - [x] W7 recent scans strip · C7 pass · commit (C7 observation: raw innerHTML interpolation of merchant strings — low severity, admin-only page; consider an esc() helper module-wide later)
 - [x] W8 modal/table · C8 pass · commit
 - [x] W9 export · C9 pass · commit (1 retry: subtotal rows emitted one row late, caught by C9's parsed-CSV assertion, fixed)
-- [ ] Final: Boss runs end-to-end verification per spec's Testing section; Kendell sets `ANTHROPIC_API_KEY` secret (only human-gated step)
+- [x] Final: Boss verification — functions tests 7/7 pass, node --check clean on index.js + expenses.js, admin page loads in browser with all 7 new/modified globals defined and zero script errors (only expected permission-denied noise from unauthenticated Firestore listeners). REMAINING (Kendell): set `ANTHROPIC_API_KEY` secret (`firebase functions:secrets:set ANTHROPIC_API_KEY`), `cd functions && npm install`, then deploy (functions + storage rules + hosting).
 
 ## Amendments & Rulings
 
