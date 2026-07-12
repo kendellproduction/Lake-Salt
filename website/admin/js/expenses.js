@@ -40,6 +40,7 @@ async function renderExpenses() {
       <div style="display:flex;gap:8px">
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('receipt-scan-input').click()">📷 Scan Receipt</button>
         <button class="btn btn-ghost btn-sm" onclick="exportExpensesCSV()" title="Export CSV">📥 Export</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportDeductionsCSV()" title="Year-end deduction export">🧾 Deductions</button>
         <button class="btn btn-primary" onclick="openAddExpenseModal()">+ Add Expense</button>
       </div>
     </div>
@@ -248,6 +249,124 @@ function exportExpensesCSV() {
   a.href = url; a.download = `lake-salt-expenses-${new Date().toISOString().split('T')[0]}.csv`;
   a.click(); URL.revokeObjectURL(url);
   showToast('CSV downloaded!', 'success');
+}
+
+// ── Export Deductions CSV ──
+async function exportDeductionsCSV() {
+  const yr = parseInt(prompt('Tax year for deduction export:', String(new Date().getFullYear())), 10);
+  if (!Number.isFinite(yr)) return;
+
+  // Fetch fresh data
+  const [expSnap, evSnap] = await Promise.all([
+    db.collection('expenses').get(),
+    db.collection('events').get()
+  ]);
+
+  const allExps = expSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const eventsById = {};
+  evSnap.docs.forEach(d => {
+    const e = d.data();
+    eventsById[d.id] = e.name || d.id;
+  });
+
+  // Determine effective tax year and filter
+  const filtered = allExps
+    .map(e => {
+      let effTaxYear = e.taxYear;
+      if (!effTaxYear && e.date) {
+        const dateStr = String(e.date);
+        const yr4 = parseInt(dateStr.substring(0, 4), 10);
+        if (Number.isFinite(yr4)) effTaxYear = yr4;
+      }
+      return { ...e, effTaxYear };
+    })
+    .filter(e => e.effTaxYear === yr && e.status !== 'duplicate' && e.status !== 'processing');
+
+  if (!filtered.length) {
+    showToast('No expenses found for that year', 'warning');
+    return;
+  }
+
+  // Resolve receipt URLs
+  const withUrls = await Promise.all(filtered.map(async e => {
+    let receiptUrl = '';
+    if (e.receiptUrl) {
+      receiptUrl = e.receiptUrl;
+    } else if (e.receiptPath) {
+      try {
+        receiptUrl = await storage.ref(e.receiptPath).getDownloadURL();
+      } catch {
+        receiptUrl = '';
+      }
+    }
+    return { ...e, resolvedReceiptUrl: receiptUrl };
+  }));
+
+  // Sort by category then date
+  withUrls.sort((a, b) => {
+    const catA = a.category || '';
+    const catB = b.category || '';
+    if (catA !== catB) return catA.localeCompare(catB);
+    const dateA = a.date || '';
+    const dateB = b.date || '';
+    return dateA.localeCompare(dateB);
+  });
+
+  // Build CSV rows with subtotals
+  const rows = [['Category', 'Date', 'Merchant', 'Description', 'Amount', 'Payment Method', 'Deduction Type', 'Event', 'Needs Review', 'Receipt URL']];
+  const catTotals = {};
+  let totalCents = 0;
+
+  let currentCat = null;
+  for (const e of withUrls) {
+    const cat = e.category || 'Misc';
+    const merchant = e.merchant || '';
+    const desc = e.description || '';
+    const amt = Number(e.amount || 0);
+    const method = e.paymentMethod || '';
+    const deducType = e.deductionType || (e.eventId ? 'event' : 'general');
+    const event = eventsById[e.eventId] || '';
+    const needsReview = e.status === 'needs-review' ? 'YES' : '';
+    const receipt = e.resolvedReceiptUrl;
+
+    // Track totals in cents for precision
+    const cents = Math.round(amt * 100);
+    totalCents += cents;
+    catTotals[cat] = (catTotals[cat] || 0) + cents;
+
+    // If category changed, add subtotal for previous BEFORE adding new expense row
+    if (currentCat !== null && currentCat !== cat) {
+      const subCents = catTotals[currentCat];
+      const subAmt = (subCents / 100).toFixed(2);
+      rows.push([`${currentCat} SUBTOTAL`, '', '', '', subAmt, '', '', '', '', '']);
+    }
+    currentCat = cat;
+
+    // Add data row
+    rows.push([cat, e.date || '', merchant, desc, amt.toFixed(2), method, deducType, event, needsReview, receipt]);
+  }
+
+  // Final category subtotal
+  if (currentCat !== null) {
+    const subCents = catTotals[currentCat];
+    const subAmt = (subCents / 100).toFixed(2);
+    rows.push([`${currentCat} SUBTOTAL`, '', '', '', subAmt, '', '', '', '', '']);
+  }
+
+  // Total row
+  const totalAmt = (totalCents / 100).toFixed(2);
+  rows.push(['TOTAL', '', '', '', totalAmt, '', '', '', '', '']);
+
+  // Escape and generate CSV
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `lake-salt-deductions-${yr}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`Deductions exported (${filtered.length} rows)`, 'success');
 }
 
 // ── Expense Modal ──
