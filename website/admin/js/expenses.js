@@ -7,6 +7,26 @@ const EXPENSE_CATEGORIES = [
   'Venue', 'Food & Bev', 'Licensing', 'Insurance', 'Misc'
 ];
 
+/* Compress a receipt image: max 1600px longest edge, JPEG quality 0.8 */
+function compressReceiptImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const maxEdge = 1600;
+      const scale = Math.min(1, maxEdge / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Compression failed')), 'image/jpeg', 0.8);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read image')); };
+    img.src = url;
+  });
+}
+
 async function renderExpenses() {
   const c = document.getElementById('module-container');
   c.innerHTML = `
