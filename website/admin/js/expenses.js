@@ -7,6 +7,8 @@ const EXPENSE_CATEGORIES = [
   'Venue', 'Food & Bev', 'Licensing', 'Insurance', 'Misc'
 ];
 
+let recentScansUnsub = null;
+
 /* Compress a receipt image: max 1600px longest edge, JPEG quality 0.8 */
 function compressReceiptImage(file) {
   return new Promise((resolve, reject) => {
@@ -42,6 +44,7 @@ async function renderExpenses() {
       </div>
     </div>
     <input type="file" id="receipt-scan-input" accept="image/*" capture="environment" multiple style="display:none" onchange="handleReceiptScan(this.files)"/>
+    <div id="recent-scans"></div>
     <div class="stat-grid" id="expense-stats">
       ${[1,2,3,4].map(()=>`<div class="stat-card"><div class="skeleton skeleton-line w-1/4" style="height:11px;margin-bottom:10px;"></div><div class="skeleton skeleton-line w-1/2" style="height:28px;"></div></div>`).join('')}
     </div>
@@ -86,12 +89,17 @@ async function renderExpenses() {
 
   // Populate event filter
   const evSel = document.getElementById('expense-event');
+  const eventsById = {};
   window._allExpenseEvents.forEach(e => {
     const opt = document.createElement('option');
     opt.value = e.id;
     opt.textContent = e.name || e.id;
     evSel.appendChild(opt);
+    eventsById[e.id] = e.name || e.id;
   });
+
+  // Initialize recent scans strip
+  initRecentScansStrip(eventsById);
 
   // Stats
   const now = new Date();
@@ -467,4 +475,77 @@ async function handleReceiptScan(fileList) {
 
   // Show completion toast
   showToast(`${files.length} receipt${files.length !== 1 ? 's' : ''} uploaded — parsing…`, 'success');
+}
+
+// ── Recent Scans Strip ──
+function initRecentScansStrip(eventsById) {
+  if (recentScansUnsub) recentScansUnsub();
+  recentScansUnsub = db.collection('expenses')
+    .where('aiParsed', '==', true)
+    .orderBy('createdAt', 'desc')
+    .limit(10)
+    .onSnapshot(snap => renderRecentScans(snap, eventsById), err => {
+      console.warn('recent scans listener', err);
+    });
+}
+
+function renderRecentScans(snap, eventsById) {
+  const container = document.getElementById('recent-scans');
+  if (!container) {
+    if (recentScansUnsub) recentScansUnsub();
+    return;
+  }
+
+  if (snap.empty) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const rows = snap.docs.map(doc => {
+    const d = doc.data();
+    const merchant = d.merchant || d.description || '—';
+    const amount = d.amount != null ? `$${d.amount.toFixed(2)}` : '—';
+
+    let statusChip = '';
+    if (d.status === 'processing') {
+      statusChip = '⏳ Scanning…';
+    } else if (d.status === 'ok') {
+      if (d.eventId) {
+        const eventName = eventsById[d.eventId] || 'Event';
+        const confidence = d.matchConfidence != null ? ` · ${d.matchConfidence}%` : '';
+        statusChip = `→ ${eventName}${confidence}`;
+      } else {
+        statusChip = 'General deduction';
+      }
+    } else if (d.status === 'needs-review') {
+      statusChip = '<span style="color:#d97706">⚠ Needs review</span>';
+    } else if (d.status === 'duplicate') {
+      statusChip = `<span style="color:var(--text-muted)">Duplicate</span> <button class="btn btn-ghost btn-sm" onclick="restoreDuplicate('${doc.id}')">Restore</button>`;
+    }
+
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px;border-bottom:1px solid var(--navy-bd);justify-content:space-between">
+      <div style="flex:1">
+        <div style="font-weight:500;font-size:14px">${merchant}</div>
+        <div style="font-size:12px;color:var(--text-muted)">${amount}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:13px">
+        ${statusChip}
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="openExpenseModal('${doc.id}')">Edit</button>
+    </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header">
+        <span class="card-title">Recent Scans</span>
+      </div>
+      ${rows}
+    </div>`;
+}
+
+function restoreDuplicate(id) {
+  db.collection('expenses').doc(id).update({ status: 'ok' })
+    .then(() => showToast('Restored', 'success'))
+    .catch(err => showToast('Failed to restore: ' + err.message, 'error'));
 }
