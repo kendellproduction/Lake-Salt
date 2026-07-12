@@ -36,10 +36,12 @@ async function renderExpenses() {
         <div class="page-subtitle">Track costs, receipts, and profit impact</div>
       </div>
       <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('receipt-scan-input').click()">📷 Scan Receipt</button>
         <button class="btn btn-ghost btn-sm" onclick="exportExpensesCSV()" title="Export CSV">📥 Export</button>
         <button class="btn btn-primary" onclick="openAddExpenseModal()">+ Add Expense</button>
       </div>
     </div>
+    <input type="file" id="receipt-scan-input" accept="image/*" capture="environment" multiple style="display:none" onchange="handleReceiptScan(this.files)"/>
     <div class="stat-grid" id="expense-stats">
       ${[1,2,3,4].map(()=>`<div class="stat-card"><div class="skeleton skeleton-line w-1/4" style="height:11px;margin-bottom:10px;"></div><div class="skeleton skeleton-line w-1/2" style="height:28px;"></div></div>`).join('')}
     </div>
@@ -413,4 +415,56 @@ async function deleteExpense(id) {
   closeModal();
   showToast('Expense deleted', 'info');
   renderExpenses();
+}
+
+// ── Receipt Scan Handler ──
+async function handleReceiptScan(fileList) {
+  const files = Array.from(fileList);
+  if (!files.length) return;
+
+  for (const file of files) {
+    try {
+      // 1. Create stub doc
+      const ref = db.collection('expenses').doc();
+      await ref.set({
+        status: 'processing',
+        aiParsed: true,
+        taxYear: null,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        date: null,
+        amount: null,
+        category: null,
+        eventId: null,
+        description: 'Scanning…',
+        receiptPath: 'receipts/' + ref.id + '.jpg'
+      });
+
+      // 2. Compress receipt image
+      const blob = await compressReceiptImage(file);
+
+      // 3. Upload to storage with retry logic
+      let uploadSuccess = false;
+      let retryCount = 0;
+      while (retryCount < 2 && !uploadSuccess) {
+        try {
+          await storage.ref('receipts/' + ref.id + '.jpg').put(blob, { contentType: 'image/jpeg' });
+          uploadSuccess = true;
+        } catch (uploadErr) {
+          retryCount++;
+          if (retryCount >= 2) {
+            // Final failure: update stub doc to needs-review
+            await ref.update({
+              status: 'needs-review',
+              description: 'Upload failed'
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Receipt scan error:', err);
+    }
+  }
+
+  // Show completion toast
+  showToast(`${files.length} receipt${files.length !== 1 ? 's' : ''} uploaded — parsing…`, 'success');
 }

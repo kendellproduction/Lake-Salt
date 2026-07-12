@@ -88,7 +88,7 @@ W1 → W2 → W3 → W4 → W5 → W6 → W7 → W8 → W9 (each: Worker → Che
 
 - [x] W1 rules · C1 pass · commit
 - [x] W2 compression · C2 pass · commit
-- [ ] W3 scan UI · C3 pass · commit
+- [x] W3 scan UI · C3 pass · commit
 - [ ] W4 function skeleton · C4 pass · commit
 - [ ] W5 Claude parsing · C5 pass · commit
 - [ ] W6 dup/taxYear utils · C6 pass · commit
@@ -100,3 +100,5 @@ W1 → W2 → W3 → W4 → W5 → W6 → W7 → W8 → W9 (each: Worker → Che
 ## Amendments & Rulings
 
 *(Boss appends dated rulings here during execution.)*
+
+- **2026-07-11 · C3 dispute · RULED: exception granted.** Hidden scan input uses `style="display:none"` instead of a literal `hidden` attribute. Functionally identical; spec never mandated the literal attribute. No Constitution change.
