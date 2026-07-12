@@ -89,7 +89,7 @@ W1 → W2 → W3 → W4 → W5 → W6 → W7 → W8 → W9 (each: Worker → Che
 - [x] W1 rules · C1 pass · commit
 - [x] W2 compression · C2 pass · commit
 - [x] W3 scan UI · C3 pass · commit
-- [ ] W4 function skeleton · C4 pass · commit
+- [x] W4 function skeleton · C4 pass · commit
 - [ ] W5 Claude parsing · C5 pass · commit
 - [ ] W6 dup/taxYear utils · C6 pass · commit
 - [ ] W7 recent scans strip · C7 pass · commit

@@ -871,3 +871,119 @@ exports.weeklyNurtureReport = onSchedule(
     return null;
   }
 );
+
+/* ─── Push notifications to Kendell's devices (added 2026-07-09) ─────────────
+ * Any agent or function that needs Kendell's attention creates a doc in the
+ * `notifications` collection: { title, body, url?, tag? }. This trigger fans
+ * it out to every registered device token in `push_tokens` (registered by
+ * /admin/js/push.js) as a DATA-ONLY web push; the admin service worker
+ * displays it. Dead tokens are pruned automatically. */
+const { onDocumentCreated } = require('firebase-functions/v2/firestore');
+exports.sendPushNotification = onDocumentCreated('notifications/{noteId}', async (event) => {
+  const snap = event.data;
+  const note = snap && snap.data();
+  if (!note) return null;
+
+  const tokensSnap = await db.collection('push_tokens').get();
+  if (tokensSnap.empty) {
+    console.warn('sendPushNotification: no push tokens registered');
+    await snap.ref.update({ sentAt: admin.firestore.FieldValue.serverTimestamp(), successCount: 0, failureCount: 0, error: 'no tokens' });
+    return null;
+  }
+  const tokens = tokensSnap.docs.map((d) => d.id);
+
+  const res = await admin.messaging().sendEachForMulticast({
+    tokens,
+    data: {
+      title: String(note.title || 'Lake Salt'),
+      body:  String(note.body || ''),
+      url:   String(note.url || 'https://lakesalt.us/admin/#crm'),
+      tag:   String(note.tag || 'lake-salt')
+    },
+    webpush: { headers: { Urgency: 'high', TTL: '86400' } }
+  });
+
+  const prunable = ['messaging/registration-token-not-registered', 'messaging/invalid-registration-token', 'messaging/invalid-argument'];
+  await Promise.all(res.responses.map((r, i) => {
+    if (r.success) return null;
+    const code = r.error && r.error.code;
+    if (prunable.includes(code)) return db.collection('push_tokens').doc(tokens[i]).delete();
+    console.warn('sendPushNotification: send failed', code);
+    return null;
+  }));
+
+  await snap.ref.update({
+    sentAt: admin.firestore.FieldValue.serverTimestamp(),
+    successCount: res.successCount,
+    failureCount: res.failureCount
+  });
+  console.log(`sendPushNotification: ${res.successCount} ok / ${res.failureCount} failed of ${tokens.length}`);
+  return null;
+});
+
+/* ═══ Receipt scanner — parseReceipt ══════════════════════════════════════
+ * Fires when a receipt image lands in Storage at receipts/{expenseId}.jpg.
+ * Downloads the image, gathers nearby events + categories, then (W5) sends
+ * it to Claude for parsing. Idempotent: skips unless status === 'processing'. */
+const { onObjectFinalized } = require('firebase-functions/v2/storage');
+const { defineSecret } = require('firebase-functions/params');
+
+const anthropicApiKey = defineSecret('ANTHROPIC_API_KEY');
+
+const RECEIPT_EXPENSE_CATEGORIES = [
+  'Bar Supplies', 'Equipment', 'Marketing', 'Staff', 'Travel',
+  'Venue', 'Food & Bev', 'Licensing', 'Insurance', 'Misc'
+];
+
+exports.parseReceipt = onObjectFinalized(
+  { secrets: [anthropicApiKey], memory: '512MiB', timeoutSeconds: 120 },
+  async (event) => {
+    const filePath = event.data.name || '';
+    if (!filePath.startsWith('receipts/')) return;
+
+    const expenseId = filePath.split('/')[1].replace(/\.jpg$/i, '');
+    const expenseRef = db.collection('expenses').doc(expenseId);
+
+    // Idempotency guard: only process docs still awaiting parsing.
+    const snap = await expenseRef.get();
+    if (!snap.exists || snap.data().status !== 'processing') {
+      console.log(`parseReceipt: skip ${expenseId} (status=${snap.exists ? snap.data().status : 'missing'})`);
+      return;
+    }
+
+    try {
+      // Download the image.
+      const bucket = admin.storage().bucket(event.data.bucket);
+      const [imageBuffer] = await bucket.file(filePath).download();
+
+      // Events within ±45 days of today (re-scoped to receipt date in W5).
+      const now = new Date();
+      const windowMs = 45 * 24 * 60 * 60 * 1000;
+      const eventsSnap = await db.collection('events').get();
+      const nearbyEvents = eventsSnap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(e => {
+          const t = e.date && e.date.toDate ? e.date.toDate().getTime() : Date.parse(e.date);
+          return !isNaN(t) && Math.abs(t - now.getTime()) <= windowMs;
+        });
+
+      // W5 wires this to Claude. Until then, mark for manual review so
+      // nothing silently sits in 'processing'.
+      const parsed = await parseReceiptWithClaude(imageBuffer, nearbyEvents, anthropicApiKey.value());
+      await applyParsedReceipt(expenseRef, parsed, nearbyEvents);
+    } catch (err) {
+      console.error(`parseReceipt: ${expenseId} failed`, err);
+      await expenseRef.update({ status: 'needs-review' });
+    }
+  }
+);
+
+/* Stub — implemented in W5 (Claude vision call). */
+async function parseReceiptWithClaude(imageBuffer, nearbyEvents, apiKey) {
+  throw new Error('parseReceiptWithClaude not yet implemented (W5)');
+}
+
+/* Stub — implemented in W5 (writes parsed fields onto the expense doc). */
+async function applyParsedReceipt(expenseRef, parsed, nearbyEvents) {
+  throw new Error('applyParsedReceipt not yet implemented (W5)');
+}
