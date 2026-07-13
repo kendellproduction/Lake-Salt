@@ -8,6 +8,52 @@ let quickScanStripUnsub = null;
 let scanNeedsCount = 0;
 let scanSheetQueue = [];
 
+/* ─── Offline queue (IndexedDB) — blobs are removed ONLY after a confirmed upload ─── */
+function scanQueueDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('lakesalt-scans', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('receipt-queue', { keyPath: 'id', autoIncrement: true });
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+function scanQueueAdd(blob) {
+  return scanQueueDB().then(dbi => new Promise((resolve, reject) => {
+    const tx = dbi.transaction('receipt-queue', 'readwrite');
+    tx.objectStore('receipt-queue').add({ blob, queuedAt: Date.now() });
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  }));
+}
+function scanQueueAll() {
+  return scanQueueDB().then(dbi => new Promise((resolve, reject) => {
+    const req = dbi.transaction('receipt-queue').objectStore('receipt-queue').getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  }));
+}
+function scanQueueRemove(id) {
+  return scanQueueDB().then(dbi => new Promise((resolve, reject) => {
+    const tx = dbi.transaction('receipt-queue', 'readwrite');
+    tx.objectStore('receipt-queue').delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  }));
+}
+
+async function uploadScanBlob(blob) {
+  const ref = db.collection('expenses').doc();
+  await ref.set({
+    status: 'processing', aiParsed: true, taxYear: null,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    date: null, amount: null, category: null, eventId: null,
+    description: 'Scanning…', receiptPath: 'receipts/' + ref.id + '.jpg',
+    scannedBy: (typeof currentUser !== 'undefined' && currentUser) ? (currentUser.displayName || currentUser.email || null) : null,
+  });
+  await storage.ref('receipts/' + ref.id + '.jpg').put(blob, { contentType: 'image/jpeg' });
+  return ref.id;
+}
+
 function scanQuestionsFor(d) {
   const questions = [];
 
@@ -226,7 +272,7 @@ async function answerScanQuestion(answer) {
   }
 }
 
-function initQuickScanWidget() {
+async function initQuickScanWidget() {
   const container = document.getElementById('quick-actions');
   if (!container) return;
 
@@ -325,6 +371,10 @@ function initQuickScanWidget() {
     window._pendingQuickScan = false;
     quickScanTap();
   }
+
+  // Wire up offline queue
+  await updateQueuePill();
+  await drainScanQueue();
 }
 
 function quickScanTap() {
@@ -358,11 +408,80 @@ function quickScanTap() {
   }
 }
 
-function quickScanFiles(files) {
+async function quickScanFiles(files) {
   if (navigator.vibrate) navigator.vibrate(10);
-  handleReceiptScan(files);
+
+  let queuedCount = 0;
+  for (const file of files) {
+    const blob = await compressReceiptImage(file);
+    if (navigator.onLine === false) {
+      await scanQueueAdd(blob);
+      queuedCount++;
+    } else {
+      try {
+        await uploadScanBlob(blob);
+      } catch (err) {
+        console.error('uploadScanBlob error:', err);
+        await scanQueueAdd(blob);
+        queuedCount++;
+      }
+    }
+  }
+
+  if (queuedCount > 0) {
+    showToast(`📥 ${queuedCount} saved — will upload when back online`);
+  } else {
+    showToast(`${files.length} receipt(s) uploaded — parsing…`);
+  }
+
+  await updateQueuePill();
   document.getElementById('quick-scan-input').value = '';
 }
+
+async function drainScanQueue() {
+  if (navigator.onLine === false) return;
+
+  const items = await scanQueueAll();
+  let uploadedCount = 0;
+
+  for (const item of items) {
+    try {
+      await uploadScanBlob(item.blob);
+      await scanQueueRemove(item.id);
+      uploadedCount++;
+    } catch (err) {
+      console.error('drainScanQueue upload error:', err);
+      break;
+    }
+  }
+
+  await updateQueuePill();
+  if (uploadedCount > 0) {
+    showToast(`📤 ${uploadedCount} queued receipt(s) uploaded`);
+  }
+}
+
+async function updateQueuePill() {
+  const count = (await scanQueueAll().catch(() => [])).length;
+  const row = document.querySelector('.quick-actions-row');
+  if (!row) return;
+
+  let pill = document.getElementById('quick-scan-queue-pill');
+  if (!pill) {
+    pill = document.createElement('span');
+    pill.id = 'quick-scan-queue-pill';
+    pill.style.cssText = 'font-size:11px;color:var(--text-muted);border:1px solid var(--navy-bd);border-radius:10px;padding:2px 8px';
+    row.appendChild(pill);
+  }
+
+  pill.textContent = `${count} queued`;
+  pill.style.display = count > 0 ? 'inline' : 'none';
+}
+
+/* Wire up online event to drain queue */
+window.addEventListener('online', () => {
+  drainScanQueue();
+});
 
 /* Auto-open on ?action=scan param */
 document.addEventListener('DOMContentLoaded', () => {
