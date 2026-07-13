@@ -1042,6 +1042,18 @@ async function applyParsedReceipt(expenseRef, parsed, nearbyEvents) {
     }
   }
 
+  // Compute matchCandidates: up to 3 candidate events sorted by date proximity when finalEventId is null
+  const refTime = receiptDate ? Date.parse(receiptDate) : Date.now();
+  const matchCandidates = validEventId ? [] : nearbyEvents
+    .map(e => {
+      const d = e.date && e.date.toDate ? e.date.toDate().getTime() : Date.parse(e.date);
+      return { id: e.id, name: e.name || e.title || 'Unnamed', dist: Math.abs((isNaN(d) ? Infinity : d) - refTime) };
+    })
+    .filter(c => c.dist !== Infinity)
+    .sort((a, b) => a.dist - b.dist)
+    .slice(0, 3)
+    .map(c => ({ id: c.id, name: c.name }));
+
   await expenseRef.update({
     status: receiptDate && parsed.total != null ? 'ok' : 'needs-review',
     merchant: parsed.merchant || null,
@@ -1056,5 +1068,7 @@ async function applyParsedReceipt(expenseRef, parsed, nearbyEvents) {
     paymentMethod: parsed.paymentMethod || null,
     taxYear: deriveTaxYear(receiptDate),
     description: parsed.merchant ? `${parsed.merchant} receipt` : 'Scanned receipt',
+    matchCandidates,
+    categoryGuess: RECEIPT_EXPENSE_CATEGORIES.includes(parsed.category) ? null : (parsed.category || null),
   });
 }
