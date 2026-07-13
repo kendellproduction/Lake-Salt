@@ -5,6 +5,226 @@
 
 let quickScanBadgeUnsub = null;
 let quickScanStripUnsub = null;
+let scanNeedsCount = 0;
+let scanSheetQueue = [];
+
+function scanQuestionsFor(d) {
+  const questions = [];
+
+  // Q1: amount (only if needs-review and no amount)
+  if (d.status === 'needs-review' && d.amount == null) {
+    questions.push({ type: 'amount' });
+  }
+
+  // Q2: date
+  if (!d.date) {
+    questions.push({ type: 'date' });
+  }
+
+  // Q3: event (if candidates exist)
+  if (!d.eventId && Array.isArray(d.matchCandidates) && d.matchCandidates.length > 0) {
+    questions.push({ type: 'event', candidates: d.matchCandidates });
+  }
+
+  // Q4: category (if guess exists)
+  if (d.categoryGuess) {
+    questions.push({ type: 'category' });
+  }
+
+  return questions;
+}
+
+async function openScanSheet() {
+  try {
+    const snap = await db.collection('expenses')
+      .where('aiParsed', '==', true)
+      .where('status', 'in', ['needs-review', 'ok'])
+      .orderBy('createdAt', 'desc')
+      .limit(25)
+      .get();
+
+    scanSheetQueue = [];
+    snap.forEach(doc => {
+      const data = doc.data();
+      const questions = scanQuestionsFor(data);
+      if (questions.length > 0) {
+        scanSheetQueue.push({
+          id: doc.id,
+          data: data,
+          questions: questions
+        });
+      }
+    });
+
+    if (scanSheetQueue.length === 0) {
+      showToast('All caught up ✓');
+      return;
+    }
+
+    renderScanQuestion();
+  } catch (err) {
+    console.error('openScanSheet error:', err);
+    showToast('Error loading questions', 'error');
+  }
+}
+
+function renderScanQuestion() {
+  let sheet = document.getElementById('scan-sheet');
+  if (!sheet) {
+    sheet = document.createElement('div');
+    sheet.id = 'scan-sheet';
+    sheet.innerHTML = `
+      <div class="scan-sheet-backdrop" onclick="(()=>{const s=document.getElementById('scan-sheet'); if(s) s.classList.remove('open');})()"></div>
+      <div class="scan-sheet-card" id="scan-sheet-card"></div>
+    `;
+    document.body.appendChild(sheet);
+  }
+
+  if (scanSheetQueue.length === 0) {
+    sheet.classList.remove('open');
+    return;
+  }
+
+  const item = scanSheetQueue[0];
+  const question = item.questions[0];
+  const card = document.getElementById('scan-sheet-card');
+  const merchant = item.data.merchant || item.data.description || 'this receipt';
+
+  let questionHTML = '';
+  let inputId = 'scan-q-input';
+
+  if (question.type === 'amount') {
+    questionHTML = `
+      <div class="scan-sheet-title">Total for ${escapeHtml(merchant)}?</div>
+      <input type="number" step="0.01" inputmode="decimal" id="${inputId}" placeholder="0.00" value="${item.data.amount || ''}" style="font-size:18px;padding:14px"/>
+      <div class="scan-chips">
+        <button class="scan-chip" onclick="answerScanQuestion(document.getElementById('${inputId}').value)">Save</button>
+        <button class="scan-chip scan-chip-muted" onclick="skipScanQuestion()">Skip</button>
+      </div>
+    `;
+  } else if (question.type === 'date') {
+    questionHTML = `
+      <div class="scan-sheet-title">Receipt date?</div>
+      <div class="scan-chips" style="margin-bottom:12px">
+        <button class="scan-chip" onclick="answerScanQuestion('${new Date().toISOString().split('T')[0]}')">Today</button>
+        <button class="scan-chip" onclick="(()=>{const d=new Date();d.setDate(d.getDate()-1);answerScanQuestion(d.toISOString().split('T')[0]);})()">Yesterday</button>
+      </div>
+      <input type="date" id="${inputId}" value="${item.data.date || new Date().toISOString().split('T')[0]}" style="font-size:16px;padding:12px"/>
+      <div class="scan-chips">
+        <button class="scan-chip" onclick="answerScanQuestion(document.getElementById('${inputId}').value)">Save</button>
+        <button class="scan-chip scan-chip-muted" onclick="skipScanQuestion()">Skip</button>
+      </div>
+    `;
+  } else if (question.type === 'event') {
+    const candidateChips = (question.candidates || [])
+      .map(c => `<button class="scan-chip" onclick="answerScanQuestion('${c.id}')">${escapeHtml(c.name)}</button>`)
+      .join('');
+    questionHTML = `
+      <div class="scan-sheet-title">Which event is "${escapeHtml(merchant)}" for?</div>
+      <div class="scan-chips" style="margin-bottom:12px">
+        ${candidateChips}
+      </div>
+      <div class="scan-chips">
+        <button class="scan-chip" onclick="answerScanQuestion(null)">General deduction</button>
+        <button class="scan-chip scan-chip-muted" onclick="skipScanQuestion()">Skip</button>
+      </div>
+    `;
+  } else if (question.type === 'category') {
+    const categoryChips = (EXPENSE_CATEGORIES || [])
+      .map(c => `<button class="scan-chip" onclick="answerScanQuestion('${c}')">${c}</button>`)
+      .join('');
+    questionHTML = `
+      <div class="scan-sheet-title">Category? (read "${escapeHtml(item.data.categoryGuess)}")</div>
+      <div class="scan-chips" style="margin-bottom:12px">
+        ${categoryChips}
+      </div>
+      <div class="scan-chips">
+        <button class="scan-chip scan-chip-muted" onclick="skipScanQuestion()">Skip</button>
+      </div>
+    `;
+  }
+
+  const queueLeft = scanSheetQueue.length;
+  questionHTML = `
+    <button class="scan-sheet-close" onclick="document.getElementById('scan-sheet').classList.remove('open')">✕</button>
+    <div class="scan-sheet-progress">${queueLeft} left</div>
+    ${questionHTML}
+  `;
+
+  card.innerHTML = questionHTML;
+  sheet.classList.add('open');
+}
+
+function skipScanQuestion() {
+  if (scanSheetQueue.length > 0) {
+    scanSheetQueue.shift();
+  }
+  renderScanQuestion();
+}
+
+function escapeHtml(text) {
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return String(text || '').replace(/[&<>"']/g, m => map[m]);
+}
+
+async function answerScanQuestion(answer) {
+  if (scanSheetQueue.length === 0) return;
+
+  const item = scanSheetQueue[0];
+  const question = item.questions[0];
+
+  let updateObj = {};
+
+  try {
+    if (question.type === 'amount') {
+      const amt = Number(answer);
+      if (isNaN(amt)) {
+        showToast('Please enter a valid amount', 'error');
+        return;
+      }
+      updateObj.amount = amt;
+    } else if (question.type === 'date') {
+      updateObj.date = answer;
+      updateObj.taxYear = parseInt(answer.slice(0, 4), 10);
+    } else if (question.type === 'event') {
+      updateObj.eventId = answer;
+      updateObj.deductionType = answer ? 'event' : 'general';
+      updateObj.matchCandidates = [];
+    } else if (question.type === 'category') {
+      updateObj.category = answer;
+      updateObj.categoryGuess = null;
+    }
+
+    // Merge with local data and recompute status
+    const merged = { ...item.data, ...updateObj };
+    if (merged.amount != null && merged.date) {
+      updateObj.status = 'ok';
+    }
+
+    // Update Firestore
+    await db.collection('expenses').doc(item.id).update(updateObj);
+
+    if (navigator.vibrate) navigator.vibrate(10);
+
+    // Move to next question or next item
+    item.questions.shift();
+    if (item.questions.length === 0) {
+      scanSheetQueue.shift();
+    }
+
+    // Re-render with transition
+    renderScanQuestion();
+  } catch (err) {
+    console.error('answerScanQuestion error:', err);
+    showToast('Save failed', 'error');
+  }
+}
 
 function initQuickScanWidget() {
   const container = document.getElementById('quick-actions');
@@ -42,10 +262,10 @@ function initQuickScanWidget() {
     .onSnapshot(
       snap => {
         const badge = document.getElementById('quick-scan-badge');
+        scanNeedsCount = snap.size;
         if (badge) {
-          const count = snap.size;
-          badge.textContent = count;
-          badge.style.display = count > 0 ? 'flex' : 'none';
+          badge.textContent = scanNeedsCount;
+          badge.style.display = scanNeedsCount > 0 ? 'flex' : 'none';
         }
       },
       err => console.warn('badge listener error:', err)
@@ -109,7 +329,33 @@ function initQuickScanWidget() {
 
 function quickScanTap() {
   if (navigator.vibrate) navigator.vibrate(10);
-  document.getElementById('quick-scan-input').click();
+
+  if (scanNeedsCount > 0) {
+    // Show chooser
+    let sheet = document.getElementById('scan-sheet');
+    if (!sheet) {
+      sheet = document.createElement('div');
+      sheet.id = 'scan-sheet';
+      sheet.innerHTML = `
+        <div class="scan-sheet-backdrop" onclick="(()=>{const s=document.getElementById('scan-sheet'); if(s) s.classList.remove('open');})()"></div>
+        <div class="scan-sheet-card" id="scan-sheet-card"></div>
+      `;
+      document.body.appendChild(sheet);
+    }
+
+    const card = document.getElementById('scan-sheet-card');
+    card.innerHTML = `
+      <button class="scan-sheet-close" onclick="document.getElementById('scan-sheet').classList.remove('open')">✕</button>
+      <div style="text-align:center;padding:20px">
+        <div style="font-size:18px;font-weight:700;margin-bottom:24px">What would you like to do?</div>
+        <button class="scan-chip" style="display:block;width:100%;margin-bottom:12px;min-height:48px;font-size:16px" onclick="(()=>{document.getElementById('scan-sheet').classList.remove('open');document.getElementById('quick-scan-input').click();})()">📷 New scan</button>
+        <button class="scan-chip" style="display:block;width:100%;min-height:48px;font-size:16px" onclick="(()=>{document.getElementById('scan-sheet').classList.remove('open');openScanSheet();})()">❓ Answer ${scanNeedsCount} question${scanNeedsCount!==1?'s':''}</button>
+      </div>
+    `;
+    sheet.classList.add('open');
+  } else {
+    document.getElementById('quick-scan-input').click();
+  }
 }
 
 function quickScanFiles(files) {
