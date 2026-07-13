@@ -33,6 +33,7 @@ html, body {
   color: var(--text);
   font-size: 14px;
   line-height: 1.5;
+  overflow-x: hidden;
 }
 
 /* ─── SCROLLBAR ─── */
@@ -223,8 +224,9 @@ html, body {
   flex: 1;
   overflow-y: auto;
   background: var(--navy);
+  overflow-x: hidden;
 }
-.module-container { padding: 28px; min-height: 100%; }
+.module-container { padding: 28px; min-height: 100%; max-width: 100%; }
 
 /* ═══════════════════════════════════════════
    SHARED COMPONENTS
