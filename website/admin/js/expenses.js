@@ -591,7 +591,8 @@ async function handleReceiptScan(fileList) {
         category: null,
         eventId: null,
         description: 'Scanning…',
-        receiptPath: 'receipts/' + ref.id + '.jpg'
+        receiptPath: 'receipts/' + ref.id + '.jpg',
+        scannedBy: (typeof currentUser !== 'undefined' && currentUser) ? (currentUser.displayName || currentUser.email || null) : null
       });
 
       // 2. Compress receipt image

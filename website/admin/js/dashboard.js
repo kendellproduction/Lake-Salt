@@ -47,6 +47,7 @@ async function renderDashboard() {
     </div>
     <div id="upcoming-calls"></div>
     <div id="dash-alerts" style="margin-bottom:16px"></div>
+    <div id="quick-actions"></div>
     <div id="dash-filter" class="dash-filter"></div>
     <div class="stat-grid" id="dash-stats">
       ${[1,2,3,4,5].map(()=>`<div class="stat-card"><div class="skeleton skeleton-line w-1/4" style="height:11px;margin-bottom:10px;"></div><div class="skeleton skeleton-line w-1/2" style="height:28px;"></div></div>`).join('')}
@@ -96,6 +97,7 @@ async function renderDashboard() {
   renderFilter();
   renderAlerts();
   renderAll();
+  if (typeof initQuickScanWidget === 'function') initQuickScanWidget();
 }
 
 /* ── Date filter control ──────────────────────────────────────────────── */
