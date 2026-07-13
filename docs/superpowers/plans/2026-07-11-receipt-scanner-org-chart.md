@@ -97,6 +97,16 @@ W1 → W2 → W3 → W4 → W5 → W6 → W7 → W8 → W9 (each: Worker → Che
 - [x] W9 export · C9 pass · commit (1 retry: subtotal rows emitted one row late, caught by C9's parsed-CSV assertion, fixed)
 - [x] Final: Boss verification — functions tests 7/7 pass, node --check clean on index.js + expenses.js, admin page loads in browser with all 7 new/modified globals defined and zero script errors (only expected permission-denied noise from unauthenticated Firestore listeners). REMAINING (Kendell): set `ANTHROPIC_API_KEY` secret (`firebase functions:secrets:set ANTHROPIC_API_KEY`), `cd functions && npm install`, then deploy (functions + storage rules + hosting).
 
+## v2 execution (2026-07-12 — spec: 2026-07-12-receipt-scanner-v2-design.md)
+
+- [x] W10 mobile overflow fix · C10 pass (real-browser 375px check) · commit
+- [x] W11 matchCandidates/categoryGuess markers · C11 pass · commit
+- [x] W12 dashboard Quick Scan widget + badge + scannedBy · C12 pass · commit
+- [x] W13 progressive question bottom sheet · C13 pass · commit
+- [x] W14 IndexedDB offline queue · C14 pass (5-scenario harness incl. failure-retention) · commit
+- [x] W15 PWA share target + shortcut + SW cache bump · C15 pass (SW fetch harness) · commit
+- [x] Final Boss verification: functions tests 7/7, syntax sweep clean, mobile page zero horizontal overflow, all widget/sheet/queue globals live, ?action=scan flag set, console clean (auth noise only)
+
 ## Amendments & Rulings
 
 *(Boss appends dated rulings here during execution.)*
