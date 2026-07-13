@@ -372,6 +372,12 @@ async function initQuickScanWidget() {
     quickScanTap();
   }
 
+  // Handle shared receipt from web share target
+  if (window._pendingSharedDrain) {
+    window._pendingSharedDrain = false;
+    drainScanQueue().then(() => showToast('📤 Shared receipt queued for parsing'));
+  }
+
   // Wire up offline queue
   await updateQueuePill();
   await drainScanQueue();
@@ -483,9 +489,9 @@ window.addEventListener('online', () => {
   drainScanQueue();
 });
 
-/* Auto-open on ?action=scan param */
+/* Auto-open on ?action=scan or ?action=shared param */
 document.addEventListener('DOMContentLoaded', () => {
-  if (new URLSearchParams(location.search).get('action') === 'scan') {
-    window._pendingQuickScan = true;
-  }
+  const action = new URLSearchParams(location.search).get('action');
+  if (action === 'scan') window._pendingQuickScan = true;
+  if (action === 'shared') window._pendingSharedDrain = true;
 });
