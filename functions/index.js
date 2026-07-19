@@ -3,10 +3,26 @@
  * receive a single `request` parameter with `.data`, `.auth`, etc. */
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
+const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
+const { google } = require('googleapis');
 
 admin.initializeApp();
 const db = admin.firestore();
+
+/* ─── Communications Hub secrets (set by Kendell at deploy — NEVER hardcode) ──
+ * TODO(deploy): set each of these via the Firebase CLI before the first run:
+ *   firebase functions:secrets:set GMAIL_OAUTH_CLIENT_ID
+ *   firebase functions:secrets:set GMAIL_OAUTH_CLIENT_SECRET
+ *   firebase functions:secrets:set GMAIL_OAUTH_REFRESH_TOKEN
+ * The refresh token comes from a one-time OAuth consent for the Lake Salt
+ * mailbox with scope https://www.googleapis.com/auth/gmail.modify (see runbook).
+ * ANTHROPIC_API_KEY is declared here too so P3 (aiComposeReply) can reuse it,
+ * but it is NOT consumed in P1.                                              */
+const GMAIL_OAUTH_CLIENT_ID     = defineSecret('GMAIL_OAUTH_CLIENT_ID');
+const GMAIL_OAUTH_CLIENT_SECRET = defineSecret('GMAIL_OAUTH_CLIENT_SECRET');
+const GMAIL_OAUTH_REFRESH_TOKEN = defineSecret('GMAIL_OAUTH_REFRESH_TOKEN');
+const ANTHROPIC_API_KEY         = defineSecret('ANTHROPIC_API_KEY');
 
 /* ─── Configuration ───────────────────────────────────────────────────────── */
 const TIMEZONE_OFFSET_HOURS = -6;            // America/Denver, ignoring DST for slot math
@@ -68,153 +84,6 @@ async function requireAdmin(request) {
  * - Returns 15-min call slots over the next CALL_WINDOW_DAYS, weekdays,
  *   5:00–7:30 PM Mountain, minus slots that already have a call_bookings doc.
  * ══════════════════════════════════════════════════════════════════════════ */
-/* ─── Daily follow-up scan ────────────────────────────────────────────────
- * Turns the dormant `followUpDate` field into real, visible reminders. Runs
- * every morning: any lead whose follow-up date has arrived (and isn't already
- * Booked/Completed/Lost) gets a `kendell_followups` entry — surfaced on the
- * dashboard alerts strip. Idempotent: skips a lead that already has an open
- * follow-up reminder of this type, so re-runs never duplicate. */
-exports.dailyFollowupScan = onSchedule(
-  { schedule: '0 8 * * *', timeZone: 'America/Denver' },
-  async () => {
-    const today = ymd(new Date());
-    const snap = await db.collection('leads')
-      .where('followUpDate', '<=', today).get();
-
-    let created = 0;
-    for (const doc of snap.docs) {
-      const lead = doc.data();
-      if (!lead.followUpDate) continue;                       // skip empty strings
-      if (['Booked', 'Completed', 'Lost'].includes(lead.stage)) continue;
-
-      const existing = await db.collection('kendell_followups')
-        .where('leadId', '==', doc.id)
-        .where('type', '==', 'followup_due')
-        .where('status', '==', 'open').limit(1).get();
-      if (!existing.empty) continue;
-
-      await db.collection('kendell_followups').add({
-        type: 'followup_due',
-        leadId: doc.id,
-        leadName: lead.name || 'lead',
-        title: `⏰ Follow up with ${lead.name || 'this lead'} (due ${lead.followUpDate})`,
-        notes: `${lead.eventType || 'Event'}${lead.eventDate ? ' · ' + lead.eventDate : ''} — reach out; the follow-up date has arrived.`,
-        status: 'open',
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-      created++;
-    }
-
-    /* Quote expiry: sent quotes that aren't won and have passed their expiry
-     * window get flagged + a one-time reminder (surfaced in the alerts strip). */
-    let expiredCount = 0;
-    try {
-      const defDoc = await db.collection('settings').doc('quote_defaults').get();
-      const expiryDays = (defDoc.exists && defDoc.data().quoteExpiryDays) || 14;
-      const now = new Date();
-      const qsnap = await db.collection('quotes').where('sentAt', '!=', null).get();
-      for (const qd of qsnap.docs) {
-        const q = qd.data();
-        if (q.outcome === 'won' || q.expired) continue;
-        const sentDate = q.sentAt.toDate ? q.sentAt.toDate() : new Date(q.sentAt);
-        const expiryDate = new Date(sentDate.getTime() + expiryDays * 24 * 60 * 60 * 1000);
-        if (expiryDate >= now) continue;
-        await qd.ref.update({ expired: true });
-        await db.collection('kendell_followups').add({
-          type: 'quote_expired',
-          leadId: q.leadId || null,
-          leadName: q.leadName || 'a client',
-          title: `📄 Quote for ${q.leadName || 'a client'} expired — follow up or re-send`,
-          notes: `Sent ${ymd(sentDate)}, no acceptance within ${expiryDays} days.`,
-          status: 'open',
-          createdAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-        expiredCount++;
-      }
-    } catch (e) {
-      console.error('Quote-expiry scan failed:', e);
-    }
-
-    console.log(`dailyFollowupScan created ${created} follow-up reminders, flagged ${expiredCount} expired quotes`);
-    return null;
-  }
-);
-
-/* ─── Daily nurture run ───────────────────────────────────────────────────
- * Computes which expo-cohort leads are due for their next nurture email and
- * records the batch to nurture_queue/{today}. SENDS NOTHING unless
- * settings/nurture.armed === true AND dryRun === false — and even then only if
- * an email transport (sendNurtureEmail) has been wired (Task 12: Resend/etc.).
- * Fail-safe: armed-but-no-transport logs and sends nothing, never advancing
- * a lead's state, so no message is silently lost. */
-exports.dailyNurtureRun = onSchedule(
-  { schedule: '0 9 * * *', timeZone: 'America/Denver' },
-  async () => {
-    const today = ymd(new Date());
-    const [setSnap, tplSnap] = await Promise.all([
-      db.collection('settings').doc('nurture').get(),
-      db.collection('settings').doc('nurture_templates').get()
-    ]);
-    const cfg = Object.assign({ armed: false, dryRun: true, pacingDays: 2 },
-      setSnap.exists ? setSnap.data() : {});
-    const templates = tplSnap.exists ? tplSnap.data() : {};
-
-    const leadsSnap = await db.collection('leads')
-      .where('campaign', '==', CAMPAIGN_TAG_DEFAULT).get();
-    const closed = ['Booked', 'Booked-Tentative', 'Completed', 'Lost'];
-    const due = [];
-    leadsSnap.forEach(doc => {
-      const l = doc.data();
-      const st = l.nurtureState || {};
-      if (!l.nurtureTier) return;
-      if (st.paused) return;
-      if (closed.includes(l.stage)) return;
-      if (st.nextSendAt && st.nextSendAt > today) return;
-      due.push({ id: doc.id, tier: l.nurtureTier, name: l.name || '', email: l.email || '' });
-    });
-
-    const live = cfg.armed === true && cfg.dryRun === false;
-
-    // Always record the would-send batch (audit + panel preview).
-    await db.collection('nurture_queue').doc(today).set({
-      date: today, live, count: due.length,
-      leads: due.map(d => ({ id: d.id, tier: d.tier, name: d.name, email: d.email })),
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-
-    if (!live) {
-      console.log(`dailyNurtureRun DRY-RUN: ${due.length} due (armed=${cfg.armed}, dryRun=${cfg.dryRun}) — nothing sent`);
-      return null;
-    }
-
-    // LIVE path. sendNurtureEmail is intentionally not yet defined — wiring a
-    // transport is Task 12 (Kendell picks Resend/SendGrid). typeof guard never
-    // throws on an undeclared identifier, so this fails safe until then.
-    if (typeof sendNurtureEmail !== 'function') {
-      console.error('dailyNurtureRun ARMED but no email transport wired — sending nothing. Configure sendNurtureEmail() first.');
-      return null;
-    }
-    let sent = 0;
-    for (const d of due) {
-      const tpl = templates['tier' + d.tier];
-      if (!tpl || !d.email) continue;
-      try {
-        await sendNurtureEmail(d, tpl, cfg);
-        const nextSendAt = ymd(new Date(Date.now() + (cfg.pacingDays || 2) * 86400000));
-        await db.collection('leads').doc(d.id).update({
-          'nurtureState.sendsCompleted': admin.firestore.FieldValue.increment(1),
-          'nurtureState.nextSendAt': nextSendAt
-        });
-        sent++;
-      } catch (e) {
-        console.error(`nurture send failed for ${d.email}:`, e);
-      }
-    }
-    console.log(`dailyNurtureRun LIVE: sent ${sent}/${due.length}`);
-    return null;
-  }
-);
-
 exports.getCallSlots = onCall(async (request) => {
   const data = (request && request.data) || {};
   const daysAhead = Math.min(Math.max(parseInt(data && data.daysAhead, 10) || CALL_WINDOW_DAYS, 1), 30);
@@ -714,17 +583,6 @@ exports.onQuoteAccepted = onDocumentUpdated('quotes/{quoteId}', async (event) =>
   const sig      = after.clientAcceptedSignature || 'client';
   const total    = after.total || 0;
 
-  /* Record the win on the quote itself (for win/loss analytics). Safe against
-   * re-trigger: the guard above returns early once the quote is already accepted. */
-  try {
-    await event.data.after.ref.update({
-      outcome: 'won',
-      wonAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-  } catch (e) {
-    console.error('Failed to set quote outcome=won:', e);
-  }
-
   /* Advance the linked lead's stage. Booked-Tentative is the right stop:
    * the client has signed off on the quote, but the deposit isn't paid yet
    * — that's what bumps it to fully Booked. */
@@ -778,6 +636,1095 @@ exports.onQuoteAccepted = onDocumentUpdated('quotes/{quoteId}', async (event) =>
 
   return null;
 });
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * COMMUNICATIONS HUB — Phase 1 (read threads in the lead card)
+ *
+ * syncGmail (scheduled, every 1 min) mirrors the Lake Salt mailbox (INBOX +
+ * SENT) into Firestore as readable threads under each lead's card. Gmail stays
+ * the system of record; the CRM mirrors it. Doc id = Gmail message id, so every
+ * write is idempotent (set/merge) and the poller can run as often as it likes.
+ *
+ * Auth model (locked by Kendell):
+ *   PRIMARY  — OAuth refresh token in Secret Manager (default path).
+ *   FALLBACK — Zapier Gmail connection (clean interface stub below; the Zapier
+ *              relay drops raw Gmail message payloads into `gmail_inbound_raw`
+ *              and syncGmail drains them when no OAuth secret is present).
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+const GMAIL_SYNC_DOC = db.collection('settings').doc('gmail_sync');
+
+/* Knot/WeddingPro proxy senders — replies MUST go back to the proxy address,
+ * never the bride's real inbox. Used both to tag the channel and to trigger
+ * body-parsing identity resolution. */
+const { isAutomatedNonLead, outboundCandidates } = require('./sync-classify');
+const BUSINESS_EMAIL = 'contact@lakesalt.us';
+const KNOT_DOMAINS       = ['member.theknot.com', 'theknot.com', 'mail.theknot.com'];
+const WEDDINGPRO_DOMAINS = ['weddingpro.com', 'member.weddingpro.com', 'mail.weddingwire.com', 'weddingwire.com'];
+
+/* ─── Auth: build an authenticated Gmail client (OAuth primary) ─────────────
+ * Returns { gmail, mode } where mode is 'oauth' | 'zapier' | null. When the
+ * OAuth refresh token secret is absent we return mode 'zapier' so the caller
+ * drains the fallback queue instead. NEVER logs secret values. */
+function buildGmailClient() {
+  const clientId     = process.env.GMAIL_OAUTH_CLIENT_ID;
+  const clientSecret = process.env.GMAIL_OAUTH_CLIENT_SECRET;
+  const refreshToken = process.env.GMAIL_OAUTH_REFRESH_TOKEN;
+
+  if (clientId && clientSecret && refreshToken) {
+    const oauth2 = new google.auth.OAuth2(clientId, clientSecret);
+    oauth2.setCredentials({ refresh_token: refreshToken });
+    return { gmail: google.gmail({ version: 'v1', auth: oauth2 }), mode: 'oauth' };
+  }
+  /* TODO(deploy): if you stay on Zapier, point the Zap at the
+   * `gmail_inbound_raw` collection (one doc per message, fields documented in
+   * the runbook) — syncGmail will drain + normalize it below. */
+  return { gmail: null, mode: 'zapier' };
+}
+
+/* ─── Body decode + server-side sanitization ──────────────────────────────── */
+
+/* Recursively pull the first text/plain and text/html parts out of a Gmail
+ * payload tree. Gmail base64url-encodes part bodies. */
+function extractBodies(payload) {
+  let text = '';
+  let html = '';
+  function walk(part) {
+    if (!part) return;
+    const mime = part.mimeType || '';
+    const data = part.body && part.body.data;
+    if (data) {
+      const decoded = Buffer.from(data, 'base64').toString('utf-8');
+      if (mime === 'text/plain' && !text) text = decoded;
+      else if (mime === 'text/html' && !html) html = decoded;
+    }
+    if (Array.isArray(part.parts)) part.parts.forEach(walk);
+  }
+  walk(payload);
+  return { text, html };
+}
+
+/* Strip anything that could execute or exfiltrate when rendered in the admin
+ * dashboard. Defense layer #1 (the client also escapes). Deliberately
+ * conservative — removes <script>/<style>/<iframe>, event-handler attributes,
+ * and javascript:/data: URLs. Not a full HTML5 parser, but the client treats
+ * this as untrusted regardless. */
+function sanitizeHtml(html) {
+  if (!html) return '';
+  let out = String(html);
+  out = out.replace(/<\s*(script|style|iframe|object|embed|link|meta|base)\b[\s\S]*?<\s*\/\s*\1\s*>/gi, '');
+  out = out.replace(/<\s*(script|style|iframe|object|embed|link|meta|base)\b[^>]*\/?>/gi, '');
+  out = out.replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+  out = out.replace(/(href|src)\s*=\s*("|')\s*javascript:[^"']*\2/gi, '$1="#"');
+  out = out.replace(/(href|src)\s*=\s*("|')\s*data:[^"']*\2/gi, '$1="#"');
+  out = out.replace(/<!--[\s\S]*?-->/g, '');
+  return out.trim();
+}
+
+/* Best-effort plain-text from HTML when Gmail gives us no text/plain part. */
+function htmlToText(html) {
+  if (!html) return '';
+  return String(html)
+    .replace(/<\s*(script|style)\b[\s\S]*?<\s*\/\s*\1\s*>/gi, '')
+    .replace(/<\s*br\s*\/?>/gi, '\n')
+    .replace(/<\s*\/\s*(p|div|tr|li|h[1-6])\s*>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/* ─── Header helpers ──────────────────────────────────────────────────────── */
+function headerMap(headers) {
+  const m = {};
+  (headers || []).forEach(h => { m[(h.name || '').toLowerCase()] = h.value || ''; });
+  return m;
+}
+
+/* "Jane Smith <jane@email.com>" → { display:'Jane Smith', email:'jane@email.com' } */
+function parseAddress(raw) {
+  if (!raw) return { display: '', email: '' };
+  const m = String(raw).match(/^\s*(?:"?([^"<]*?)"?\s*)?<?([^<>\s]+@[^<>\s]+)>?\s*$/);
+  if (m) return { display: (m[1] || '').trim(), email: (m[2] || '').trim().toLowerCase() };
+  return { display: '', email: String(raw).trim().toLowerCase() };
+}
+
+function splitAddresses(raw) {
+  if (!raw) return [];
+  /* Split on commas — good enough for header lists in this mailbox. */
+  return String(raw).split(',').map(s => parseAddress(s).email).filter(Boolean);
+}
+
+function domainOf(email) {
+  const at = String(email || '').lastIndexOf('@');
+  return at >= 0 ? email.slice(at + 1).toLowerCase() : '';
+}
+
+function channelForSender(fromEmail) {
+  const d = domainOf(fromEmail);
+  if (KNOT_DOMAINS.some(k => d === k || d.endsWith('.' + k))) return 'theknot';
+  if (WEDDINGPRO_DOMAINS.some(k => d === k || d.endsWith('.' + k))) return 'weddingpro';
+  return 'gmail';
+}
+
+/* ─── Knot / WeddingPro body parsing ──────────────────────────────────────── */
+
+/* These platforms relay the bride through a proxy address and embed the real
+ * lead details in the email body. Pull out a name / event date / phone so we
+ * can match to an existing lead. Brittle by design — anything we can't confirm
+ * falls through to unmatched_messages + a followup. */
+function parseLeadDetailsFromBody(text) {
+  const out = { name: '', eventDate: '', phone: '' };
+  if (!text) return out;
+  const body = String(text);
+
+  const nameMatch =
+    body.match(/(?:Name|From|Couple|Bride|Client)\s*[:\-]\s*([A-Za-z][A-Za-z.'\- ]{1,60})/i) ||
+    body.match(/(?:message from|inquiry from)\s+([A-Za-z][A-Za-z.'\- ]{1,60})/i);
+  if (nameMatch) out.name = nameMatch[1].trim().replace(/\s{2,}/g, ' ');
+
+  const dateMatch =
+    body.match(/(?:Event\s*Date|Wedding\s*Date|Date)\s*[:\-]\s*([A-Za-z0-9,\/\- ]{4,40})/i);
+  if (dateMatch) out.eventDate = dateMatch[1].trim();
+
+  const phoneMatch = body.match(/(\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4})/);
+  if (phoneMatch) out.phone = phoneMatch[1].replace(/[^\d]/g, '');
+
+  return out;
+}
+
+/* ─── resolveLeadForMessage — 4-step identity resolution (spec §1) ──────────
+ * Returns { leadId, leadRef, matchedBy } or { leadId:null } when no confident
+ * match. NEVER throws — resolution failure must not stop the rest of the run. */
+async function resolveLeadForMessage(msg) {
+  /* STEP 1 — thread already mapped to a lead. */
+  try {
+    if (msg.gmailThreadId) {
+      const snap = await db.collection('leads')
+        .where('gmailThreadIds', 'array-contains', msg.gmailThreadId).limit(1).get();
+      if (!snap.empty) {
+        return { leadId: snap.docs[0].id, leadRef: snap.docs[0].ref, matchedBy: 'thread' };
+      }
+    }
+  } catch (e) { console.warn('resolveLeadForMessage step1 failed:', e.message); }
+
+  /* The addresses that might identify the human. For inbound that's `from`;
+   * for outbound (SENT) it's every To/Cc recipient (minus our own mailbox). */
+  const candidates = msg.direction === 'out'
+    ? outboundCandidates(msg, [BUSINESS_EMAIL])
+    : [String(msg.from || '').toLowerCase().trim()].filter(Boolean);
+
+  /* STEP 2 — direct email match (primary email or a known alias). */
+  for (const norm of candidates) {
+    try {
+      const byEmail = await db.collection('leads').where('email', '==', norm).limit(1).get();
+      if (!byEmail.empty) {
+        return { leadId: byEmail.docs[0].id, leadRef: byEmail.docs[0].ref, matchedBy: 'email' };
+      }
+      const byAlias = await db.collection('leads').where('emailAliases', 'array-contains', norm).limit(1).get();
+      if (!byAlias.empty) {
+        return { leadId: byAlias.docs[0].id, leadRef: byAlias.docs[0].ref, matchedBy: 'alias' };
+      }
+    } catch (e) { console.warn('resolveLeadForMessage step2 failed:', e.message); }
+  }
+
+  /* STEP 3 — Knot/WeddingPro proxy: parse the body for real identity, then
+   * match by phone (strong) or name+date (weaker). */
+  if (msg.sourceChannel === 'theknot' || msg.sourceChannel === 'weddingpro') {
+    const parsed = parseLeadDetailsFromBody(msg.bodyText);
+    try {
+      if (parsed.phone && parsed.phone.length >= 10) {
+        const all = await db.collection('leads').get();
+        const hit = all.docs.find(d => {
+          const p = String(d.data().phone || '').replace(/[^\d]/g, '');
+          return p && p.slice(-10) === parsed.phone.slice(-10);
+        });
+        if (hit) return { leadId: hit.id, leadRef: hit.ref, matchedBy: 'knot-phone', parsed };
+      }
+      if (parsed.name) {
+        const all = await db.collection('leads').get();
+        const target = parsed.name.toLowerCase();
+        const hit = all.docs.find(d => {
+          const n = String(d.data().name || '').toLowerCase();
+          if (!n || n !== target) return false;
+          /* name+date is the confident combo; name alone is too weak. */
+          if (parsed.eventDate) {
+            const ed = String(d.data().eventDate || '').toLowerCase();
+            return ed && ed.includes(parsed.eventDate.toLowerCase().slice(0, 6));
+          }
+          return false;
+        });
+        if (hit) return { leadId: hit.id, leadRef: hit.ref, matchedBy: 'knot-name-date', parsed };
+      }
+    } catch (e) { console.warn('resolveLeadForMessage step3 failed:', e.message); }
+    return { leadId: null, parsed };
+  }
+
+  /* STEP 4 — no confident match. */
+  return { leadId: null };
+}
+
+/* ─── Persist one normalized message (idempotent) ─────────────────────────── */
+async function writeMessageToLead(leadRef, msg) {
+  const threadRef  = leadRef.collection('threads').doc(msg.gmailThreadId);
+  const messageRef = threadRef.collection('messages').doc(msg.gmailMessageId);
+  const now = admin.firestore.FieldValue.serverTimestamp();
+  const sentAtTs = msg.internalDateMs
+    ? admin.firestore.Timestamp.fromMillis(msg.internalDateMs)
+    : now;
+
+  const batch = db.batch();
+
+  /* Message doc — id = Gmail message id, merge so re-sync never duplicates. */
+  batch.set(messageRef, {
+    gmailMessageId: msg.gmailMessageId,
+    gmailThreadId:  msg.gmailThreadId,
+    direction:      msg.direction,
+    from:           msg.from || '',
+    fromDisplay:    msg.fromDisplay || '',
+    to:             msg.to || [],
+    cc:             msg.cc || [],
+    subject:        msg.subject || '',
+    bodyText:       msg.bodyText || '',
+    bodyHtml:       msg.bodyHtml || '',     // already server-sanitized
+    snippet:        msg.snippet || '',
+    sentAt:         sentAtTs,
+    sourceChannel:  msg.sourceChannel || 'gmail',
+    replyToAddress: msg.replyToAddress || msg.from || '',
+    via:            'sync',
+    aiAssisted:     false,
+    createdAt:      now,
+  }, { merge: true });
+
+  /* Thread summary. */
+  const participantList = [msg.from, ...(msg.to || [])].filter(Boolean);
+  const threadUpdate = {
+    gmailThreadId: msg.gmailThreadId,
+    subject:       msg.subject || '',
+    channel:       msg.sourceChannel || 'gmail',
+    lastMessageAt: sentAtTs,
+    messageCount:  admin.firestore.FieldValue.increment(1),
+    updatedAt:     now,
+  };
+  /* arrayUnion() throws with zero args — only set it when we actually have
+   * participants (a malformed message with no From/To would otherwise crash
+   * the whole sync run). */
+  if (participantList.length) {
+    threadUpdate.participants = admin.firestore.FieldValue.arrayUnion(...participantList);
+  }
+  batch.set(threadRef, threadUpdate, { merge: true });
+
+  /* Lead summary fields. Unread only bumps on inbound. Track the alias +
+   * thread so future messages auto-route (step 1/2). */
+  const leadUpdate = {
+    commsLastMessageAt: sentAtTs,
+    commsLastDirection: msg.direction,
+    gmailThreadIds:     admin.firestore.FieldValue.arrayUnion(msg.gmailThreadId),
+    updatedAt:          now,
+  };
+  if (msg.direction === 'in') {
+    leadUpdate.commsUnread = admin.firestore.FieldValue.increment(1);
+    /* Record the sender (proxy-aware) so replies + future routing know it. */
+    if (msg.from) leadUpdate.emailAliases = admin.firestore.FieldValue.arrayUnion(msg.from);
+  }
+  batch.set(leadRef, leadUpdate, { merge: true });
+
+  await batch.commit();
+}
+
+/* ─── Unmatched message → holding collection + Kendell followup ─────────────
+ * opts.autoResolve: store the message already resolved (resolution
+ * 'not_a_lead') and skip the followup — used for automated/marketing senders
+ * and outbound mail to non-leads, so the queue only holds real decisions. */
+async function recordUnmatched(msg, parsed, opts = {}) {
+  const now = admin.firestore.FieldValue.serverTimestamp();
+  const ref = db.collection('unmatched_messages').doc(msg.gmailMessageId);
+  await ref.set({
+    gmailMessageId: msg.gmailMessageId,
+    gmailThreadId:  msg.gmailThreadId,
+    direction:      msg.direction,
+    from:           msg.from || '',
+    fromDisplay:    msg.fromDisplay || '',
+    to:             msg.to || [],
+    subject:        msg.subject || '',
+    snippet:        msg.snippet || '',
+    bodyText:       msg.bodyText || '',
+    bodyHtml:       msg.bodyHtml || '',
+    sourceChannel:  msg.sourceChannel || 'gmail',
+    replyToAddress: msg.replyToAddress || msg.from || '',
+    parsedHints:    parsed || null,        // Knot/WeddingPro body-parse output, if any
+    resolved:       !!opts.autoResolve,
+    ...(opts.autoResolve ? {
+      resolution:       'not_a_lead',
+      resolutionReason: opts.reason || 'automated_sender',
+      resolvedAt:       now,
+    } : {}),
+    sentAt:         msg.internalDateMs ? admin.firestore.Timestamp.fromMillis(msg.internalDateMs) : now,
+    createdAt:      now,
+  }, { merge: true });
+
+  if (opts.autoResolve) return;
+
+  /* One followup per thread so Kendell isn't spammed for a back-and-forth. */
+  const fuId = 'unmatched_' + msg.gmailThreadId;
+  await db.collection('kendell_followups').doc(fuId).set({
+    type:        'unmatched_message',
+    title:       `📨 Unmatched ${msg.sourceChannel === 'gmail' ? 'email' : msg.sourceChannel} from ${msg.fromDisplay || msg.from || 'unknown'}`,
+    notes:       `Couldn't auto-match "${(msg.subject || '(no subject)').slice(0, 80)}" to a lead. Open the message in Comms → Unmatched to attach it.`,
+    gmailThreadId: msg.gmailThreadId,
+    gmailMessageId: msg.gmailMessageId,
+    status:      'open',
+    completed:   false,
+    createdAt:   now,
+  }, { merge: true });
+}
+
+/* ─── Normalize a full Gmail message resource → our flat msg shape ────────── */
+function normalizeGmailMessage(full) {
+  const payload = full.payload || {};
+  const h = headerMap(payload.headers);
+  const fromParsed = parseAddress(h['from']);
+  const labelIds = full.labelIds || [];
+  const direction = labelIds.includes('SENT') ? 'out' : 'in';
+  const sourceChannel = channelForSender(fromParsed.email);
+
+  const bodies = extractBodies(payload);
+  const bodyHtml = sanitizeHtml(bodies.html);
+  const bodyText = bodies.text || htmlToText(bodies.html);
+
+  /* Proxy-aware reply target: prefer Reply-To, else From. For Knot/WeddingPro
+   * this keeps us writing to the proxy, never the bride's real address. */
+  const replyTo = parseAddress(h['reply-to']).email || fromParsed.email;
+
+  return {
+    gmailMessageId: full.id,
+    gmailThreadId:  full.threadId,
+    direction,
+    from:           fromParsed.email,
+    fromDisplay:    fromParsed.display || fromParsed.email,
+    to:             splitAddresses(h['to']),
+    cc:             splitAddresses(h['cc']),
+    subject:        h['subject'] || '',
+    bodyText,
+    bodyHtml,
+    snippet:        full.snippet || '',
+    internalDateMs: full.internalDate ? Number(full.internalDate) : null,
+    sourceChannel,
+    replyToAddress: replyTo,
+  };
+}
+
+/* ─── Process one message id: fetch → normalize → resolve → write ─────────── */
+async function processMessageId(gmail, messageId) {
+  let full;
+  try {
+    const res = await gmail.users.messages.get({ userId: 'me', id: messageId, format: 'full' });
+    full = res.data;
+  } catch (e) {
+    console.warn('Fetch message failed', messageId, e.message);
+    return;
+  }
+  const msg = normalizeGmailMessage(full);
+  if (!msg.gmailThreadId) return;
+
+  await routeMessage(msg);
+}
+
+/* Resolve → write to lead, or file as unmatched (auto-resolving obvious
+ * non-lead mail so the queue only holds messages that need a human). */
+async function routeMessage(msg) {
+  const resolved = await resolveLeadForMessage(msg);
+  if (resolved.leadId && resolved.leadRef) {
+    await writeMessageToLead(resolved.leadRef, msg);
+    return;
+  }
+  /* Knot/WeddingPro relays send from noreply-style proxies but ARE real
+   * leads — never auto-resolve those channels. */
+  const isProxyChannel = msg.sourceChannel === 'theknot' || msg.sourceChannel === 'weddingpro';
+  if (msg.direction === 'in' && !isProxyChannel && isAutomatedNonLead(msg.from)) {
+    await recordUnmatched(msg, resolved.parsed || null, { autoResolve: true, reason: 'automated_sender' });
+    return;
+  }
+  if (msg.direction === 'out') {
+    /* Outbound we couldn't match means we emailed someone who isn't a lead
+     * (vendor, bank, etc.) — nothing for Kendell to act on. */
+    await recordUnmatched(msg, resolved.parsed || null, { autoResolve: true, reason: 'outbound_no_lead' });
+    return;
+  }
+  await recordUnmatched(msg, resolved.parsed || null);
+}
+
+/* ─── Zapier fallback drain (clean interface, OAuth-absent path) ───────────
+ * The Zap writes one doc per message into `gmail_inbound_raw` with at least
+ * { id, threadId, headers{from,to,cc,subject,replyTo}, bodyText, bodyHtml,
+ *   snippet, internalDateMs, labelIds[] }. We normalize the same way and mark
+ *   the raw doc processed. */
+async function drainZapierQueue() {
+  let snap;
+  try {
+    snap = await db.collection('gmail_inbound_raw')
+      .where('processed', '==', false).limit(50).get();
+  } catch (e) {
+    console.warn('Zapier drain query failed:', e.message);
+    return 0;
+  }
+  let n = 0;
+  for (const doc of snap.docs) {
+    const raw = doc.data();
+    const hdr = raw.headers || {};
+    const fromParsed = parseAddress(hdr.from);
+    const direction = (raw.labelIds || []).includes('SENT') ? 'out' : 'in';
+    const msg = {
+      gmailMessageId: raw.id || doc.id,
+      gmailThreadId:  raw.threadId,
+      direction,
+      from:           fromParsed.email,
+      fromDisplay:    fromParsed.display || fromParsed.email,
+      to:             splitAddresses(hdr.to),
+      cc:             splitAddresses(hdr.cc),
+      subject:        hdr.subject || '',
+      bodyText:       raw.bodyText || htmlToText(raw.bodyHtml),
+      bodyHtml:       sanitizeHtml(raw.bodyHtml),
+      snippet:        raw.snippet || '',
+      internalDateMs: raw.internalDateMs || null,
+      sourceChannel:  channelForSender(fromParsed.email),
+      replyToAddress: parseAddress(hdr.replyTo).email || fromParsed.email,
+    };
+    if (!msg.gmailThreadId) { await doc.ref.update({ processed: true, error: 'no threadId' }); continue; }
+    await routeMessage(msg);
+    await doc.ref.update({ processed: true, processedAt: admin.firestore.FieldValue.serverTimestamp() });
+    n++;
+  }
+  return n;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * syncGmail — scheduled poller (every 1 min). Incremental via historyId;
+ * falls back to messages.list(newer_than:2d) when the cursor is missing or
+ * Gmail reports the history window expired (404).
+ * ══════════════════════════════════════════════════════════════════════════ */
+exports.syncGmail = onSchedule(
+  {
+    schedule: 'every 1 minutes',
+    timeoutSeconds: 120,
+    secrets: [GMAIL_OAUTH_CLIENT_ID, GMAIL_OAUTH_CLIENT_SECRET, GMAIL_OAUTH_REFRESH_TOKEN],
+  },
+  async () => {
+    const { gmail, mode } = buildGmailClient();
+
+    /* Fallback path: no OAuth secret → drain whatever Zapier left us. */
+    if (mode !== 'oauth' || !gmail) {
+      const drained = await drainZapierQueue();
+      console.log(`syncGmail: OAuth secret absent — drained ${drained} Zapier message(s).`);
+      return;
+    }
+
+    /* Load incremental cursor. */
+    let cursor = null;
+    try {
+      const doc = await GMAIL_SYNC_DOC.get();
+      if (doc.exists) cursor = doc.data().historyId || null;
+    } catch (e) { console.warn('gmail_sync cursor read failed:', e.message); }
+
+    const messageIds = new Set();
+    let newHistoryId = cursor;
+
+    if (cursor) {
+      /* Incremental: only what changed since the cursor. */
+      try {
+        let pageToken;
+        do {
+          const res = await gmail.users.history.list({
+            userId: 'me',
+            startHistoryId: cursor,
+            historyTypes: ['messageAdded'],
+            pageToken,
+          });
+          const history = res.data.history || [];
+          history.forEach(hrec => {
+            (hrec.messagesAdded || []).forEach(ma => {
+              if (ma.message && ma.message.id) messageIds.add(ma.message.id);
+            });
+          });
+          if (res.data.historyId) newHistoryId = res.data.historyId;
+          pageToken = res.data.nextPageToken;
+        } while (pageToken);
+      } catch (e) {
+        /* 404 = history window expired → full fallback below. */
+        if (e.code === 404 || (e.response && e.response.status === 404)) {
+          console.warn('Gmail history expired — falling back to newer_than:2d.');
+          cursor = null;
+        } else {
+          console.error('history.list failed:', e.message);
+          return;
+        }
+      }
+    }
+
+    if (!cursor) {
+      /* First run or expired cursor: scan the last 2 days of INBOX + SENT. */
+      try {
+        let pageToken;
+        do {
+          const res = await gmail.users.messages.list({
+            userId: 'me',
+            q: 'newer_than:2d (in:inbox OR in:sent)',
+            maxResults: 100,
+            pageToken,
+          });
+          (res.data.messages || []).forEach(m => messageIds.add(m.id));
+          pageToken = res.data.nextPageToken;
+        } while (pageToken);
+      } catch (e) {
+        console.error('messages.list fallback failed:', e.message);
+        return;
+      }
+      /* Seed the cursor from the mailbox profile so next run is incremental. */
+      try {
+        const prof = await gmail.users.getProfile({ userId: 'me' });
+        if (prof.data.historyId) newHistoryId = prof.data.historyId;
+      } catch (e) { console.warn('getProfile failed:', e.message); }
+    }
+
+    /* Process every collected message id (idempotent writes). */
+    let processed = 0;
+    for (const id of messageIds) {
+      await processMessageId(gmail, id);
+      processed++;
+    }
+
+    /* Advance the cursor. */
+    if (newHistoryId) {
+      try {
+        await GMAIL_SYNC_DOC.set({
+          historyId: String(newHistoryId),
+          lastSyncAt: admin.firestore.FieldValue.serverTimestamp(),
+          lastProcessedCount: processed,
+        }, { merge: true });
+      } catch (e) { console.warn('gmail_sync cursor write failed:', e.message); }
+    }
+
+    console.log(`syncGmail (oauth): processed ${processed} message(s); cursor=${newHistoryId}.`);
+  }
+);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * COMMUNICATIONS HUB — Phase 2 (send a reply from the lead card)
+ *
+ * sendReply (onCall, requireAdmin) sends an in-thread Gmail reply, proxy-aware
+ * (Knot/WeddingPro replies go to the proxy, never the bride's real inbox), with
+ * correct In-Reply-To/References threading headers, then mirrors the outbound
+ * message straight into Firestore so the card updates instantly (the poller
+ * re-confirms idempotently later by Gmail message id).
+ *
+ * assertSafeToSend is the SINGLE server-side send gate — sendReply calls it, and
+ * the future P4 auto-agent must call it too. No send path may bypass it. It is
+ * deliberately unbypassable from the client: the dedup/quote checks all read
+ * Firestore + Gmail Sent server-side with the admin SDK / OAuth client.
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/* The public quote/proposal share link pattern (quotes.js builds
+ * `https://lakesalt.us/quote?id=...`). assertSafeToSend's Gmail-Sent layer looks
+ * for this marker in prior outbound thread messages to catch a quote that went
+ * out around the CRM (e.g. typed in real Gmail) when the Firestore mirror is
+ * stale. Keep in sync with quotes.js `shareUrl`. */
+const QUOTE_URL_MARKERS = [/lakesalt\.us\/quote\b/i, /lakesalt\.us\/proposal\b/i];
+
+/* In-flight / recently-sent fingerprints for the double-click + duplicate-body
+ * guard. Cloud Run instances are warm across invocations, so this catches the
+ * common rapid-double-click case cheaply; the Firestore check below is the
+ * durable cross-instance guard. */
+const RECENT_SEND_WINDOW_MS = 90 * 1000;
+const _recentSends = new Map();  // key -> timestamp(ms)
+function _sendFingerprint(leadId, gmailThreadId, bodyText) {
+  let hash = 0;
+  const s = String(bodyText || '');
+  for (let i = 0; i < s.length; i++) { hash = ((hash << 5) - hash + s.charCodeAt(i)) | 0; }
+  return `${leadId}|${gmailThreadId}|${hash}`;
+}
+
+/* ─── assertSafeToSend — the one and only send gate (spec §6) ────────────────
+ * Throws HttpsError('failed-precondition', <clear message>) on block, otherwise
+ * resolves. `gmail` is an optional authenticated client used for the Gmail-Sent
+ * defense-in-depth layer; when absent (e.g. Zapier mode) that layer is skipped
+ * but the Firestore quote-flag + idempotency layers still run. */
+async function assertSafeToSend({ leadId, gmailThreadId, bodyText, isQuote }, gmail) {
+  if (!leadId)        throw new HttpsError('invalid-argument', 'leadId is required.');
+  if (!gmailThreadId) throw new HttpsError('invalid-argument', 'gmailThreadId is required.');
+
+  /* ── LAYER 1: Firestore quote-flag (primary) ──────────────────────────────
+   * Reuse the flags quotes.js already maintains on the lead. Only blocks when
+   * THIS send is itself a quote (isQuote) — ordinary replies in a thread that
+   * already has a quote out are fine and expected. */
+  let lead = {};
+  try {
+    const snap = await db.collection('leads').doc(leadId).get();
+    if (!snap.exists) throw new HttpsError('not-found', 'Lead not found.');
+    lead = snap.data() || {};
+  } catch (e) {
+    if (e instanceof HttpsError) throw e;
+    throw new HttpsError('internal', 'Could not read lead for safety check.');
+  }
+
+  if (isQuote) {
+    const quoteStatus = String(lead.latestQuoteStatus || '').toLowerCase();
+    const blockingStatuses = ['sent', 'accepted'];
+    const blockingStages   = ['Proposal Sent', 'Booked-Tentative', 'Booked'];
+    const stage = lead.stage || '';
+    if (blockingStatuses.includes(quoteStatus) || blockingStages.includes(stage)) {
+      const total = lead.latestQuoteTotal != null
+        ? '$' + Math.round(Number(lead.latestQuoteTotal)).toLocaleString('en-US')
+        : 'A quote';
+      const when = lead.latestQuoteAcceptedAt && lead.latestQuoteAcceptedAt.toDate
+        ? lead.latestQuoteAcceptedAt.toDate().toLocaleDateString('en-US')
+        : (lead.updatedAt && lead.updatedAt.toDate ? lead.updatedAt.toDate().toLocaleDateString('en-US') : 'earlier');
+      throw new HttpsError(
+        'failed-precondition',
+        `${total} already went out on ${when} (status: ${quoteStatus || stage}). ` +
+        `Open the existing quote instead of sending a new one.`
+      );
+    }
+  }
+
+  /* ── LAYER 2: Gmail Sent verification (defense in depth) ───────────────────
+   * Catches a quote that left the mailbox outside the CRM (typed in real Gmail)
+   * when the Firestore mirror is stale. Only enforced for quote sends. */
+  if (isQuote && gmail) {
+    try {
+      /* Pull the whole thread and inspect its SENT messages directly — more
+       * precise than messages.list, which can't filter by threadId via `q`. */
+      const thread = await gmail.users.threads.get({ userId: 'me', id: gmailThreadId, format: 'full' });
+      const msgs = (thread.data && thread.data.messages) || [];
+      for (const m of msgs) {
+        const labels = m.labelIds || [];
+        if (!labels.includes('SENT')) continue;
+        const bodies = extractBodies(m.payload || {});
+        const hay = `${bodies.text || ''} ${bodies.html || ''} ${m.snippet || ''}`;
+        if (QUOTE_URL_MARKERS.some(rx => rx.test(hay))) {
+          throw new HttpsError(
+            'failed-precondition',
+            'A prior message in this Gmail thread already contains a quote link. ' +
+            'Open the existing quote instead of sending a new one.'
+          );
+        }
+      }
+    } catch (e) {
+      if (e instanceof HttpsError) throw e;
+      /* A Gmail read failure must NOT silently weaken layer 1 — but it also
+       * shouldn't hard-block an ordinary send when Gmail is flaky. Log and let
+       * layer 1 stand as the authoritative block. */
+      console.warn('assertSafeToSend: Gmail Sent verification skipped:', e.message);
+    }
+  }
+
+  /* ── LAYER 3: idempotency / double-click guard ────────────────────────────
+   * (a) in-memory fingerprint for warm-instance rapid double-clicks; (b)
+   * durable Firestore check — was an identical outbound body written to this
+   * thread within the window? Catches double-submits across instances. */
+  const fp = _sendFingerprint(leadId, gmailThreadId, bodyText);
+  const nowMs = Date.now();
+  /* prune old entries */
+  for (const [k, t] of _recentSends) { if (nowMs - t > RECENT_SEND_WINDOW_MS) _recentSends.delete(k); }
+  if (_recentSends.has(fp) && nowMs - _recentSends.get(fp) < RECENT_SEND_WINDOW_MS) {
+    throw new HttpsError('failed-precondition', 'That looks like a duplicate of a message just sent — ignored.');
+  }
+
+  if (bodyText && String(bodyText).trim()) {
+    try {
+      const cutoff = admin.firestore.Timestamp.fromMillis(nowMs - RECENT_SEND_WINDOW_MS);
+      const recent = await db.collection('leads').doc(leadId)
+        .collection('threads').doc(gmailThreadId).collection('messages')
+        .where('direction', '==', 'out')
+        .where('sentAt', '>=', cutoff)
+        .get();
+      const target = String(bodyText).trim();
+      const dup = recent.docs.some(d => String((d.data().bodyText || '')).trim() === target);
+      if (dup) {
+        throw new HttpsError('failed-precondition', 'An identical reply was just sent to this thread — not sending a duplicate.');
+      }
+    } catch (e) {
+      if (e instanceof HttpsError) throw e;
+      console.warn('assertSafeToSend: Firestore idempotency check skipped:', e.message);
+    }
+  }
+
+  /* Reserve the fingerprint so a concurrent double-click is caught. */
+  _recentSends.set(fp, nowMs);
+
+  return { lead };
+}
+
+/* ─── RFC-2822 MIME builder ──────────────────────────────────────────────────
+ * Minimal but correct: UTF-8 plain-text body, base64url-encoded for the Gmail
+ * raw field, with threading headers. We send plain text only (matches how
+ * Kendell replies); Gmail wraps it. References chains the prior Message-ID(s)
+ * so every mail client threads it. */
+function encodeMimeWord(str) {
+  /* RFC 2047 encoded-word for non-ASCII headers (subjects, display names). */
+  if (/^[\x00-\x7F]*$/.test(str)) return str;
+  return '=?UTF-8?B?' + Buffer.from(String(str), 'utf-8').toString('base64') + '?=';
+}
+
+function buildMime({ fromHeader, to, subject, bodyText, inReplyTo, references }) {
+  const headers = [];
+  if (fromHeader) headers.push(`From: ${fromHeader}`);
+  headers.push(`To: ${to}`);
+  headers.push(`Subject: ${encodeMimeWord(subject || '')}`);
+  if (inReplyTo)  headers.push(`In-Reply-To: ${inReplyTo}`);
+  if (references) headers.push(`References: ${references}`);
+  headers.push('MIME-Version: 1.0');
+  headers.push('Content-Type: text/plain; charset="UTF-8"');
+  headers.push('Content-Transfer-Encoding: 8bit');
+  const raw = headers.join('\r\n') + '\r\n\r\n' + String(bodyText || '');
+  return Buffer.from(raw, 'utf-8')
+    .toString('base64')
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/* Resolve the latest message in a Gmail thread (for proxy-aware reply-to,
+ * subject, and threading headers). Returns the normalized header bits we need.
+ * Prefers the latest INBOUND message's Reply-To/From for the recipient so we
+ * always reply to the proxy address on Knot/WeddingPro threads. */
+async function resolveReplyTargetFromThread(gmail, gmailThreadId) {
+  const thread = await gmail.users.threads.get({ userId: 'me', id: gmailThreadId, format: 'metadata',
+    metadataHeaders: ['From', 'To', 'Reply-To', 'Subject', 'Message-ID', 'References'] });
+  const msgs = (thread.data && thread.data.messages) || [];
+  if (!msgs.length) throw new HttpsError('not-found', 'Gmail thread has no messages.');
+
+  /* Latest message overall (Gmail returns chronological order). */
+  const last = msgs[msgs.length - 1];
+  const lastH = headerMap((last.payload && last.payload.headers) || []);
+
+  /* Latest INBOUND message → its reply-to/from is who we answer. If the whole
+   * thread is outbound (rare for a reply), fall back to the last message's To. */
+  let inboundH = null;
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    if (!(msgs[i].labelIds || []).includes('SENT')) { inboundH = headerMap((msgs[i].payload && msgs[i].payload.headers) || []); break; }
+  }
+
+  let replyTo;
+  if (inboundH) {
+    replyTo = parseAddress(inboundH['reply-to']).email || parseAddress(inboundH['from']).email;
+  } else {
+    replyTo = splitAddresses(lastH['to'])[0] || '';
+  }
+  if (!replyTo) throw new HttpsError('failed-precondition', 'Could not resolve a reply-to address for this thread.');
+
+  /* Subject: reuse the thread subject, ensure a single "Re:" prefix. */
+  let subject = lastH['subject'] || '';
+  if (subject && !/^\s*re:/i.test(subject)) subject = 'Re: ' + subject;
+
+  /* Threading headers: In-Reply-To = the message we answer; References =
+   * existing References chain + that Message-ID. */
+  const lastMsgId = lastH['message-id'] || '';
+  const existingRefs = lastH['references'] || '';
+  const references = (existingRefs ? existingRefs + ' ' : '') + lastMsgId;
+
+  return { replyTo, subject, inReplyTo: lastMsgId, references, lastMsgId };
+}
+
+exports.sendReply = onCall(
+  {
+    secrets: [GMAIL_OAUTH_CLIENT_ID, GMAIL_OAUTH_CLIENT_SECRET, GMAIL_OAUTH_REFRESH_TOKEN],
+    timeoutSeconds: 60,
+  },
+  async (request) => {
+    const adminUser = await requireAdmin(request);
+    const data = (request && request.data) || {};
+    const {
+      leadId,
+      gmailThreadId,
+      bodyText,
+      inReplyToMessageId = '',   // optional client hint; thread lookup is authoritative
+      isQuote = false,
+    } = data;
+
+    if (!leadId || !gmailThreadId) {
+      throw new HttpsError('invalid-argument', 'leadId and gmailThreadId are required.');
+    }
+    if (!bodyText || !String(bodyText).trim()) {
+      throw new HttpsError('invalid-argument', 'Message body is empty.');
+    }
+
+    /* Build the Gmail client up front so assertSafeToSend can use its Gmail-Sent
+     * verification layer (defense in depth). */
+    const { gmail, mode } = buildGmailClient();
+    if (mode !== 'oauth' || !gmail) {
+      throw new HttpsError(
+        'failed-precondition',
+        'Gmail OAuth is not configured — sending requires the OAuth refresh token secret. ' +
+        'Set GMAIL_OAUTH_* secrets (see runbook) before sending from the CRM.'
+      );
+    }
+
+    /* ── HARD STOP: the one send gate. Runs BEFORE we compose or send. ── */
+    await assertSafeToSend({ leadId, gmailThreadId, bodyText, isQuote }, gmail);
+
+    /* Resolve proxy-aware reply-to + subject + threading headers from the live
+     * thread. NOTE: the client's `inReplyToMessageId` is a *Gmail* message id
+     * (Firestore doc id), NOT an RFC-822 Message-ID — it is NOT valid in the
+     * In-Reply-To header. We always use the thread-derived RFC Message-ID for
+     * threading; the client hint is accepted only for logging/audit. */
+    const target = await resolveReplyTargetFromThread(gmail, gmailThreadId);
+    const inReplyTo = target.inReplyTo;
+    const references = target.references;
+    void inReplyToMessageId;
+
+    /* Build + send the MIME. From is left to Gmail (the authenticated mailbox);
+     * we don't spoof a From header so SPF/DKIM stay valid. */
+    const rawMime = buildMime({
+      to: target.replyTo,
+      subject: target.subject,
+      bodyText,
+      inReplyTo,
+      references,
+    });
+
+    let sent;
+    try {
+      const res = await gmail.users.messages.send({
+        userId: 'me',
+        requestBody: { raw: rawMime, threadId: gmailThreadId },
+      });
+      sent = res.data;  // { id, threadId, labelIds }
+    } catch (e) {
+      console.error('gmail.messages.send failed:', e.message);
+      throw new HttpsError('internal', 'Gmail rejected the send: ' + (e.message || 'unknown error'));
+    }
+
+    /* Mirror the outbound message into Firestore immediately so the card updates
+     * instantly. Doc id = returned Gmail message id, so the poller's later
+     * re-fetch merges onto the same doc (idempotent, never duplicates). */
+    const sentMsgId = sent.id;
+    const leadRef = db.collection('leads').doc(leadId);
+    const threadRef = leadRef.collection('threads').doc(gmailThreadId);
+    const messageRef = threadRef.collection('messages').doc(sentMsgId);
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const sentAtTs = admin.firestore.Timestamp.now();
+
+    /* Channel: inherit the thread's channel so the bubble badges correctly. */
+    let channel = 'gmail';
+    try {
+      const tdoc = await threadRef.get();
+      if (tdoc.exists && tdoc.data().channel) channel = tdoc.data().channel;
+    } catch (e) { /* default gmail */ }
+
+    const batch = db.batch();
+
+    batch.set(messageRef, {
+      gmailMessageId: sentMsgId,
+      gmailThreadId:  gmailThreadId,
+      direction:      'out',
+      from:           adminUser.email || '',
+      fromDisplay:    'You',
+      to:             [target.replyTo],
+      cc:             [],
+      subject:        target.subject || '',
+      bodyText:       String(bodyText),
+      bodyHtml:       '',
+      snippet:        String(bodyText).slice(0, 140),
+      sentAt:         sentAtTs,
+      sourceChannel:  channel,
+      replyToAddress: target.replyTo,
+      via:            'crm-send',
+      aiAssisted:     !!data.aiAssisted,
+      sentByEmail:    adminUser.email || '',
+      sentByName:     adminUser.name || '',
+      createdAt:      now,
+    }, { merge: true });
+
+    batch.set(threadRef, {
+      gmailThreadId: gmailThreadId,
+      subject:       target.subject || '',
+      channel,
+      lastMessageAt: sentAtTs,
+      messageCount:  admin.firestore.FieldValue.increment(1),
+      participants:  admin.firestore.FieldValue.arrayUnion(target.replyTo),
+      updatedAt:     now,
+    }, { merge: true });
+
+    batch.set(leadRef, {
+      commsLastMessageAt: sentAtTs,
+      commsLastDirection: 'out',
+      lastContactedAt:    now,
+      gmailThreadIds:     admin.firestore.FieldValue.arrayUnion(gmailThreadId),
+      updatedAt:          now,
+    }, { merge: true });
+
+    await batch.commit();
+
+    /* Activity-log entry for the dashboard feed. */
+    try {
+      await db.collection('activity').add({
+        action: 'comms_reply_sent',
+        collection: 'leads',
+        docId: leadId,
+        summary: `✉️ Replied to ${target.replyTo} — "${String(bodyText).slice(0, 60)}${String(bodyText).length > 60 ? '…' : ''}"`,
+        userId: adminUser.uid,
+        userName: adminUser.name || adminUser.email || 'Admin',
+        metadata: { leadId, gmailThreadId, gmailMessageId: sentMsgId, isQuote: !!isQuote },
+        createdAt: now,
+      });
+    } catch (e) { console.warn('activity log write failed:', e.message); }
+
+    return { success: true, gmailMessageId: sentMsgId, gmailThreadId, replyTo: target.replyTo };
+  }
+);
+
+/* P3 adds `aiComposeReply` (onCall) using ANTHROPIC_API_KEY. Declared in P1 to
+ * reserve the secret + dependency; not consumed until P3. */
+void ANTHROPIC_API_KEY;
+
+/* ═══ Restored from main@77a7bc4 — nurture engine, quote/lead triggers, push, receipts ═══ */
+/* ─── Daily follow-up scan ────────────────────────────────────────────────
+ * Turns the dormant `followUpDate` field into real, visible reminders. Runs
+ * every morning: any lead whose follow-up date has arrived (and isn't already
+ * Booked/Completed/Lost) gets a `kendell_followups` entry — surfaced on the
+ * dashboard alerts strip. Idempotent: skips a lead that already has an open
+ * follow-up reminder of this type, so re-runs never duplicate. */
+exports.dailyFollowupScan = onSchedule(
+  { schedule: '0 8 * * *', timeZone: 'America/Denver' },
+  async () => {
+    const today = ymd(new Date());
+    const snap = await db.collection('leads')
+      .where('followUpDate', '<=', today).get();
+
+    let created = 0;
+    for (const doc of snap.docs) {
+      const lead = doc.data();
+      if (!lead.followUpDate) continue;                       // skip empty strings
+      if (['Booked', 'Completed', 'Lost'].includes(lead.stage)) continue;
+
+      const existing = await db.collection('kendell_followups')
+        .where('leadId', '==', doc.id)
+        .where('type', '==', 'followup_due')
+        .where('status', '==', 'open').limit(1).get();
+      if (!existing.empty) continue;
+
+      await db.collection('kendell_followups').add({
+        type: 'followup_due',
+        leadId: doc.id,
+        leadName: lead.name || 'lead',
+        title: `⏰ Follow up with ${lead.name || 'this lead'} (due ${lead.followUpDate})`,
+        notes: `${lead.eventType || 'Event'}${lead.eventDate ? ' · ' + lead.eventDate : ''} — reach out; the follow-up date has arrived.`,
+        status: 'open',
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      created++;
+    }
+
+    /* Quote expiry: sent quotes that aren't won and have passed their expiry
+     * window get flagged + a one-time reminder (surfaced in the alerts strip). */
+    let expiredCount = 0;
+    try {
+      const defDoc = await db.collection('settings').doc('quote_defaults').get();
+      const expiryDays = (defDoc.exists && defDoc.data().quoteExpiryDays) || 14;
+      const now = new Date();
+      const qsnap = await db.collection('quotes').where('sentAt', '!=', null).get();
+      for (const qd of qsnap.docs) {
+        const q = qd.data();
+        if (q.outcome === 'won' || q.expired) continue;
+        const sentDate = q.sentAt.toDate ? q.sentAt.toDate() : new Date(q.sentAt);
+        const expiryDate = new Date(sentDate.getTime() + expiryDays * 24 * 60 * 60 * 1000);
+        if (expiryDate >= now) continue;
+        await qd.ref.update({ expired: true });
+        await db.collection('kendell_followups').add({
+          type: 'quote_expired',
+          leadId: q.leadId || null,
+          leadName: q.leadName || 'a client',
+          title: `📄 Quote for ${q.leadName || 'a client'} expired — follow up or re-send`,
+          notes: `Sent ${ymd(sentDate)}, no acceptance within ${expiryDays} days.`,
+          status: 'open',
+          createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        expiredCount++;
+      }
+    } catch (e) {
+      console.error('Quote-expiry scan failed:', e);
+    }
+
+    console.log(`dailyFollowupScan created ${created} follow-up reminders, flagged ${expiredCount} expired quotes`);
+    return null;
+  }
+);
+
+/* ─── Daily nurture run ───────────────────────────────────────────────────
+ * Computes which expo-cohort leads are due for their next nurture email and
+ * records the batch to nurture_queue/{today}. SENDS NOTHING unless
+ * settings/nurture.armed === true AND dryRun === false — and even then only if
+ * an email transport (sendNurtureEmail) has been wired (Task 12: Resend/etc.).
+ * Fail-safe: armed-but-no-transport logs and sends nothing, never advancing
+ * a lead's state, so no message is silently lost. */
+exports.dailyNurtureRun = onSchedule(
+  { schedule: '0 9 * * *', timeZone: 'America/Denver' },
+  async () => {
+    const today = ymd(new Date());
+    const [setSnap, tplSnap] = await Promise.all([
+      db.collection('settings').doc('nurture').get(),
+      db.collection('settings').doc('nurture_templates').get()
+    ]);
+    const cfg = Object.assign({ armed: false, dryRun: true, pacingDays: 2 },
+      setSnap.exists ? setSnap.data() : {});
+    const templates = tplSnap.exists ? tplSnap.data() : {};
+
+    const leadsSnap = await db.collection('leads')
+      .where('campaign', '==', CAMPAIGN_TAG_DEFAULT).get();
+    const closed = ['Booked', 'Booked-Tentative', 'Completed', 'Lost'];
+    const due = [];
+    leadsSnap.forEach(doc => {
+      const l = doc.data();
+      const st = l.nurtureState || {};
+      if (!l.nurtureTier) return;
+      if (st.paused) return;
+      if (closed.includes(l.stage)) return;
+      if (st.nextSendAt && st.nextSendAt > today) return;
+      due.push({ id: doc.id, tier: l.nurtureTier, name: l.name || '', email: l.email || '' });
+    });
+
+    const live = cfg.armed === true && cfg.dryRun === false;
+
+    // Always record the would-send batch (audit + panel preview).
+    await db.collection('nurture_queue').doc(today).set({
+      date: today, live, count: due.length,
+      leads: due.map(d => ({ id: d.id, tier: d.tier, name: d.name, email: d.email })),
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    if (!live) {
+      console.log(`dailyNurtureRun DRY-RUN: ${due.length} due (armed=${cfg.armed}, dryRun=${cfg.dryRun}) — nothing sent`);
+      return null;
+    }
+
+    // LIVE path. sendNurtureEmail is intentionally not yet defined — wiring a
+    // transport is Task 12 (Kendell picks Resend/SendGrid). typeof guard never
+    // throws on an undeclared identifier, so this fails safe until then.
+    if (typeof sendNurtureEmail !== 'function') {
+      console.error('dailyNurtureRun ARMED but no email transport wired — sending nothing. Configure sendNurtureEmail() first.');
+      return null;
+    }
+    let sent = 0;
+    for (const d of due) {
+      const tpl = templates['tier' + d.tier];
+      if (!tpl || !d.email) continue;
+      try {
+        await sendNurtureEmail(d, tpl, cfg);
+        const nextSendAt = ymd(new Date(Date.now() + (cfg.pacingDays || 2) * 86400000));
+        await db.collection('leads').doc(d.id).update({
+          'nurtureState.sendsCompleted': admin.firestore.FieldValue.increment(1),
+          'nurtureState.nextSendAt': nextSendAt
+        });
+        sent++;
+      } catch (e) {
+        console.error(`nurture send failed for ${d.email}:`, e);
+      }
+    }
+    console.log(`dailyNurtureRun LIVE: sent ${sent}/${due.length}`);
+    return null;
+  }
+);
+
 
 /* ─── Auto follow-up when a quote is sent ─────────────────────────────────
  * When a quote transitions to "sent", schedule a +3-day nudge on the linked
@@ -926,7 +1873,6 @@ exports.sendPushNotification = onDocumentCreated('notifications/{noteId}', async
  * Downloads the image, gathers nearby events + categories, then (W5) sends
  * it to Claude for parsing. Idempotent: skips unless status === 'processing'. */
 const { onObjectFinalized } = require('firebase-functions/v2/storage');
-const { defineSecret } = require('firebase-functions/params');
 const { isDuplicateReceipt, deriveTaxYear } = require('./receipt-utils');
 
 const anthropicApiKey = defineSecret('ANTHROPIC_API_KEY');
