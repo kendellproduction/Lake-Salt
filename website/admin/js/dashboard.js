@@ -119,6 +119,36 @@ function renderWidgetGrid() {
         <div id="${w.elId}">Loading…</div>
       </div>`;
     }).join('');
+  startBriefHolo();
+}
+
+/* Drive --holo-angle on the Agent Brief card so its conic border chases
+   itself (same recipe as the website contact form). rAF-based, pauses when
+   the card is off-screen, respects reduced-motion. */
+let _holoRaf = null;
+function startBriefHolo() {
+  if (_holoRaf !== null) { cancelAnimationFrame(_holoRaf); _holoRaf = null; }
+  const card = document.querySelector('.dash-widget[data-widget="agentBrief"]');
+  if (!card) return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  let angle = 0, lastT = 0;
+  const tick = (t) => {
+    if (!card.isConnected) { _holoRaf = null; return; }
+    const dt = lastT ? (t - lastT) : 16.67;
+    lastT = t;
+    angle = (angle + 50 * (dt / 1000)) % 360;
+    card.style.setProperty('--holo-angle', angle + 'deg');
+    _holoRaf = requestAnimationFrame(tick);
+  };
+  const start = () => { if (_holoRaf === null) { lastT = 0; _holoRaf = requestAnimationFrame(tick); } };
+  const stop  = () => { if (_holoRaf !== null) { cancelAnimationFrame(_holoRaf); _holoRaf = null; } };
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(entries => {
+      entries[0].isIntersecting ? start() : stop();
+    }, { rootMargin: '120px' }).observe(card);
+  } else {
+    start();
+  }
 }
 
 /* ── Customize mode: on/off switches + ↑/↓ reorder + size + reset ─────── */

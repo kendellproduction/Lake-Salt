@@ -2018,3 +2018,178 @@ async function applyParsedReceipt(expenseRef, parsed, nearbyEvents) {
     categoryGuess: RECEIPT_EXPENSE_CATEGORIES.includes(parsed.category) ? null : (parsed.category || null),
   });
 }
+
+/* ═══ Agent Chat — talk to your agents from the CRM ═══════════════════════
+ * onCall backing the Agent Brief chat. Kendell types a message; we load the
+ * recent thread + live business context, hand it to Claude with two tools
+ * (kick_off_task → agent_tasks queue, resolve_followup → answer a pending
+ * agent question), persist both sides to agent_chat/main/messages, and
+ * return the reply. Admin-only. */
+const AGENT_CHAT_THREAD = () => db.collection('agent_chat').doc('main').collection('messages');
+
+async function agentChatContext() {
+  const ctx = { stages: {}, recentLeads: [], followups: [], unmatchedCount: 0 };
+  try {
+    const leadsSnap = await db.collection('leads').get();
+    leadsSnap.forEach(d => {
+      const l = d.data();
+      const s = l.stage || 'New Lead';
+      ctx.stages[s] = (ctx.stages[s] || 0) + 1;
+    });
+    const recent = leadsSnap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => ((b.updatedAt && b.updatedAt.seconds) || 0) - ((a.updatedAt && a.updatedAt.seconds) || 0))
+      .slice(0, 12);
+    ctx.recentLeads = recent.map(l => ({
+      id: l.id, name: l.name || '?', stage: l.stage || 'New Lead',
+      eventType: l.eventType || '', eventDate: l.eventDate || '', budget: l.budget || '',
+    }));
+  } catch (e) { console.warn('agentChat leads context failed:', e.message); }
+  try {
+    const fu = await db.collection('kendell_followups')
+      .where('status', '==', 'open').limit(15).get();
+    ctx.followups = fu.docs.map(d => ({ id: d.id, type: d.data().type || '', title: d.data().title || '' }));
+  } catch (e) { console.warn('agentChat followups context failed:', e.message); }
+  try {
+    const um = await db.collection('unmatched_messages').where('resolved', '==', false).get();
+    ctx.unmatchedCount = um.size;
+  } catch (e) { console.warn('agentChat unmatched context failed:', e.message); }
+  return ctx;
+}
+
+const AGENT_CHAT_TOOLS = [
+  {
+    name: 'kick_off_task',
+    description: 'Queue a task for one of the Lake Salt agents. Use when Kendell asks for work to be started (email processing, lead hunting, CRM updates, research, anything operational). The task doc is picked up by the agent runner.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        agent: { type: 'string', enum: ['comms', 'lead-gen', 'general'], description: 'comms = email/CRM/quotes; lead-gen = prospecting; general = anything else' },
+        title: { type: 'string', description: 'Short imperative title' },
+        instruction: { type: 'string', description: 'Self-contained instructions for the agent' },
+      },
+      required: ['agent', 'title', 'instruction'],
+    },
+  },
+  {
+    name: 'resolve_followup',
+    description: 'Answer/close an open item in kendell_followups on Kendell\'s behalf, when he gives a decision in chat. Only use ids from the OPEN FOLLOWUPS context list.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        followupId: { type: 'string' },
+        decision: { type: 'string', enum: ['approved', 'denied', 'done', 'dismissed'] },
+        note: { type: 'string', description: 'Kendell\'s reasoning or extra instructions, if any' },
+      },
+      required: ['followupId', 'decision'],
+    },
+  },
+];
+
+async function runAgentChatTool(name, input, adminUser) {
+  const now = admin.firestore.FieldValue.serverTimestamp();
+  if (name === 'kick_off_task') {
+    const ref = await db.collection('agent_tasks').add({
+      agent: input.agent || 'general',
+      title: String(input.title || '').slice(0, 120),
+      instruction: String(input.instruction || '').slice(0, 4000),
+      status: 'queued',
+      source: 'agent_chat',
+      requestedBy: adminUser.email || adminUser.uid,
+      createdAt: now,
+    });
+    return `Task queued (${ref.id}) for the ${input.agent} agent.`;
+  }
+  if (name === 'resolve_followup') {
+    const ref = db.collection('kendell_followups').doc(String(input.followupId || ''));
+    const doc = await ref.get();
+    if (!doc.exists) return `No followup with id ${input.followupId} — it may already be resolved.`;
+    await ref.update({
+      status: 'answered',
+      completed: true,
+      decision: input.decision,
+      decisionNote: String(input.note || ''),
+      answeredVia: 'agent_chat',
+      answeredAt: now,
+    });
+    return `Followup "${doc.data().title || input.followupId}" marked ${input.decision}.`;
+  }
+  return `Unknown tool ${name}.`;
+}
+
+exports.agentChat = onCall(
+  { secrets: [anthropicApiKey], timeoutSeconds: 120 },
+  async (request) => {
+    const adminUser = await requireAdmin(request);
+    const text = String((request.data && request.data.message) || '').trim().slice(0, 4000);
+    if (!text) throw new HttpsError('invalid-argument', 'Empty message.');
+
+    const nowTs = admin.firestore.FieldValue.serverTimestamp();
+    await AGENT_CHAT_THREAD().add({ role: 'user', text, createdAt: nowTs });
+
+    /* Rebuild recent conversation for the model (oldest → newest). */
+    let history = [];
+    try {
+      const snap = await AGENT_CHAT_THREAD().orderBy('createdAt', 'desc').limit(20).get();
+      history = snap.docs.reverse().map(d => {
+        const m = d.data();
+        return { role: m.role === 'user' ? 'user' : 'assistant', content: String(m.text || '').slice(0, 4000) };
+      }).filter(m => m.content);
+    } catch (e) { console.warn('agentChat history read failed:', e.message); }
+    if (!history.length || history[history.length - 1].role !== 'user') {
+      history.push({ role: 'user', content: text });
+    }
+
+    const ctx = await agentChatContext();
+    const system =
+`You are the Lake Salt operations agent, chatting with Kendell (the owner) inside his CRM dashboard. Lake Salt is his mobile bar (dry-hire) business in Utah. Be a sharp partner: direct, concise, no flattery. Plain text only — no markdown headers.
+
+You can act, not just talk: use kick_off_task to queue real work for the comms agent (email/CRM/quotes), lead-gen agent (prospecting), or general agent. Use resolve_followup when Kendell gives a decision on an open item. Confirm what you did in one line. If a request is ambiguous, ask one tight clarifying question instead of guessing.
+
+LIVE BUSINESS CONTEXT
+Pipeline: ${JSON.stringify(ctx.stages)}
+Recently active leads: ${JSON.stringify(ctx.recentLeads)}
+Open followups (id · type · title): ${ctx.followups.map(f => `${f.id} · ${f.type} · ${f.title}`).join(' | ') || 'none'}
+Unresolved unmatched messages: ${ctx.unmatchedCount}`;
+
+    const Anthropic = require('@anthropic-ai/sdk');
+    const client = new Anthropic({ apiKey: anthropicApiKey.value() });
+
+    const actions = [];
+    let messages = history.map(m => ({ role: m.role, content: m.content }));
+    let reply = '';
+    for (let turn = 0; turn < 4; turn++) {
+      const res = await client.messages.create({
+        model: 'claude-sonnet-5',
+        max_tokens: 1024,
+        system,
+        tools: AGENT_CHAT_TOOLS,
+        messages,
+      });
+      const toolUses = res.content.filter(b => b.type === 'tool_use');
+      const textBlocks = res.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+      if (!toolUses.length) { reply = textBlocks; break; }
+
+      messages.push({ role: 'assistant', content: res.content });
+      const results = [];
+      for (const tu of toolUses) {
+        let out;
+        try { out = await runAgentChatTool(tu.name, tu.input || {}, adminUser); }
+        catch (e) { out = `Tool ${tu.name} failed: ${e.message}`; }
+        actions.push(out);
+        results.push({ type: 'tool_result', tool_use_id: tu.id, content: out });
+      }
+      messages.push({ role: 'user', content: results });
+      reply = textBlocks; // keep last text in case the loop caps out
+    }
+    if (!reply) reply = actions.length ? actions.join(' ') : 'Done.';
+
+    await AGENT_CHAT_THREAD().add({
+      role: 'assistant',
+      text: reply,
+      actions,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    return { reply, actions };
+  }
+);

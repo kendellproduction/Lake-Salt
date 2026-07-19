@@ -22,6 +22,12 @@ service cloud.firestore {
       }
     }
 
+    // ── Agent Chat — Kendell ↔ agents thread + queued agent work ──
+    // Messages are written by the agentChat function (admin SDK); the
+    // dashboard reads them live and may read/adjust queued tasks.
+    match /agent_chat/{document=**} { allow read, write: if isAdmin(); }
+    match /agent_tasks/{id}         { allow read, write: if isAdmin(); }
+
     // ── Communications Hub: unmatched messages (no confident lead match) ──
     // Created by syncGmail (admin SDK); admins read + attach them to a lead.
     match /unmatched_messages/{id} { allow read, write: if isAdmin(); }

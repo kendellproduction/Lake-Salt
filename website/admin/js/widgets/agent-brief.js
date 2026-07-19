@@ -53,11 +53,121 @@
       '<span class="brief-time">' + esc(timeAgo(a.createdAt, now)) + '</span></div>';
   }
 
+  /* ── Agent Chat — talk to your agents, kick off work, approve questions ──
+     The chat DOM is built once and survives brief re-renders; messages stream
+     in live from agent_chat/main/messages. Sending calls the agentChat
+     function, which lets Claude queue agent_tasks / resolve followups. */
+  let _chatUnsub = null;
+  let _chatBusy = false;
+
+  function chatShellHtml() {
+    return (
+      '<div class="dash-sub-label brief-section">TALK TO YOUR AGENTS</div>' +
+      '<div class="brief-chat-log" id="brief-chat-log" aria-live="polite">' +
+        '<div class="brief-empty">Say something — ask about the business, kick off work, or answer agent questions.</div>' +
+      '</div>' +
+      '<form class="brief-chat-form" id="brief-chat-form">' +
+        '<input type="text" id="brief-chat-input" class="brief-chat-input" maxlength="4000" ' +
+          'placeholder="Message your agents…" autocomplete="off" aria-label="Message your agents">' +
+        '<button type="submit" class="brief-chat-send" id="brief-chat-send" aria-label="Send">➤</button>' +
+      '</form>'
+    );
+  }
+
+  function renderChatMessages(docs) {
+    const log = document.getElementById('brief-chat-log');
+    if (!log) return;
+    if (!docs.length) return; // keep the empty-state hint
+    log.innerHTML = docs.map(d => {
+      const m = d.data();
+      const mine = m.role === 'user';
+      const actions = (m.actions && m.actions.length)
+        ? '<div class="brief-chat-actions">' + m.actions.map(a => '⚡ ' + esc(a)).join('<br>') + '</div>'
+        : '';
+      return '<div class="brief-chat-msg ' + (mine ? 'brief-chat-me' : 'brief-chat-agent') + '">' +
+        '<div class="brief-chat-bubble">' + esc(m.text || '') + actions + '</div>' +
+        '<div class="brief-chat-meta">' + (mine ? 'You' : 'Agent') + ' · ' + esc(timeAgo(m.createdAt)) + '</div>' +
+      '</div>';
+    }).join('');
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function setChatBusy(busy) {
+    _chatBusy = busy;
+    const send = document.getElementById('brief-chat-send');
+    const input = document.getElementById('brief-chat-input');
+    if (send) { send.disabled = busy; send.textContent = busy ? '…' : '➤'; }
+    if (input) input.disabled = busy;
+  }
+
+  function initChat() {
+    const form = document.getElementById('brief-chat-form');
+    if (!form || form.dataset.wired) return;
+    form.dataset.wired = '1';
+
+    try {
+      if (_chatUnsub) _chatUnsub();
+      _chatUnsub = firebase.firestore()
+        .collection('agent_chat').doc('main').collection('messages')
+        .orderBy('createdAt', 'desc').limit(30)
+        .onSnapshot(snap => renderChatMessages(snap.docs.slice().reverse()),
+          err => console.warn('agent chat listen failed:', err.message));
+    } catch (e) { console.warn('agent chat init failed:', e.message); }
+
+    form.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      if (_chatBusy) return;
+      const input = document.getElementById('brief-chat-input');
+      const text = (input && input.value || '').trim();
+      if (!text) return;
+      input.value = '';
+      setChatBusy(true);
+      try {
+        await firebase.functions().httpsCallable('agentChat')({ message: text });
+        /* Reply arrives via the snapshot listener. */
+      } catch (e) {
+        const log = document.getElementById('brief-chat-log');
+        if (log) log.insertAdjacentHTML('beforeend',
+          '<div class="brief-chat-msg brief-chat-agent"><div class="brief-chat-bubble brief-chat-error">' +
+          esc('Couldn\'t reach the agent: ' + (e.message || e)) + '</div></div>');
+      } finally { setChatBusy(false); }
+    });
+  }
+
+  /* Approve / deny an open followup straight from the brief (deterministic
+     client-side write — no model in the loop for a button press). */
+  async function resolveFollowup(id, decision) {
+    try {
+      await firebase.firestore().collection('kendell_followups').doc(id).update({
+        status: 'answered', completed: true, decision,
+        answeredVia: 'agent_brief', answeredAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+      if (typeof renderDashboard === 'function') renderDashboard();
+    } catch (e) { console.warn('resolveFollowup failed:', e.message); }
+  }
+
   function renderAgentBriefWidget(data, now) {
     const el = document.getElementById('w-agent-brief');
     if (!el) return;
     data = data || {};
     now = now || new Date();
+
+    /* Two-zone layout: #brief-summary is rebuilt every refresh; the chat is
+       built once so the input, focus, and listener survive re-renders. */
+    if (!document.getElementById('brief-summary') || !el.contains(document.getElementById('brief-summary'))) {
+      el.innerHTML = '<div id="brief-summary"></div><div id="brief-chat">' + chatShellHtml() + '</div>';
+      initChat();
+      el.addEventListener('click', (ev) => {
+        const btn = ev.target.closest('[data-fu-id]');
+        if (btn) resolveFollowup(btn.dataset.fuId, btn.dataset.fuDecision || 'done');
+      });
+    }
+    const summaryEl = document.getElementById('brief-summary');
+    renderBriefSummary(summaryEl, data, now);
+  }
+
+  function renderBriefSummary(el, data, now) {
+    if (!el) return;
 
     /* ── Since you last looked — recent activity ── */
     const activity = (data.activity || []).slice(0, 5);
@@ -82,11 +192,18 @@
         '<span class="brief-time">' + esc(timeAgo(m.sentAt || m.createdAt, now)) + ' · CRM →</span></button>';
     }).join('');
 
-    const followupsHtml = followups.map(f =>
-      '<div class="brief-row"><span class="brief-dot brief-dot-amber"></span>' +
-      '<span class="brief-text">' + esc(f.title || 'Follow-up needed') + '</span>' +
-      '<span class="brief-time">' + esc(timeAgo(f.createdAt, now)) + '</span></div>'
-    ).join('');
+    const followupsHtml = followups.map(f => {
+      const btns = f.id
+        ? '<span class="brief-fu-btns">' +
+          '<button type="button" class="brief-fu-btn brief-fu-yes" data-fu-id="' + esc(f.id) + '" data-fu-decision="approved" aria-label="Approve">✓</button>' +
+          '<button type="button" class="brief-fu-btn brief-fu-no" data-fu-id="' + esc(f.id) + '" data-fu-decision="denied" aria-label="Deny / dismiss">✕</button>' +
+          '</span>'
+        : '';
+      return '<div class="brief-row"><span class="brief-dot brief-dot-amber"></span>' +
+        '<span class="brief-text">' + esc(f.title || 'Follow-up needed') + '</span>' +
+        btns +
+        '<span class="brief-time">' + esc(timeAgo(f.createdAt, now)) + '</span></div>';
+    }).join('');
 
     const needsYouHtml = (unmatchedHtml + followupsHtml) ||
       emptyLine('Nothing needs you right now. Enjoy it.');
