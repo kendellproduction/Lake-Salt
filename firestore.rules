@@ -12,7 +12,23 @@ service cloud.firestore {
     match /leads/{id} {
       allow create: if true;
       allow read, update, delete: if isAdmin();
+
+      // Communications Hub — message threads mirrored from Gmail.
+      // Written by syncGmail via the admin SDK (bypasses rules); the admin
+      // dashboard reads them live. Admin-only, no public access. The /** glob
+      // covers both threads/{threadId} and its messages/{messageId} subdocs.
+      match /threads/{document=**} {
+        allow read, write: if isAdmin();
+      }
     }
+
+    // ── Communications Hub: unmatched messages (no confident lead match) ──
+    // Created by syncGmail (admin SDK); admins read + attach them to a lead.
+    match /unmatched_messages/{id} { allow read, write: if isAdmin(); }
+
+    // ── Communications Hub: raw Zapier inbound queue (fallback auth path) ──
+    // The Zap writes here when OAuth isn't configured; syncGmail drains it.
+    match /gmail_inbound_raw/{id} { allow read, write: if isAdmin(); }
 
     // ── admins — own-doc access for first-login + role checks ──
     match /admins/{id} {
@@ -22,6 +38,12 @@ service cloud.firestore {
                       (request.auth != null &&
                        request.auth.uid == id &&
                        request.auth.token.email == 'kendellproduction@gmail.com');
+    }
+
+    // ── Per-user preferences (dashboard widget layout, theme) ──
+    // Each signed-in user may read/write ONLY their own prefs docs.
+    match /users/{uid}/prefs/{doc} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
     // ── Core business collections — admin only ──

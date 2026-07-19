@@ -9,6 +9,180 @@
 
 const DASH_FILTER_KEY = 'ls_dash_filter';
 const DASH_DISMISS_KEY = 'ls_dash_dismissed_alerts';
+const DASH_PREFS_KEY = 'dashboardPrefs';
+
+/* ═══════════════════════════════════════════════════════════════════════
+   WIDGET FRAMEWORK — self-describing registry. The dashboard renders only
+   enabled widgets, in the user's order, at the user's chosen size. Prefs
+   live in localStorage (`dashboardPrefs`) and mirror to Firestore
+   users/{uid}/prefs/dashboard so they follow Kendell across devices.
+   Existing render*Widget internals are untouched — each entry just wraps
+   one and points at the card body element it already targets.
+   ═══════════════════════════════════════════════════════════════════════ */
+const WIDGETS = [
+  { id: 'agentBrief', title: '🤖 Agent Brief', elId: 'w-agent-brief',
+    defaultOn: true, defaultOrder: 0, sizes: ['sm', 'md', 'lg'],
+    render(now, range) { if (typeof renderAgentBriefWidget === 'function') renderAgentBriefWidget(_dashData, now); } },
+  { id: 'upcoming', title: '📅 Upcoming Events', elId: 'w-upcoming',
+    defaultOn: true, defaultOrder: 10, sizes: ['sm', 'md', 'lg'],
+    render(now, range) { renderUpcomingWidget(now); } },
+  { id: 'deals', title: '🎯 Deals to Close', elId: 'w-deals',
+    defaultOn: true, defaultOrder: 20, sizes: ['sm', 'md', 'lg'],
+    render(now, range) { renderDealsWidget(now); } },
+  { id: 'leadflow', title: '📈 Lead Flow', elId: 'w-leadflow',
+    defaultOn: true, defaultOrder: 30, sizes: ['sm', 'md', 'lg'],
+    render(now, range) { renderLeadFlowWidget(range); } },
+  { id: 'money', title: '💰 Money Made', elId: 'w-money',
+    defaultOn: true, defaultOrder: 40, sizes: ['sm', 'md', 'lg'],
+    render(now, range) { renderMoneyWidget(range); } },
+  { id: 'profit', title: '⚖️ Event Size & Profitability', elId: 'w-profit',
+    defaultOn: true, defaultOrder: 50, sizes: ['sm', 'md', 'lg'],
+    render(now, range) { renderProfitWidget(range); } },
+  { id: 'web', title: '🌐 Website Analytics', elId: 'w-web',
+    defaultOn: true, defaultOrder: 60, sizes: ['sm', 'md', 'lg'],
+    render(now, range) { renderWebWidget(range); } },
+  { id: 'cohort', title: '🎪 Wedding Expo Cohort — Funnel', elId: 'w-cohort',
+    defaultOn: true, defaultOrder: 70, sizes: ['sm', 'md', 'lg'],
+    render(now, range) { renderCohortFunnelWidget(); } }
+];
+
+let _customizeMode = false;
+
+function defaultDashPrefs() {
+  const sorted = WIDGETS.slice().sort((a, b) => a.defaultOrder - b.defaultOrder);
+  const enabled = {};
+  sorted.forEach(w => { enabled[w.id] = !!w.defaultOn; });
+  return { enabled, order: sorted.map(w => w.id), sizes: {}, widgetSettings: {} };
+}
+
+/* Read prefs from localStorage and normalize: drop unknown widget ids,
+   append any newly-registered widgets at the end at their default state. */
+function getDashPrefs() {
+  let p = null;
+  try { p = JSON.parse(localStorage.getItem(DASH_PREFS_KEY) || 'null'); } catch (e) { p = null; }
+  const def = defaultDashPrefs();
+  if (!p || typeof p !== 'object') return def;
+  const known = WIDGETS.map(w => w.id);
+  const order = (Array.isArray(p.order) ? p.order : []).filter(id => known.includes(id));
+  def.order.forEach(id => { if (!order.includes(id)) order.push(id); });
+  const enabled = {};
+  known.forEach(id => {
+    enabled[id] = (p.enabled && typeof p.enabled[id] === 'boolean') ? p.enabled[id] : def.enabled[id];
+  });
+  const sizes = {};
+  known.forEach(id => {
+    const w = WIDGETS.find(x => x.id === id);
+    if (p.sizes && w.sizes.includes(p.sizes[id])) sizes[id] = p.sizes[id];
+  });
+  return { enabled, order, sizes, widgetSettings: (p.widgetSettings && typeof p.widgetSettings === 'object') ? p.widgetSettings : {} };
+}
+
+function saveDashPrefs(prefs) {
+  try { localStorage.setItem(DASH_PREFS_KEY, JSON.stringify(prefs)); } catch (e) { /* storage full/blocked */ }
+  // Mirror to Firestore so prefs follow across devices. Own-doc only.
+  try {
+    if (typeof currentUser !== 'undefined' && currentUser?.uid) {
+      db.collection('users').doc(currentUser.uid).collection('prefs').doc('dashboard')
+        .set({ ...prefs, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: false })
+        .catch(() => {});
+    }
+  } catch (e) { /* offline — localStorage copy still wins locally */ }
+}
+
+/* Pull the Firestore mirror once per dashboard load (newer device wins by
+   simply adopting whatever the cloud copy says, if one exists). */
+async function loadRemoteDashPrefs() {
+  try {
+    if (typeof currentUser === 'undefined' || !currentUser?.uid) return;
+    const snap = await db.collection('users').doc(currentUser.uid).collection('prefs').doc('dashboard').get();
+    if (snap.exists) {
+      const { updatedAt, ...prefs } = snap.data() || {};
+      localStorage.setItem(DASH_PREFS_KEY, JSON.stringify(prefs));
+    }
+  } catch (e) { /* rules not deployed yet or offline — local prefs are fine */ }
+}
+
+function widgetSize(prefs, w) { return prefs.sizes[w.id] || 'md'; }
+
+/* Build the card shells for enabled widgets, in order, at size. */
+function renderWidgetGrid() {
+  const grid = document.getElementById('dash-widgets');
+  if (!grid) return;
+  const prefs = getDashPrefs();
+  grid.innerHTML = prefs.order
+    .filter(id => prefs.enabled[id])
+    .map(id => {
+      const w = WIDGETS.find(x => x.id === id);
+      if (!w) return '';
+      return `<div class="card dash-widget dash-size-${widgetSize(prefs, w)}" data-widget="${w.id}">
+        <div class="card-header"><span class="card-title">${w.title}</span></div>
+        <div id="${w.elId}">Loading…</div>
+      </div>`;
+    }).join('');
+}
+
+/* ── Customize mode: on/off switches + ↑/↓ reorder + size + reset ─────── */
+function toggleCustomizeMode() {
+  _customizeMode = !_customizeMode;
+  renderCustomizePanel();
+  const btn = document.getElementById('dash-customize-btn');
+  if (btn) btn.textContent = _customizeMode ? '✓ Done' : '⚙️ Customize';
+}
+window.toggleCustomizeMode = toggleCustomizeMode;
+
+function renderCustomizePanel() {
+  const el = document.getElementById('dash-customize');
+  if (!el) return;
+  if (!_customizeMode) { el.innerHTML = ''; el.style.display = 'none'; return; }
+  el.style.display = '';
+  const prefs = getDashPrefs();
+  el.innerHTML = `
+    <div class="customize-head">
+      <span class="dash-sub-label" style="margin:0">CUSTOMIZE YOUR FEED</span>
+      <button type="button" class="customize-reset" onclick="resetDashPrefs()">Reset to default</button>
+    </div>
+    ${prefs.order.map((id, i) => {
+      const w = WIDGETS.find(x => x.id === id);
+      if (!w) return '';
+      const on = !!prefs.enabled[id];
+      const size = widgetSize(prefs, w);
+      return `<div class="customize-row${on ? '' : ' customize-row-off'}">
+        <div class="customize-move">
+          <button type="button" class="customize-btn" onclick="moveDashWidget('${w.id}',-1)" ${i === 0 ? 'disabled' : ''} aria-label="Move ${w.title} up">↑</button>
+          <button type="button" class="customize-btn" onclick="moveDashWidget('${w.id}',1)" ${i === prefs.order.length - 1 ? 'disabled' : ''} aria-label="Move ${w.title} down">↓</button>
+        </div>
+        <span class="customize-title">${w.title}</span>
+        <div class="customize-sizes">
+          ${w.sizes.map(s => `<button type="button" class="customize-size${s === size ? ' active' : ''}" onclick="setDashWidgetSize('${w.id}','${s}')">${s}</button>`).join('')}
+        </div>
+        <button type="button" class="customize-switch${on ? ' on' : ''}" role="switch" aria-checked="${on}" aria-label="Toggle ${w.title}" onclick="toggleDashWidget('${w.id}')"><span class="customize-knob"></span></button>
+      </div>`;
+    }).join('')}`;
+}
+
+function applyPrefsChange(mutate) {
+  const prefs = getDashPrefs();
+  mutate(prefs);
+  saveDashPrefs(prefs);
+  renderCustomizePanel();
+  renderWidgetGrid();
+  renderAll();
+}
+function toggleDashWidget(id) { applyPrefsChange(p => { p.enabled[id] = !p.enabled[id]; }); }
+function moveDashWidget(id, dir) {
+  applyPrefsChange(p => {
+    const i = p.order.indexOf(id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= p.order.length) return;
+    [p.order[i], p.order[j]] = [p.order[j], p.order[i]];
+  });
+}
+function setDashWidgetSize(id, size) { applyPrefsChange(p => { p.sizes[id] = size; }); }
+function resetDashPrefs() { applyPrefsChange(p => { Object.assign(p, defaultDashPrefs()); }); }
+window.toggleDashWidget = toggleDashWidget;
+window.moveDashWidget = moveDashWidget;
+window.setDashWidgetSize = setDashWidgetSize;
+window.resetDashPrefs = resetDashPrefs;
 
 /* Snapshot of fetched data, kept so the filter can re-render without re-fetching. */
 let _dashData = null;
@@ -44,31 +218,24 @@ async function renderDashboard() {
         <div class="page-title">Dashboard</div>
         <div class="page-subtitle">Welcome back, ${currentUser?.displayName?.split(' ')[0] || 'Kendell'}</div>
       </div>
+      <button type="button" id="dash-customize-btn" class="dash-customize-toggle" onclick="toggleCustomizeMode()">⚙️ Customize</button>
     </div>
+    <div id="dash-customize" class="dash-customize-panel" style="display:none"></div>
     <div id="upcoming-calls"></div>
     <div id="dash-alerts" style="margin-bottom:16px"></div>
     <div id="quick-actions"></div>
+    <div class="card" id="action-queue" style="margin-bottom:16px"><div class="card-header"><span class="card-title">Action Queue</span><span class="card-subtitle">What needs attention next</span></div><div id="w-action-queue">Loading…</div></div>
     <div id="dash-filter" class="dash-filter"></div>
     <div class="stat-grid" id="dash-stats">
       ${[1,2,3,4,5].map(()=>`<div class="stat-card"><div class="skeleton skeleton-line w-1/4" style="height:11px;margin-bottom:10px;"></div><div class="skeleton skeleton-line w-1/2" style="height:28px;"></div></div>`).join('')}
     </div>
-    <div class="dash-row" id="dash-action-row">
-      <div class="card"><div class="card-header"><span class="card-title">📅 Upcoming Events</span></div><div id="w-upcoming">Loading…</div></div>
-      <div class="card"><div class="card-header"><span class="card-title">🎯 Deals to Close</span></div><div id="w-deals">Loading…</div></div>
-      <div class="card"><div class="card-header"><span class="card-title">📈 Lead Flow</span></div><div id="w-leadflow">Loading…</div></div>
-    </div>
-    <div class="dash-row" id="dash-insight-row">
-      <div class="card"><div class="card-header"><span class="card-title">💰 Money Made</span></div><div id="w-money">Loading…</div></div>
-      <div class="card"><div class="card-header"><span class="card-title">⚖️ Event Size & Profitability</span></div><div id="w-profit">Loading…</div></div>
-      <div class="card"><div class="card-header"><span class="card-title">🌐 Website Analytics</span></div><div id="w-web">Loading…</div></div>
-    </div>
-    <div class="dash-row" id="dash-cohort-row">
-      <div class="card"><div class="card-header"><span class="card-title">🎪 Wedding Expo Cohort — Funnel</span></div><div id="w-cohort">Loading…</div></div>
-    </div>`;
+    <div class="dash-widget-grid" id="dash-widgets"></div>`;
+
+  renderWidgetGrid();
 
   // Fetch everything in parallel
   const nowTs = firebase.firestore.Timestamp.now();
-  const [leadsSnap, eventsSnap, expensesSnap, paymentsSnap, bartSnap, activitySnap, callsSnap, pageSnap, followupsSnap] = await Promise.all([
+  const [leadsSnap, eventsSnap, expensesSnap, paymentsSnap, bartSnap, activitySnap, callsSnap, pageSnap, followupsSnap, unmatchedSnap] = await Promise.all([
     db.collection('leads').get(),
     db.collection('events').get(),
     db.collection('expenses').get(),
@@ -77,7 +244,8 @@ async function renderDashboard() {
     db.collection('activity').orderBy('createdAt','desc').limit(50).get(),
     db.collection('call_bookings').where('slotStart', '>=', nowTs).orderBy('slotStart', 'asc').limit(5).get(),
     db.collection('page_events').orderBy('timestamp','desc').limit(2000).get().catch(()=>({docs:[]})),
-    db.collection('kendell_followups').where('status','==','open').get().catch(()=>({docs:[]}))
+    db.collection('kendell_followups').where('status','==','open').get().catch(()=>({docs:[]})),
+    db.collection('unmatched_messages').where('resolved','==',false).limit(25).get().catch(()=>({docs:[]}))
   ]);
 
   renderUpcomingCalls(callsSnap);
@@ -91,8 +259,13 @@ async function renderDashboard() {
     activity: activitySnap.docs.map(d => ({ id: d.id, ...d.data() })),
     pageEvents: (pageSnap.docs || []).map(d => ({ id: d.id, ...d.data() })),
     followups: (followupsSnap.docs || []).map(d => ({ id: d.id, ...d.data() })),
+    unmatched: (unmatchedSnap.docs || []).map(d => ({ id: d.id, ...d.data() })),
     bartenders: bartSnap.size
   };
+
+  // Adopt cloud prefs (cross-device), then rebuild the grid if they differ.
+  await loadRemoteDashPrefs();
+  renderWidgetGrid();
 
   renderFilter();
   renderAlerts();
@@ -122,13 +295,46 @@ function renderAll() {
   const now = new Date();
   const range = DashCore.getDateRange(getActiveFilter(), now);
   renderStats(range, now);
-  renderUpcomingWidget(now);
-  renderDealsWidget(now);
-  renderLeadFlowWidget(range);
-  renderMoneyWidget(range);
-  renderProfitWidget(range);
-  renderWebWidget(range);
-  renderCohortFunnelWidget();
+  renderActionQueue(now);
+  // Registered widgets: only enabled ones render (their cards are the only
+  // ones in the DOM — see renderWidgetGrid), in the user's order.
+  const prefs = getDashPrefs();
+  prefs.order.filter(id => prefs.enabled[id]).forEach(id => {
+    const w = WIDGETS.find(x => x.id === id);
+    if (!w) return;
+    try { w.render(now, range); } catch (e) { console.error('widget ' + id + ' failed', e); }
+  });
+}
+
+function renderActionQueue(now) {
+  const el = document.getElementById('w-action-queue');
+  if (!el) return;
+  const items = DashCore.computeActionQueue(_dashData.leads || [], now).slice(0, 8);
+  if (!items.length) { el.innerHTML = emptyState('✓', 'No open lead actions'); return; }
+  const styles = {
+    'Needs Kendell': ['var(--red)', 'Your review'],
+    'Quote Ready - Needs Price': ['var(--gold)', 'Price review'],
+    'Needs Reply': ['var(--blue)', 'Reply'],
+    'Follow-Up Due': ['var(--gold)', 'Follow up'],
+    'Waiting on Client': ['var(--text-muted)', 'Waiting']
+  };
+  el.innerHTML = items.map(({ lead, state }) => {
+    const [color, label] = styles[state] || ['var(--text-muted)', state];
+    const name = escapeHtmlSafe(lead.name || lead.email || 'Unnamed lead');
+    const detail = escapeHtmlSafe([lead.eventType, lead.eventDate, lead.venue].filter(Boolean).join(' · '));
+    return `<button type="button" class="dash-list-row" style="width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--border);cursor:pointer" data-lead-id="${escapeHtmlSafe(lead.id)}">
+      <div class="dash-row-main"><span class="dash-row-title">${name}</span><span class="dash-row-sub">${detail || 'Lead details'}</span></div>
+      <span class="badge" style="color:${color};background:${color}22">${escapeHtmlSafe(label)}</span></button>`;
+  }).join('');
+  bindLeadOpenClicks(el);
+}
+
+/* Lead ids can be client-chosen (public create on /leads), so never interpolate
+   them into inline onclick handlers — bind via data attribute instead. */
+function bindLeadOpenClicks(container) {
+  container.querySelectorAll('[data-lead-id]').forEach(btn => {
+    btn.addEventListener('click', () => openLeadFromDash(btn.dataset.leadId));
+  });
 }
 
 /* ── Insight widget: Wedding Expo cohort funnel ───────────────────────────
@@ -265,7 +471,7 @@ function renderUpcomingWidget(now) {
   const el = document.getElementById('w-upcoming');
   if (!up.length) { el.innerHTML = emptyState('🗓️', 'No upcoming booked events'); return; }
   el.innerHTML = `<div class="dash-list">${up.slice(0, 8).map(l => `
-    <button type="button" class="dash-list-row" onclick="openLeadFromDash('${l.id}')">
+    <button type="button" class="dash-list-row" data-lead-id="${escapeHtmlSafe(l.id)}">
       <div class="dash-row-main">
         <span class="dash-row-title">${escapeHtmlSafe(l.name || '—')}</span>
         <span class="dash-row-sub">${escapeHtmlSafe(l.eventType||'')} · ${l._when.toLocaleDateString('en-US',{month:'short',day:'numeric'})}${l.guestCount?` · ${escapeHtmlSafe(String(l.guestCount))} guests`:''}</span>
@@ -275,6 +481,7 @@ function renderUpcomingWidget(now) {
         <span class="badge ${l._staffed?'badge-green':'badge-amber'}">${l._staffed?'✅ staffed':'⚠ staff'}</span>
       </div>
     </button>`).join('')}</div>`;
+  bindLeadOpenClicks(el);
 }
 
 /* ── Action widget: Deals to Close ────────────────────────────────────── */
@@ -283,7 +490,7 @@ function renderDealsWidget(now) {
   const el = document.getElementById('w-deals');
   if (!deals.length) { el.innerHTML = emptyState('🎯', 'No open deals — pipeline is clear'); return; }
   el.innerHTML = `<div class="dash-list">${deals.slice(0, 8).map(l => `
-    <button type="button" class="dash-list-row" onclick="openLeadFromDash('${l.id}')">
+    <button type="button" class="dash-list-row" data-lead-id="${escapeHtmlSafe(l.id)}">
       <div class="dash-row-main">
         <span class="dash-row-title">${escapeHtmlSafe(l.name || '—')}</span>
         <span class="dash-row-sub">${escapeHtmlSafe(l._nextAction)} · ${l._daysSinceTouch}d since touch</span>
@@ -291,6 +498,7 @@ function renderDealsWidget(now) {
       <span class="badge" style="background:${stageColor(l.stage)}22;color:${stageColor(l.stage)}">${escapeHtmlSafe(l.stage)}</span>
     </button>`).join('')}</div>
     ${deals.length > 8 ? `<button class="dash-link" onclick="loadModule('crm')">View all ${deals.length} in CRM →</button>` : ''}`;
+  bindLeadOpenClicks(el);
 }
 function openLeadFromDash(id) {
   if (typeof openLeadModal === 'function') openLeadModal(id);
