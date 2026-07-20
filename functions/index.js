@@ -2025,7 +2025,16 @@ async function applyParsedReceipt(expenseRef, parsed, nearbyEvents) {
  * (kick_off_task → agent_tasks queue, resolve_followup → answer a pending
  * agent question), persist both sides to agent_chat/main/messages, and
  * return the reply. Admin-only. */
-const AGENT_CHAT_THREAD = () => db.collection('agent_chat').doc('main').collection('messages');
+/* Each chat session is its own thread doc — only the active session's
+ * history is sent to the model, so old topics never bleed into new ones.
+ * 'main' is the legacy/default session. */
+const AGENT_CHAT_THREAD = (sessionId) =>
+  db.collection('agent_chat').doc(sessionId || 'main').collection('messages');
+
+function safeSessionId(raw) {
+  const s = String(raw || 'main').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 60);
+  return s || 'main';
+}
 
 async function agentChatContext() {
   const ctx = { stages: {}, recentLeads: [], followups: [], unmatchedCount: 0 };
@@ -2123,14 +2132,17 @@ exports.agentChat = onCall(
     const adminUser = await requireAdmin(request);
     const text = String((request.data && request.data.message) || '').trim().slice(0, 4000);
     if (!text) throw new HttpsError('invalid-argument', 'Empty message.');
+    const sessionId = safeSessionId(request.data && request.data.sessionId);
 
     const nowTs = admin.firestore.FieldValue.serverTimestamp();
-    await AGENT_CHAT_THREAD().add({ role: 'user', text, createdAt: nowTs });
+    await db.collection('agent_chat').doc(sessionId).set(
+      { lastMessageAt: nowTs, createdAt: nowTs }, { merge: true });
+    await AGENT_CHAT_THREAD(sessionId).add({ role: 'user', text, createdAt: nowTs });
 
-    /* Rebuild recent conversation for the model (oldest → newest). */
+    /* Rebuild this session's conversation for the model (oldest → newest). */
     let history = [];
     try {
-      const snap = await AGENT_CHAT_THREAD().orderBy('createdAt', 'desc').limit(20).get();
+      const snap = await AGENT_CHAT_THREAD(sessionId).orderBy('createdAt', 'desc').limit(20).get();
       history = snap.docs.reverse().map(d => {
         const m = d.data();
         return { role: m.role === 'user' ? 'user' : 'assistant', content: String(m.text || '').slice(0, 4000) };
@@ -2145,6 +2157,8 @@ exports.agentChat = onCall(
 `You are the Lake Salt operations agent, chatting with Kendell (the owner) inside his CRM dashboard. Lake Salt is his mobile bar (dry-hire) business in Utah. Be a sharp partner: direct, concise, no flattery. Plain text only — no markdown headers.
 
 You can act, not just talk: use kick_off_task to queue real work for the comms agent (email/CRM/quotes), lead-gen agent (prospecting), or general agent. Use resolve_followup when Kendell gives a decision on an open item. Confirm what you did in one line. If a request is ambiguous, ask one tight clarifying question instead of guessing.
+
+${AUTONOMY_POLICY}
 
 LIVE BUSINESS CONTEXT
 Pipeline: ${JSON.stringify(ctx.stages)}
@@ -2184,12 +2198,157 @@ Unresolved unmatched messages: ${ctx.unmatchedCount}`;
     }
     if (!reply) reply = actions.length ? actions.join(' ') : 'Done.';
 
-    await AGENT_CHAT_THREAD().add({
+    await AGENT_CHAT_THREAD(sessionId).add({
       role: 'assistant',
       text: reply,
       actions,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     return { reply, actions };
+  }
+);
+
+/* ═══ Executive Agent Brief — daily AI-written brief with autonomy ═════════
+ * A scheduled run (7am MT) has Claude write a real morning brief: rotating
+ * quote, neon-highlighted summary, a task list, and a heads-up for later
+ * this week. Autonomy policy: routine work (follow-ups, email responses,
+ * CRM hygiene) is auto-queued to agent_tasks without asking; anything
+ * touching quotes/pricing/money is flagged needsApproval and waits for a
+ * tap. Result cached in agent_brief/latest — the dashboard just reads it. */
+
+const AUTONOMY_POLICY =
+`AUTONOMY POLICY (Kendell's standing orders):
+- Follow-ups, routine email responses, CRM cleanup/hygiene, lead triage: ACT — queue the work yourself, then report it in the brief as already handled.
+- Quotes, pricing, discounts, contracts, anything money: PROPOSE with needsApproval=true and wait.
+- Keep proactively improving the CRM data quality without being asked.`;
+
+const PUBLISH_BRIEF_TOOL = [{
+  name: 'publish_brief',
+  description: 'Publish the executive morning brief. Wrap the 3-6 most important words/phrases in the brief text with **double asterisks** — they render as bright neon highlights.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      quote: { type: 'string', description: 'Short motivational quote for a scrappy business owner, with attribution. Vary it daily.' },
+      brief: { type: 'string', description: '2-4 sentence executive summary of where the business stands and what matters today. Use **highlights** on the critical words. Plain text otherwise.' },
+      tasks: {
+        type: 'array', maxItems: 6,
+        items: {
+          type: 'object',
+          properties: {
+            title: { type: 'string', description: 'Short imperative line shown collapsed' },
+            detail: { type: 'string', description: '1-3 sentences shown when expanded: the why and the specifics' },
+            status: { type: 'string', enum: ['handled', 'proposed', 'fyi'], description: 'handled = you queued it yourself; proposed = needs Kendell tap; fyi = no action' },
+            needsApproval: { type: 'boolean' },
+            action: {
+              type: 'object', description: 'The agent task to queue (required for handled/proposed)',
+              properties: {
+                agent: { type: 'string', enum: ['comms', 'lead-gen', 'general'] },
+                title: { type: 'string' },
+                instruction: { type: 'string' },
+              },
+            },
+          },
+          required: ['title', 'detail', 'status'],
+        },
+      },
+      headsUp: { type: 'string', description: '1-2 sentences: what is coming tomorrow / later this week worth knowing now.' },
+    },
+    required: ['quote', 'brief', 'tasks', 'headsUp'],
+  },
+}];
+
+async function buildExecBriefContext() {
+  const ctx = await agentChatContext();
+  try {
+    const now = new Date();
+    const evSnap = await db.collection('events').get();
+    ctx.upcomingEvents = evSnap.docs.map(d => d.data())
+      .filter(e => e.date && new Date(e.date) >= now && new Date(e.date) < new Date(now.getTime() + 14 * 864e5))
+      .map(e => ({ name: e.name || e.client || 'event', date: e.date, type: e.type || '' }))
+      .slice(0, 8);
+  } catch (e) { ctx.upcomingEvents = []; }
+  try {
+    const um = await db.collection('unmatched_messages').where('resolved', '==', false).limit(10).get();
+    ctx.unmatchedSamples = um.docs.map(d => ({
+      from: d.data().fromDisplay || d.data().from || '', subject: d.data().subject || '',
+    }));
+  } catch (e) { ctx.unmatchedSamples = []; }
+  return ctx;
+}
+
+async function generateAgentBriefCore(trigger) {
+  const ctx = await buildExecBriefContext();
+  const Anthropic = require('@anthropic-ai/sdk');
+  const client = new Anthropic({ apiKey: anthropicApiKey.value() });
+
+  const res = await client.messages.create({
+    model: 'claude-sonnet-5',
+    max_tokens: 2048,
+    system:
+`You are Kendell's executive assistant for Lake Salt, his mobile bar (dry-hire) business in Utah. Each morning you write his brief: sharp, warm, zero filler, the judgment of a great chief of staff. Do not restate raw counts he can see elsewhere — interpret: what's hot, what's stalling, what you already handled, the one thing he must do himself.
+
+${AUTONOMY_POLICY}
+
+Call publish_brief exactly once.
+
+LIVE BUSINESS CONTEXT
+Pipeline: ${JSON.stringify(ctx.stages)}
+Recently active leads: ${JSON.stringify(ctx.recentLeads)}
+Open followups: ${ctx.followups.map(f => `${f.id} · ${f.type} · ${f.title}`).join(' | ') || 'none'}
+Unresolved unmatched messages (${ctx.unmatchedCount}): ${JSON.stringify(ctx.unmatchedSamples)}
+Events next 14 days: ${JSON.stringify(ctx.upcomingEvents)}`,
+    tools: PUBLISH_BRIEF_TOOL,
+    tool_choice: { type: 'tool', name: 'publish_brief' },
+    messages: [{ role: 'user', content: 'Write this morning\'s brief.' }],
+  });
+
+  const call = res.content.find(b => b.type === 'tool_use' && b.name === 'publish_brief');
+  if (!call) throw new Error('model returned no publish_brief call');
+  const brief = call.input;
+  const now = admin.firestore.FieldValue.serverTimestamp();
+
+  /* Autonomy: queue every task the assistant decided to handle itself. */
+  const tasks = [];
+  for (const t of (brief.tasks || []).slice(0, 6)) {
+    const task = { title: String(t.title || ''), detail: String(t.detail || ''),
+                   status: t.status, needsApproval: !!t.needsApproval, action: t.action || null };
+    if (t.status === 'handled' && t.action && !t.needsApproval) {
+      try {
+        const ref = await db.collection('agent_tasks').add({
+          agent: t.action.agent || 'general',
+          title: String(t.action.title || t.title).slice(0, 120),
+          instruction: String(t.action.instruction || t.detail).slice(0, 4000),
+          status: 'queued', source: 'daily_brief', createdAt: now,
+        });
+        task.queuedTaskId = ref.id;
+      } catch (e) { console.warn('brief auto-queue failed:', e.message); }
+    }
+    tasks.push(task);
+  }
+
+  const doc = {
+    quote: String(brief.quote || ''),
+    brief: String(brief.brief || ''),
+    tasks,
+    headsUp: String(brief.headsUp || ''),
+    trigger, generatedAt: now,
+  };
+  await db.collection('agent_brief').doc('latest').set(doc);
+  return doc;
+}
+
+exports.dailyAgentBrief = onSchedule(
+  { schedule: '0 7 * * *', timeZone: 'America/Denver', secrets: [anthropicApiKey], timeoutSeconds: 120 },
+  async () => {
+    const b = await generateAgentBriefCore('schedule');
+    console.log(`dailyAgentBrief: published (${b.tasks.length} tasks).`);
+  }
+);
+
+exports.refreshAgentBrief = onCall(
+  { secrets: [anthropicApiKey], timeoutSeconds: 120 },
+  async (request) => {
+    await requireAdmin(request);
+    return await generateAgentBriefCore('manual');
   }
 );

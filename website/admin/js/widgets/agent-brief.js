@@ -1,13 +1,14 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   AGENT BRIEF WIDGET — plain-English "what happened / what needs you"
-   summary at the top of the dashboard. Registered in the WIDGETS registry
-   (dashboard.js) as id 'agentBrief'; renders into #w-agent-brief.
-   Read-only: consumes the _dashData snapshot fetched by renderDashboard.
+   AGENT BRIEF WIDGET — executive-assistant hero.
+   Left: the daily AI brief from agent_brief/latest (written by the
+   dailyAgentBrief function at 7am MT): rotating quote → neon-highlighted
+   summary → expandable task list → heads-up for later this week.
+   Right: chat with manual sessions (only the active session's history is
+   sent to the model, so topics never bleed together).
    ═══════════════════════════════════════════════════════════════════════ */
 (function (root) {
   'use strict';
 
-  /* "2h ago" style relative time from a Firestore Timestamp / Date / string. */
   function toDate(v) {
     if (!v) return null;
     if (typeof v.toDate === 'function') return v.toDate();
@@ -26,46 +27,113 @@
     if (h < 24) return h + 'h ago';
     const days = Math.floor(h / 24);
     if (days < 7) return days + 'd ago';
-    const w = Math.floor(days / 7);
-    if (w < 5) return w + 'w ago';
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
-
   function esc(s) {
     return (typeof escapeHtmlSafe === 'function')
       ? escapeHtmlSafe(s)
       : String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
-  function sectionHead(label) {
-    return '<div class="dash-sub-label brief-section">' + esc(label) + '</div>';
-  }
-  function emptyLine(text) {
-    return '<div class="brief-empty">' + esc(text) + '</div>';
-  }
-
-  /* One-liner for an activity doc: prefer its summary, fall back to
-     "action collection" phrasing. */
-  function activityLine(a, now) {
-    const what = a.summary || [a.userName, a.action, a.collection].filter(Boolean).join(' ') || 'Something happened';
-    return '<div class="brief-row"><span class="brief-dot"></span>' +
-      '<span class="brief-text">' + esc(what) + '</span>' +
-      '<span class="brief-time">' + esc(timeAgo(a.createdAt, now)) + '</span></div>';
+  /* "text with **key phrases**" → escaped HTML with cycling neon spans. */
+  function neonize(text) {
+    let i = 0;
+    return String(text || '').split(/\*\*/).map((chunk, idx) =>
+      idx % 2 === 1
+        ? '<span class="brief-neon brief-neon-' + (i++ % 4) + '">' + esc(chunk) + '</span>'
+        : esc(chunk)
+    ).join('');
   }
 
-  /* ── Agent Chat — talk to your agents, kick off work, approve questions ──
-     The chat DOM is built once and survives brief re-renders; messages stream
-     in live from agent_chat/main/messages. Sending calls the agentChat
-     function, which lets Claude queue agent_tasks / resolve followups. */
+  /* ─── Daily brief (left side) ──────────────────────────────────────── */
+  let _brief = null;
+  let _briefUnsub = null;
+  let _briefBusy = false;
+
+  function renderBrief() {
+    const el = document.getElementById('brief-summary');
+    if (!el) return;
+    if (!_brief) {
+      el.innerHTML =
+        '<div class="brief-empty">No brief yet today.</div>' +
+        '<button type="button" class="brief-refresh-cta" id="brief-generate-btn">✨ Generate my brief</button>';
+      return;
+    }
+    const b = _brief;
+    const tasksHtml = (b.tasks || []).map((t, i) => {
+      const chip = t.status === 'handled'
+        ? '<span class="brief-task-chip brief-chip-done">✓ handled</span>'
+        : t.needsApproval
+          ? '<button type="button" class="brief-task-approve" data-task-i="' + i + '">Approve</button>'
+          : (t.status === 'fyi' ? '<span class="brief-task-chip brief-chip-fyi">fyi</span>' : '');
+      return '<div class="brief-task" data-task-toggle="' + i + '">' +
+        '<div class="brief-task-head"><span class="brief-task-title">' + esc(t.title) + '</span>' + chip + '</div>' +
+        '<div class="brief-task-detail" id="brief-task-detail-' + i + '">' + esc(t.detail || '') + '</div>' +
+      '</div>';
+    }).join('');
+
+    el.innerHTML =
+      '<div class="brief-quote">“' + esc(b.quote || '') + '”</div>' +
+      '<div class="brief-exec">' + neonize(b.brief) + '</div>' +
+      (tasksHtml ? '<div class="dash-sub-label brief-section">TODAY</div>' + tasksHtml : '') +
+      (b.headsUp ? '<div class="dash-sub-label brief-section">HEADS UP</div>' +
+        '<div class="brief-headsup">' + esc(b.headsUp) + '</div>' : '') +
+      '<div class="brief-meta-row">' +
+        '<span>' + esc(timeAgo(b.generatedAt)) + '</span>' +
+        '<button type="button" class="brief-refresh" id="brief-refresh-btn" aria-label="Refresh brief">⟳ refresh</button>' +
+      '</div>';
+  }
+
+  async function refreshBrief() {
+    if (_briefBusy) return;
+    _briefBusy = true;
+    const btn = document.getElementById('brief-refresh-btn') || document.getElementById('brief-generate-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'thinking…'; }
+    try { await firebase.functions().httpsCallable('refreshAgentBrief')({}); }
+    catch (e) { console.warn('refreshAgentBrief failed:', e.message); if (btn) { btn.disabled = false; btn.textContent = '⟳ retry'; } }
+    finally { _briefBusy = false; }
+    /* Fresh doc arrives via the snapshot listener. */
+  }
+
+  async function approveTask(i) {
+    const t = _brief && _brief.tasks && _brief.tasks[i];
+    if (!t || !t.action) return;
+    try {
+      await firebase.firestore().collection('agent_tasks').add({
+        agent: t.action.agent || 'general',
+        title: t.action.title || t.title,
+        instruction: t.action.instruction || t.detail || '',
+        status: 'queued', source: 'brief_approval',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+      t.status = 'handled'; t.needsApproval = false;
+      renderBrief();
+    } catch (e) { console.warn('approveTask failed:', e.message); }
+  }
+
+  /* ─── Chat with manual sessions (right side) ───────────────────────── */
+  const SESSION_KEY = 'ls_agent_chat_session';
   let _chatUnsub = null;
   let _chatBusy = false;
 
+  function currentSession() {
+    try { return localStorage.getItem(SESSION_KEY) || 'main'; } catch (e) { return 'main'; }
+  }
+  function setSession(id) {
+    try { localStorage.setItem(SESSION_KEY, id); } catch (e) { /* ok */ }
+    listenChat();
+  }
+  function newSession() {
+    setSession('s' + Date.now().toString(36));
+  }
+
   function chatShellHtml() {
     return (
-      '<div class="dash-sub-label brief-section">TALK TO YOUR AGENTS</div>' +
-      '<div class="brief-chat-log" id="brief-chat-log" aria-live="polite">' +
-        '<div class="brief-empty">Say something — ask about the business, kick off work, or answer agent questions.</div>' +
+      '<div class="brief-chat-head">' +
+        '<span class="dash-sub-label brief-section" style="margin:0">TALK TO YOUR AGENTS</span>' +
+        '<button type="button" class="brief-new-session" id="brief-new-session" title="Start a fresh conversation — old context won\'t carry over">＋ New session</button>' +
       '</div>' +
+      '<div class="brief-chat-log" id="brief-chat-log" aria-live="polite"></div>' +
       '<form class="brief-chat-form" id="brief-chat-form">' +
         '<input type="text" id="brief-chat-input" class="brief-chat-input" maxlength="4000" ' +
           'placeholder="Message your agents…" autocomplete="off" aria-label="Message your agents">' +
@@ -77,7 +145,10 @@
   function renderChatMessages(docs) {
     const log = document.getElementById('brief-chat-log');
     if (!log) return;
-    if (!docs.length) return; // keep the empty-state hint
+    if (!docs.length) {
+      log.innerHTML = '<div class="brief-empty">Fresh session — ask anything, kick off work, or make a call on something.</div>';
+      return;
+    }
     log.innerHTML = docs.map(d => {
       const m = d.data();
       const mine = m.role === 'user';
@@ -92,6 +163,17 @@
     log.scrollTop = log.scrollHeight;
   }
 
+  function listenChat() {
+    try {
+      if (_chatUnsub) _chatUnsub();
+      _chatUnsub = firebase.firestore()
+        .collection('agent_chat').doc(currentSession()).collection('messages')
+        .orderBy('createdAt', 'desc').limit(30)
+        .onSnapshot(snap => renderChatMessages(snap.docs.slice().reverse()),
+          err => console.warn('agent chat listen failed:', err.message));
+    } catch (e) { console.warn('agent chat init failed:', e.message); }
+  }
+
   function setChatBusy(busy) {
     _chatBusy = busy;
     const send = document.getElementById('brief-chat-send');
@@ -104,15 +186,7 @@
     const form = document.getElementById('brief-chat-form');
     if (!form || form.dataset.wired) return;
     form.dataset.wired = '1';
-
-    try {
-      if (_chatUnsub) _chatUnsub();
-      _chatUnsub = firebase.firestore()
-        .collection('agent_chat').doc('main').collection('messages')
-        .orderBy('createdAt', 'desc').limit(30)
-        .onSnapshot(snap => renderChatMessages(snap.docs.slice().reverse()),
-          err => console.warn('agent chat listen failed:', err.message));
-    } catch (e) { console.warn('agent chat init failed:', e.message); }
+    listenChat();
 
     form.addEventListener('submit', async (ev) => {
       ev.preventDefault();
@@ -123,8 +197,7 @@
       input.value = '';
       setChatBusy(true);
       try {
-        await firebase.functions().httpsCallable('agentChat')({ message: text });
-        /* Reply arrives via the snapshot listener. */
+        await firebase.functions().httpsCallable('agentChat')({ message: text, sessionId: currentSession() });
       } catch (e) {
         const log = document.getElementById('brief-chat-log');
         if (log) log.insertAdjacentHTML('beforeend',
@@ -134,115 +207,37 @@
     });
   }
 
-  /* Approve / deny an open followup straight from the brief (deterministic
-     client-side write — no model in the loop for a button press). */
-  async function resolveFollowup(id, decision) {
-    try {
-      await firebase.firestore().collection('kendell_followups').doc(id).update({
-        status: 'answered', completed: true, decision,
-        answeredVia: 'agent_brief', answeredAt: firebase.firestore.FieldValue.serverTimestamp(),
-      });
-      if (typeof renderDashboard === 'function') renderDashboard();
-    } catch (e) { console.warn('resolveFollowup failed:', e.message); }
-  }
-
+  /* ─── Widget entry point ───────────────────────────────────────────── */
   function renderAgentBriefWidget(data, now) {
     const el = document.getElementById('w-agent-brief');
     if (!el) return;
-    data = data || {};
-    now = now || new Date();
 
-    /* Two-zone layout: #brief-summary is rebuilt every refresh; the chat is
-       built once so the input, focus, and listener survive re-renders. */
     if (!document.getElementById('brief-summary') || !el.contains(document.getElementById('brief-summary'))) {
-      el.innerHTML = '<div id="brief-summary"></div><div id="brief-chat">' + chatShellHtml() + '</div>';
+      el.innerHTML = '<div id="brief-summary">Loading…</div><div id="brief-chat">' + chatShellHtml() + '</div>';
       initChat();
+
+      /* One delegated click handler for the whole widget. */
       el.addEventListener('click', (ev) => {
-        const btn = ev.target.closest('[data-fu-id]');
-        if (btn) resolveFollowup(btn.dataset.fuId, btn.dataset.fuDecision || 'done');
+        const approve = ev.target.closest('[data-task-i]');
+        if (approve) { ev.stopPropagation(); approveTask(Number(approve.dataset.taskI)); return; }
+        const toggle = ev.target.closest('[data-task-toggle]');
+        if (toggle) {
+          const d = document.getElementById('brief-task-detail-' + toggle.dataset.taskToggle);
+          if (d) d.classList.toggle('open');
+          return;
+        }
+        if (ev.target.closest('#brief-refresh-btn') || ev.target.closest('#brief-generate-btn')) { refreshBrief(); return; }
+        if (ev.target.closest('#brief-new-session')) { newSession(); return; }
       });
+
+      /* Live-follow the daily brief doc. */
+      try {
+        if (_briefUnsub) _briefUnsub();
+        _briefUnsub = firebase.firestore().collection('agent_brief').doc('latest')
+          .onSnapshot(doc => { _brief = doc.exists ? doc.data() : null; renderBrief(); },
+            err => console.warn('brief listen failed:', err.message));
+      } catch (e) { console.warn('brief init failed:', e.message); }
     }
-    const summaryEl = document.getElementById('brief-summary');
-    renderBriefSummary(summaryEl, data, now);
-  }
-
-  function renderBriefSummary(el, data, now) {
-    if (!el) return;
-
-    /* ── Since you last looked — recent activity ── */
-    const activity = (data.activity || []).slice(0, 5);
-    const activityHtml = activity.length
-      ? activity.map(a => activityLine(a, now)).join('')
-      : emptyLine('All quiet — nothing new since your last visit.');
-
-    /* ── Needs you — unmatched messages + open followups ── */
-    const unmatched = (data.unmatched || [])
-      .slice()
-      .sort((a, b) => (toDate(b.sentAt || b.createdAt) || 0) - (toDate(a.sentAt || a.createdAt) || 0))
-      .slice(0, 4);
-    const followups = (data.followups || []).slice(0, 4);
-
-    const unmatchedHtml = unmatched.map(m => {
-      const who = m.fromDisplay || m.from || 'Unknown sender';
-      const subj = m.subject || '(no subject)';
-      return '<button type="button" class="brief-row brief-link" onclick="loadModule(\'crm\')" ' +
-        'aria-label="Open CRM to handle message from ' + esc(who) + '">' +
-        '<span class="brief-dot brief-dot-amber"></span>' +
-        '<span class="brief-text"><strong>' + esc(subj) + '</strong> — from ' + esc(who) + '</span>' +
-        '<span class="brief-time">' + esc(timeAgo(m.sentAt || m.createdAt, now)) + ' · CRM →</span></button>';
-    }).join('');
-
-    const followupsHtml = followups.map(f => {
-      const btns = f.id
-        ? '<span class="brief-fu-btns">' +
-          '<button type="button" class="brief-fu-btn brief-fu-yes" data-fu-id="' + esc(f.id) + '" data-fu-decision="approved" aria-label="Approve">✓</button>' +
-          '<button type="button" class="brief-fu-btn brief-fu-no" data-fu-id="' + esc(f.id) + '" data-fu-decision="denied" aria-label="Deny / dismiss">✕</button>' +
-          '</span>'
-        : '';
-      return '<div class="brief-row"><span class="brief-dot brief-dot-amber"></span>' +
-        '<span class="brief-text">' + esc(f.title || 'Follow-up needed') + '</span>' +
-        btns +
-        '<span class="brief-time">' + esc(timeAgo(f.createdAt, now)) + '</span></div>';
-    }).join('');
-
-    const needsYouHtml = (unmatchedHtml + followupsHtml) ||
-      emptyLine('Nothing needs you right now. Enjoy it.');
-
-    /* ── Pipeline — lead counts by stage ── */
-    const leads = data.leads || [];
-    const stageOrder = ['New Lead', 'Expo Email Sent', 'Call Scheduled', 'Contacted',
-      'Proposal Sent', 'Booked-Tentative', 'Booked', 'Completed', 'Lost'];
-    const counts = {};
-    leads.forEach(l => {
-      const s = l.stage || 'New Lead';
-      counts[s] = (counts[s] || 0) + 1;
-    });
-    const stages = stageOrder.filter(s => counts[s])
-      .concat(Object.keys(counts).filter(s => !stageOrder.includes(s)).sort());
-    const pipelineHtml = stages.length
-      ? '<div class="brief-pipeline">' + stages.map(s =>
-          '<span class="brief-stage"><span class="brief-stage-n">' + counts[s] + '</span> ' + esc(s) + '</span>'
-        ).join('') + '</div>'
-      : emptyLine('No leads yet — time to go find some.');
-
-    /* Agent-voice headline — the one-line summary that replaces the old
-       stacked alert banners. Deterministic, computed from live data. */
-    const nUm = (data.unmatched || []).length;
-    const nFu = (data.followups || []).length;
-    const needsBits = [];
-    if (nUm) needsBits.push(nUm + ' unmatched email' + (nUm > 1 ? 's' : ''));
-    if (nFu) needsBits.push(nFu + ' follow-up' + (nFu > 1 ? 's' : ''));
-    const hot = (counts['Proposal Sent'] || 0);
-    const headline = (needsBits.length
-        ? needsBits.join(' and ') + ' need' + (nUm + nFu === 1 ? 's' : '') + ' you.'
-        : 'Nothing is waiting on you.') +
-      (hot ? ' ' + hot + ' proposal' + (hot > 1 ? 's' : '') + ' out — worth a nudge.' : '');
-
-    el.innerHTML =
-      '<div class="brief-headline">' + esc(headline) + '</div>' +
-      sectionHead('NEEDS YOU') + needsYouHtml +
-      sectionHead('PIPELINE') + pipelineHtml +
-      sectionHead('SINCE YOU LAST LOOKED') + activityHtml;
   }
 
   root.renderAgentBriefWidget = renderAgentBriefWidget;

@@ -27,6 +27,7 @@ service cloud.firestore {
     // dashboard reads them live and may read/adjust queued tasks.
     match /agent_chat/{document=**} { allow read, write: if isAdmin(); }
     match /agent_tasks/{id}         { allow read, write: if isAdmin(); }
+    match /agent_brief/{id}         { allow read, write: if isAdmin(); }
 
     // ── Communications Hub: unmatched messages (no confident lead match) ──
     // Created by syncGmail (admin SDK); admins read + attach them to a lead.

@@ -1513,3 +1513,53 @@ td { padding: 11px 12px; font-size: 12.5px; }
   color: var(--champagne, #d4af76);
   margin-bottom: 12px;
 }
+
+/* ═══ Executive brief design ═══════════════════════════════════════════ */
+.brief-quote {
+  font-style: italic; font-size: 13.5px; line-height: 1.5;
+  color: rgba(255,255,255,0.55); margin-bottom: 14px;
+}
+.brief-exec { font-size: 15px; line-height: 1.65; margin-bottom: 6px; }
+.brief-neon { font-weight: 600; }
+.brief-neon-0 { color: #4be3a4; text-shadow: 0 0 14px rgba(75,227,164,0.45); }
+.brief-neon-1 { color: #5ec8ff; text-shadow: 0 0 14px rgba(94,200,255,0.45); }
+.brief-neon-2 { color: #ff8ad4; text-shadow: 0 0 14px rgba(255,138,212,0.45); }
+.brief-neon-3 { color: #ffd166; text-shadow: 0 0 14px rgba(255,209,102,0.45); }
+
+.brief-task {
+  border: 1px solid var(--border); border-radius: 12px;
+  padding: 10px 14px; margin-bottom: 8px; cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.brief-task:hover { background: rgba(255,255,255,0.03); border-color: rgba(212,175,118,0.4); }
+.brief-task-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.brief-task-title { font-size: 13.5px; font-weight: 500; }
+.brief-task-detail {
+  display: none; font-size: 12.5px; line-height: 1.55;
+  color: rgba(255,255,255,0.65); margin-top: 8px;
+}
+.brief-task-detail.open { display: block; }
+.brief-task-chip {
+  font-size: 11px; padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+}
+.brief-chip-done { background: rgba(75,227,164,0.12); color: #4be3a4; }
+.brief-chip-fyi  { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.55); }
+.brief-task-approve {
+  min-height: 30px; padding: 0 14px; border-radius: 999px; border: none; cursor: pointer;
+  background: var(--champagne, #d4af76); color: #10182b; font-size: 12px; font-weight: 600;
+}
+.brief-headsup { font-size: 13px; line-height: 1.6; color: rgba(255,255,255,0.75); }
+.brief-meta-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 14px; font-size: 11px; color: rgba(255,255,255,0.4);
+}
+.brief-refresh, .brief-new-session {
+  background: none; border: 1px solid var(--border); border-radius: 999px;
+  color: rgba(255,255,255,0.6); font-size: 11px; padding: 4px 12px; cursor: pointer;
+}
+.brief-refresh:hover, .brief-new-session:hover { color: #fff; border-color: rgba(212,175,118,0.5); }
+.brief-refresh-cta {
+  min-height: 44px; padding: 0 20px; border-radius: 12px; border: none; cursor: pointer;
+  background: var(--champagne, #d4af76); color: #10182b; font-weight: 600; margin-top: 10px;
+}
+.brief-chat-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
