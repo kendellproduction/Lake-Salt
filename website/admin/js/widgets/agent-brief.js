@@ -45,10 +45,25 @@
     ).join('');
   }
 
-  /* ─── Daily brief (left side) ──────────────────────────────────────── */
+  /* ─── Daily brief (left side) — Mission Control layout ─────────────── */
   let _brief = null;
   let _briefUnsub = null;
   let _briefBusy = false;
+  let _stats = null;   // computed from _dashData for the neon stat strip
+
+  function statStripHtml() {
+    if (!_stats) return '';
+    const cells = [
+      { n: _stats.newLeads,  label: 'NEW',       c: 0 },
+      { n: _stats.proposals, label: 'PROPOSALS', c: 1 },
+      { n: _stats.booked,    label: 'BOOKED',    c: 2 },
+      { n: _stats.unmatched, label: 'UNMATCHED', c: 3 },
+      { n: _stats.followups, label: 'FOLLOWUPS', c: 1 },
+    ];
+    return '<div class="brief-stat-strip">' + cells.map(s =>
+      '<div class="brief-stat brief-stat-' + s.c + '"><div class="brief-stat-n">' + s.n + '</div>' +
+      '<div class="brief-stat-l">' + s.label + '</div></div>').join('') + '</div>';
+  }
 
   function renderBrief() {
     const el = document.getElementById('brief-summary');
@@ -60,28 +75,45 @@
       return;
     }
     const b = _brief;
+    const gen = toDate(b.generatedAt);
+    const stale = gen && (Date.now() - gen) > 20 * 3600 * 1000;
+    const dateLabel = (gen || new Date()).toLocaleDateString('en-US',
+      { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase();
+
     const tasksHtml = (b.tasks || []).map((t, i) => {
       const chip = t.status === 'handled'
         ? '<span class="brief-task-chip brief-chip-done">✓ handled</span>'
         : t.needsApproval
           ? '<button type="button" class="brief-task-approve" data-task-i="' + i + '">Approve</button>'
           : (t.status === 'fyi' ? '<span class="brief-task-chip brief-chip-fyi">fyi</span>' : '');
+      const tag = t.tag ? '<span class="brief-task-tag brief-neon-' + (i % 4) + '">' + esc(t.tag) + '</span>' : '';
       return '<div class="brief-task" data-task-toggle="' + i + '">' +
-        '<div class="brief-task-head"><span class="brief-task-title">' + esc(t.title) + '</span>' + chip + '</div>' +
+        '<div class="brief-task-head">' +
+          '<span class="brief-task-num">' + (i + 1) + '</span>' + tag +
+          '<span class="brief-task-title">' + esc(t.title) + '</span>' + chip +
+        '</div>' +
         '<div class="brief-task-detail" id="brief-task-detail-' + i + '">' + esc(t.detail || '') + '</div>' +
       '</div>';
     }).join('');
 
+    const bullets = (b.headsUpBullets || []).map(s =>
+      '<div class="brief-headsup-bullet">✦ ' + esc(String(s).replace(/^[✦◆•\-\s]+/, '')) + '</div>').join('');
+
     el.innerHTML =
       '<div class="brief-quote">“' + esc(b.quote || '') + '”</div>' +
+      '<div class="brief-topbar">' +
+        '<span class="dash-sub-label" style="margin:0">✨ YOUR BRIEF · ' + esc(dateLabel) + '</span>' +
+        '<span class="brief-topbar-right">updated ' + esc(timeAgo(b.generatedAt)) +
+        ' <button type="button" class="brief-refresh" id="brief-refresh-btn" aria-label="Refresh brief">⟳</button></span>' +
+      '</div>' +
+      (stale ? '<div class="brief-stale">⚠ Brief is from ' +
+        esc(gen.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })) +
+        ' — hit ⟳ to refresh</div>' : '') +
       '<div class="brief-exec">' + neonize(b.brief) + '</div>' +
-      (tasksHtml ? '<div class="dash-sub-label brief-section">TODAY</div>' + tasksHtml : '') +
-      (b.headsUp ? '<div class="dash-sub-label brief-section">HEADS UP</div>' +
-        '<div class="brief-headsup">' + esc(b.headsUp) + '</div>' : '') +
-      '<div class="brief-meta-row">' +
-        '<span>' + esc(timeAgo(b.generatedAt)) + '</span>' +
-        '<button type="button" class="brief-refresh" id="brief-refresh-btn" aria-label="Refresh brief">⟳ refresh</button>' +
-      '</div>';
+      (tasksHtml ? '<div class="dash-sub-label brief-section">NEEDS YOU NOW</div>' + tasksHtml : '') +
+      statStripHtml() +
+      ((b.headsUp || bullets) ? '<div class="dash-sub-label brief-section">HEADS UP — TOMORROW & THIS WEEK</div>' +
+        (b.headsUp ? '<div class="brief-headsup">' + neonize(b.headsUp) + '</div>' : '') + bullets : '');
   }
 
   async function refreshBrief() {
@@ -211,6 +243,20 @@
   function renderAgentBriefWidget(data, now) {
     const el = document.getElementById('w-agent-brief');
     if (!el) return;
+
+    /* Neon stat strip numbers come from the dashboard's already-fetched data. */
+    if (data && data.leads) {
+      const stages = {};
+      data.leads.forEach(l => { const s = l.stage || 'New Lead'; stages[s] = (stages[s] || 0) + 1; });
+      _stats = {
+        newLeads:  stages['New Lead'] || 0,
+        proposals: stages['Proposal Sent'] || 0,
+        booked:    (stages['Booked'] || 0) + (stages['Booked-Tentative'] || 0),
+        unmatched: (data.unmatched || []).length,
+        followups: (data.followups || []).length,
+      };
+      renderBrief();
+    }
 
     if (!document.getElementById('brief-summary') || !el.contains(document.getElementById('brief-summary'))) {
       el.innerHTML = '<div id="brief-summary">Loading…</div><div id="brief-chat">' + chatShellHtml() + '</div>';

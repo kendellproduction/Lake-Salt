@@ -2237,6 +2237,7 @@ const PUBLISH_BRIEF_TOOL = [{
           properties: {
             title: { type: 'string', description: 'Short imperative line shown collapsed' },
             detail: { type: 'string', description: '1-3 sentences shown when expanded: the why and the specifics' },
+            tag: { type: 'string', description: 'Short source chip, e.g. LEAD, EMAIL, QUOTE, CRM, EVENT' },
             status: { type: 'string', enum: ['handled', 'proposed', 'fyi'], description: 'handled = you queued it yourself; proposed = needs Kendell tap; fyi = no action' },
             needsApproval: { type: 'boolean' },
             action: {
@@ -2251,7 +2252,11 @@ const PUBLISH_BRIEF_TOOL = [{
           required: ['title', 'detail', 'status'],
         },
       },
-      headsUp: { type: 'string', description: '1-2 sentences: what is coming tomorrow / later this week worth knowing now.' },
+      headsUp: { type: 'string', description: 'One intro line for the heads-up section (e.g. "Quiet week ahead — no events booked.").' },
+      headsUpBullets: {
+        type: 'array', maxItems: 4, items: { type: 'string' },
+        description: 'Short ✦-style bullets: specific things coming tomorrow / later this week worth knowing now.',
+      },
     },
     required: ['quote', 'brief', 'tasks', 'headsUp'],
   },
@@ -2311,6 +2316,7 @@ Events next 14 days: ${JSON.stringify(ctx.upcomingEvents)}`,
   const tasks = [];
   for (const t of (brief.tasks || []).slice(0, 6)) {
     const task = { title: String(t.title || ''), detail: String(t.detail || ''),
+                   tag: String(t.tag || '').slice(0, 12).toUpperCase(),
                    status: t.status, needsApproval: !!t.needsApproval, action: t.action || null };
     if (t.status === 'handled' && t.action && !t.needsApproval) {
       try {
@@ -2331,6 +2337,7 @@ Events next 14 days: ${JSON.stringify(ctx.upcomingEvents)}`,
     brief: String(brief.brief || ''),
     tasks,
     headsUp: String(brief.headsUp || ''),
+    headsUpBullets: Array.isArray(brief.headsUpBullets) ? brief.headsUpBullets.slice(0, 4).map(String) : [],
     trigger, generatedAt: now,
   };
   await db.collection('agent_brief').doc('latest').set(doc);
