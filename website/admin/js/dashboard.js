@@ -109,8 +109,23 @@ function renderWidgetGrid() {
   const grid = document.getElementById('dash-widgets');
   if (!grid) return;
   const prefs = getDashPrefs();
+
+  /* Agent Brief is the command center — it renders full-width at the very
+     top of the page (hero slot), not inside the grid. Toggling it off in
+     Customize still hides it. */
+  const hero = document.getElementById('dash-agent-hero');
+  if (hero) {
+    const w = WIDGETS.find(x => x.id === 'agentBrief');
+    hero.innerHTML = (w && prefs.enabled.agentBrief)
+      ? `<div class="card dash-widget dash-agent-hero-card" data-widget="agentBrief">
+          <div class="card-header"><span class="card-title">${w.title}</span></div>
+          <div id="${w.elId}">Loading…</div>
+        </div>`
+      : '';
+  }
+
   grid.innerHTML = prefs.order
-    .filter(id => prefs.enabled[id])
+    .filter(id => prefs.enabled[id] && id !== 'agentBrief')
     .map(id => {
       const w = WIDGETS.find(x => x.id === id);
       if (!w) return '';
@@ -251,8 +266,8 @@ async function renderDashboard() {
       <button type="button" id="dash-customize-btn" class="dash-customize-toggle" onclick="toggleCustomizeMode()">⚙️ Customize</button>
     </div>
     <div id="dash-customize" class="dash-customize-panel" style="display:none"></div>
+    <div id="dash-agent-hero" style="margin-bottom:16px"></div>
     <div id="upcoming-calls"></div>
-    <div id="dash-alerts" style="margin-bottom:16px"></div>
     <div id="quick-actions"></div>
     <div class="card" id="action-queue" style="margin-bottom:16px"><div class="card-header"><span class="card-title">Action Queue</span><span class="card-subtitle">What needs attention next</span></div><div id="w-action-queue">Loading…</div></div>
     <div id="dash-filter" class="dash-filter"></div>
@@ -298,7 +313,9 @@ async function renderDashboard() {
   renderWidgetGrid();
 
   renderFilter();
-  renderAlerts();
+  /* Alert banners retired — the Agent Brief hero summarizes and hosts the
+     same followups/unmatched items with inline actions (renderAlerts kept
+     for reference but no longer called). */
   renderAll();
   if (typeof initQuickScanWidget === 'function') initQuickScanWidget();
 }

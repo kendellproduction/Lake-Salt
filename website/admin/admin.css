@@ -1495,3 +1495,21 @@ td { padding: 11px 12px; font-size: 12.5px; }
 .brief-fu-yes { color: #7fe0a0; }
 .brief-fu-no  { color: #ff9d9d; }
 .brief-fu-btn:hover { background: rgba(255,255,255,0.12); }
+
+/* Agent Brief as full-width hero: brief on the left, chat on the right. */
+.dash-agent-hero-card #w-agent-brief {
+  display: grid; grid-template-columns: 1fr; gap: 20px;
+}
+@media (min-width: 900px) {
+  .dash-agent-hero-card #w-agent-brief { grid-template-columns: 1.1fr 1fr; }
+  .dash-agent-hero-card #brief-chat {
+    display: flex; flex-direction: column; min-height: 100%;
+    border-left: 1px solid var(--border); padding-left: 20px;
+  }
+  .dash-agent-hero-card .brief-chat-log { flex: 1; max-height: 340px; }
+}
+.brief-headline {
+  font-size: 15px; line-height: 1.5; font-weight: 500;
+  color: var(--champagne, #d4af76);
+  margin-bottom: 12px;
+}

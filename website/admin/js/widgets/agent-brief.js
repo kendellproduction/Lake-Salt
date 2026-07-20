@@ -225,10 +225,24 @@
         ).join('') + '</div>'
       : emptyLine('No leads yet — time to go find some.');
 
+    /* Agent-voice headline — the one-line summary that replaces the old
+       stacked alert banners. Deterministic, computed from live data. */
+    const nUm = (data.unmatched || []).length;
+    const nFu = (data.followups || []).length;
+    const needsBits = [];
+    if (nUm) needsBits.push(nUm + ' unmatched email' + (nUm > 1 ? 's' : ''));
+    if (nFu) needsBits.push(nFu + ' follow-up' + (nFu > 1 ? 's' : ''));
+    const hot = (counts['Proposal Sent'] || 0);
+    const headline = (needsBits.length
+        ? needsBits.join(' and ') + ' need' + (nUm + nFu === 1 ? 's' : '') + ' you.'
+        : 'Nothing is waiting on you.') +
+      (hot ? ' ' + hot + ' proposal' + (hot > 1 ? 's' : '') + ' out — worth a nudge.' : '');
+
     el.innerHTML =
-      sectionHead('SINCE YOU LAST LOOKED') + activityHtml +
+      '<div class="brief-headline">' + esc(headline) + '</div>' +
       sectionHead('NEEDS YOU') + needsYouHtml +
-      sectionHead('PIPELINE') + pipelineHtml;
+      sectionHead('PIPELINE') + pipelineHtml +
+      sectionHead('SINCE YOU LAST LOOKED') + activityHtml;
   }
 
   root.renderAgentBriefWidget = renderAgentBriefWidget;
