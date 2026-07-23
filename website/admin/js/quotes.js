@@ -27,27 +27,27 @@
  *     larger events.
  *   • PROFIT FLOOR (Adobe/corporate): never make LESS than profitFloorCorp
  *     ($1,000) on a corporate event — and the cap does NOT apply to them.
- *   • MARGIN FLOOR: never quote below marginFloorPct (40%).
+ *   • MARGIN FLOOR: never quote below marginFloorPct (35%); 40% is the normal target.
  *
  * Bartender pay is a FLAT per-event amount Kendell sets (not hourly). Tips
  * are kept by staff and are NOT part of this calc.
  * ───────────────────────────────────────────────────────────────────────── */
 const DEFAULT_QUOTE_DEFAULTS = {
   /* Labor: flat pay PER BARTENDER for the event (Kendell's cost, not hourly) */
-  bartenderPayDefault: 250,   // typical flat pay per bartender; edit per quote
+  bartenderPayDefault: 200,   // typical flat pay per bartender; adjust $150-$300 by event complexity
   bartendersPerGuests: 60,    // 1 bartender per N guests (cocktail service)
 
   /* Event costs */
-  suppliesDefault: 200,       // cups, ice, garnishes, mixers — edit per event
+  suppliesDefault: 150,       // cups, ice, garnishes, mixers; adjust by guests/hours/menu
   travelBase: 0,              // travel/gas for out-of-area; built into cost
 
   hoursDefault: 5,
 
   /* Margin targets by event type (what % of the quote is profit) */
-  marginLargePct: 60,         // large weddings/events — start here
+  marginLargePct: 40,         // weddings/events — 35% is the controlled floor during close-out testing
   marginSmallPct: 40,         // small private events
   marginCorpPct: 65,          // Adobe / corporate repeat
-  marginFloorPct: 40,         // hard floor — never quote below this margin
+  marginFloorPct: 35,         // temporary floor while Lake Salt builds closing momentum
 
   /* Profit cap (anti-overcharge ceiling for weddings/private) */
   profitCapTrigger: 1000,     // once %-based profit would exceed this…
@@ -63,6 +63,36 @@ const DEFAULT_QUOTE_DEFAULTS = {
     { label: 'Match competitor', pct: 8 }
   ],
   quoteExpiryDays: 14
+};
+
+const PROPOSAL_TEMPLATE_PRESETS = {
+  wedding: {
+    label: 'Wedding',
+    tone: 'warm',
+    menuText: [
+      'Two signature cocktails selected with you, poured alongside wine and beer.',
+      'We can help narrow the menu once you know the exact direction you want the bar to feel.'
+    ].join('\n'),
+    alcoholNote: 'Lake Salt is a dry-hire service - you provide the alcohol and we handle everything else. Once the menu is set, we send a simple shopping guide sized to your guest count so you buy exactly what you need.',
+    nextSteps: 'Reply to move forward and we will lock in your date. A 10% deposit holds the date; the balance is due on or before your event.'
+  },
+  corporate: {
+    label: 'Corporate / Hosted Event',
+    tone: 'polished',
+    menuText: [
+      'Three signature cocktails, each made to order, alongside a curated selection of wines and beer.',
+      'We can build the final cocktail list around the room, the meal, and the way you want guests to move through the evening.'
+    ].join('\n'),
+    alcoholNote: 'Lake Salt is a dry-hire service: we bring the bar, team, drinkware, ice, mixers, garnishes, and service equipment. You purchase alcohol at store prices using our shopping list - no markup, ever.',
+    nextSteps: 'Choose the signature cocktail direction, then we will confirm the logistics and follow up with the agreement and alcohol shopping list.'
+  },
+  simple: {
+    label: 'Simple Follow-Up',
+    tone: 'direct',
+    menuText: 'Custom drink menu, cocktails and mocktails, with wine and beer service as needed.',
+    alcoholNote: 'Alcohol is not included. We send the shopping list and handle the bar, mixers, garnishes, supplies, setup, and breakdown.',
+    nextSteps: 'Reply when you are ready and we will lock in the date with a deposit.'
+  }
 };
 
 /* Event-type → which margin default + whether the profit cap applies.
@@ -121,6 +151,506 @@ function parseGuests(g) {
   // Handles "150", "150-300", "150–300"
   const m = String(g).match(/(\d+)/);
   return m ? parseInt(m[1], 10) : 100;
+}
+
+const LEAD_READY_LABELS = {
+  name: 'Name',
+  email: 'Email',
+  phone: 'Phone',
+  eventType: 'Event type',
+  eventDate: 'Event date',
+  eventStartTime: 'Service start time',
+  eventEndTime: 'Service end time',
+  guestCount: 'Guest count',
+  venue: 'Venue',
+  hasBuiltInBar: 'Built-in bar',
+  drinks: 'Drinks',
+  drinkVibes: 'Drink vibes',
+  drinkDetail: 'Special requests / drink notes',
+  champagneGlassware: 'Champagne glassware'
+};
+
+function parseLeadListValue(value) {
+  if (Array.isArray(value)) {
+    return value.map(v => String(v || '').trim()).filter(Boolean);
+  }
+  return String(value || '')
+    .split(/[,;\n]/)
+    .map(v => v.trim())
+    .filter(Boolean);
+}
+
+function formatLeadListValue(value, empty = '—') {
+  const list = parseLeadListValue(value);
+  if (list.length) return list.join(', ');
+  const text = String(value || '').trim();
+  return text || empty;
+}
+
+function leadFieldHasContent(key, value) {
+  if (key === 'guestCount' || key === 'budget') return Number(String(value || '').replace(/[^0-9.]/g, '')) > 0;
+  if (key === 'hasBuiltInBar') return ['yes', 'no', 'unsure'].includes(String(value || '').trim().toLowerCase());
+  if (key === 'drinks' || key === 'drinkVibes') return parseLeadListValue(value).length > 0;
+  if (key === 'drinkDetail') return String(value || '').trim().length > 0;
+  return String(value || '').trim().length > 0;
+}
+
+function getLeadQuoteReadiness(lead = {}) {
+  const requiredKeys = ['name', 'email', 'eventType', 'eventDate', 'eventStartTime', 'eventEndTime', 'guestCount', 'venue', 'hasBuiltInBar', 'drinks', 'drinkDetail'];
+  const helpfulKeys = ['phone', 'budget', 'drinkVibes'];
+  const drinks = parseLeadListValue(lead.drinks).join(' ').toLowerCase();
+  if (/champagne|bubbly|toast|prosecco/.test(drinks)) requiredKeys.push('champagneGlassware');
+  const normalizedLead = {
+    ...lead,
+    drinkDetail: lead.drinkDetail || lead.specialRequests || lead.message || (Array.isArray(lead.notes) ? lead.notes.join(' ') : lead.notes) || ''
+  };
+  const missingRequired = requiredKeys.filter(key => !leadFieldHasContent(key, normalizedLead[key]));
+  const missingHelpful = helpfulKeys.filter(key => !leadFieldHasContent(key, normalizedLead[key]));
+  return {
+    ready: missingRequired.length === 0,
+    missingRequired,
+    missingHelpful,
+    missingRequiredLabels: missingRequired.map(key => LEAD_READY_LABELS[key] || key),
+    missingHelpfulLabels: missingHelpful.map(key => LEAD_READY_LABELS[key] || key),
+    missingLabels: [...missingRequired, ...missingHelpful]
+      .map(key => LEAD_READY_LABELS[key] || key)
+      .filter((label, idx, arr) => arr.indexOf(label) === idx),
+  };
+}
+
+window.getLeadQuoteReadiness = window.getLeadQuoteReadiness || getLeadQuoteReadiness;
+window.formatLeadListValue = window.formatLeadListValue || formatLeadListValue;
+window.parseLeadListValue = window.parseLeadListValue || parseLeadListValue;
+
+const QUOTE_MARGIN_MIN = 35;
+const QUOTE_MARGIN_MAX = 80;
+
+function clampMargin(value, min = QUOTE_MARGIN_MIN, max = QUOTE_MARGIN_MAX) {
+  const n = Number(value);
+  if (Number.isNaN(n)) return min;
+  return Math.min(max, Math.max(min, Math.round(n)));
+}
+
+function normQuoteText(value) {
+  return String(value || '').toLowerCase().trim();
+}
+
+function hasAnyKeyword(value, keywords) {
+  const text = normQuoteText(value);
+  return keywords.some((kw) => text.includes(kw));
+}
+
+function inferSeasonFromDate(value) {
+  if (!value) return '';
+  const d = new Date(`${value}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return '';
+  const month = d.getMonth();
+  if (month === 11 || month <= 1) return 'winter';
+  if (month <= 4) return 'spring';
+  if (month <= 7) return 'summer';
+  return 'fall';
+}
+
+function inferDrinkVibe(q = {}, season = '') {
+  const blob = [
+    q.eventType,
+    q.venue,
+    q.notes,
+    q.drinks,
+    q.drinkDetail,
+    q.message,
+    q.proposal?.eventTitle,
+    q.proposal?.menuText,
+    q.proposal?.alcoholNote,
+    q.proposal?.style
+  ].join(' ');
+  const text = normQuoteText(blob);
+  const eventType = normQuoteText(q.eventType);
+  const vibe = {
+    primary: 'balanced',
+    accent: 'contrast',
+    label: 'Balanced / adaptable',
+    note: 'keeps the menu flexible and easy to tune'
+  };
+
+  if (hasAnyKeyword(text, ['corporate', 'company', 'conference', 'seminar', 'adobe', 'business', 'board', 'gala'])) {
+    vibe.primary = 'polished';
+    vibe.accent = 'bright';
+    vibe.label = 'Polished / professional';
+    vibe.note = 'leans clean, classic, and easy to serve at scale';
+  } else if (hasAnyKeyword(text, ['wedding', 'romantic', 'garden', 'ceremony', 'reception'])) {
+    vibe.primary = season === 'winter' ? 'cozy' : 'bright';
+    vibe.accent = season === 'winter' ? 'bright' : 'botanical';
+    vibe.label = 'Celebratory / wedding-forward';
+    vibe.note = 'wants one crowd-pleaser, one contrast, and one zero-proof lane';
+  } else if (hasAnyKeyword(text, ['tropical', 'tiki', 'beach', 'summer', 'pool', 'pineapple', 'citrus', 'spritz'])) {
+    vibe.primary = 'bright';
+    vibe.accent = 'tropical';
+    vibe.label = 'Bright / refreshing';
+    vibe.note = 'works best with citrus, spritzes, and a crisp backup option';
+  } else if (hasAnyKeyword(text, ['winter', 'holiday', 'spice', 'spiced', 'bourbon', 'whiskey', 'espresso', 'mulled'])) {
+    vibe.primary = 'cozy';
+    vibe.accent = 'polished';
+    vibe.label = 'Cozy / seasonal';
+    vibe.note = 'benefits from stirred drinks plus one lighter contrast';
+  } else if (hasAnyKeyword(text, ['garden', 'herb', 'herbal', 'floral', 'light', 'fresh', 'mint', 'cucumber', 'lavender'])) {
+    vibe.primary = 'botanical';
+    vibe.accent = 'bright';
+    vibe.label = 'Botanical / fresh';
+    vibe.note = 'reads bright, airy, and easy to contrast with something richer';
+  } else if (hasAnyKeyword(text, ['mocktail', 'zero-proof', 'nonalcoholic', 'dry', 'n/a'])) {
+    vibe.primary = 'zeroProof';
+    vibe.accent = 'bright';
+    vibe.label = 'Zero-proof friendly';
+    vibe.note = 'puts a real nonalcoholic lane on the menu instead of a token garnish';
+  } else if (hasAnyKeyword(text, ['bourbon', 'manhattan', 'old fashioned', 'negroni', 'martini', 'stirred'])) {
+    vibe.primary = 'stirred';
+    vibe.accent = 'bright';
+    vibe.label = 'Stirred / spirit-forward';
+    vibe.note = 'pairs best with one clean bright drink and one mocktail contrast';
+  } else if (hasAnyKeyword(text, ['fun', 'playful', 'themed', 'festival', 'birthday', 'party'])) {
+    vibe.primary = 'playful';
+    vibe.accent = 'botanical';
+    vibe.label = 'Playful / crowd-pleasing';
+    vibe.note = 'can carry a loud signature, a clean contrast, and a zero-proof bridge';
+  } else if (eventType.includes('private')) {
+    vibe.primary = 'balanced';
+    vibe.accent = 'bright';
+    vibe.label = 'Private / balanced';
+    vibe.note = 'keeps the menu friendly without making it generic';
+  }
+
+  return { ...vibe, season: season || 'year-round' };
+}
+
+const DRINK_LIBRARY = {
+  bright: {
+    title: 'Bright citrus',
+    examples: 'grapefruit spritz, lemon-basil gin fizz, paloma',
+    note: 'Best when you want something crisp, sunny, and easy to drink early in the event.'
+  },
+  botanical: {
+    title: 'Botanical / herbal',
+    examples: 'cucumber cooler, rosemary gin sour, lavender spritz',
+    note: 'Feels polished without being heavy.'
+  },
+  polished: {
+    title: 'Polished classics',
+    examples: 'paper plane, bourbon peach smash, classic margarita',
+    note: 'Smooth, familiar, and good for mixed audiences.'
+  },
+  cozy: {
+    title: 'Cozy / stirred',
+    examples: 'spiced old fashioned, espresso martini, apple bourbon sour',
+    note: 'Reads deeper, warmer, and more winter-friendly.'
+  },
+  tropical: {
+    title: 'Tropical / lively',
+    examples: 'pineapple rum punch, passionfruit margarita, coconut lime spritz',
+    note: 'Keeps the menu moving and playful.'
+  },
+  stirred: {
+    title: 'Stirred / spirit-forward',
+    examples: 'negroni, boulevardier, whiskey sour variation',
+    note: 'Best when the room wants a more serious cocktail lane.'
+  },
+  playful: {
+    title: 'Playful / themed',
+    examples: 'berry lemonade vodka, candy-colored spritz, punch bowl format',
+    note: 'Good for casual celebrations or a strong theme.'
+  },
+  zeroProof: {
+    title: 'Zero-proof',
+    examples: 'citrus thyme tonic, ginger pear spritz, berry shrub soda',
+    note: 'Should feel intentionally designed, not like an afterthought.'
+  },
+  balanced: {
+    title: 'Balanced crowd-pleasers',
+    examples: 'vodka citrus spritz, gin Collins, whiskey smash',
+    note: 'A safe, flexible middle lane.'
+  }
+};
+
+function buildDrinkRecommendations(q = {}) {
+  const season = inferSeasonFromDate(q.eventDate);
+  const vibe = inferDrinkVibe(q, season);
+  const drinkText = [q.drinks, q.drinkDetail, q.message, q.notes].join(' ').toLowerCase();
+  const wantsBeerWine = hasAnyKeyword(drinkText, ['beer', 'wine', 'champagne', 'prosecco', 'sparkling', 'rosé', 'rose']);
+  const wantsMocktail = hasAnyKeyword(drinkText, ['mocktail', 'zero-proof', 'nonalcoholic', 'dry', 'n/a']);
+
+  const contrastMap = {
+    bright: 'cozy',
+    botanical: 'polished',
+    polished: 'bright',
+    cozy: 'bright',
+    tropical: 'botanical',
+    stirred: 'bright',
+    playful: 'botanical',
+    zeroProof: 'polished',
+    balanced: 'bright'
+  };
+
+  const seasonMap = {
+    winter: 'cozy',
+    spring: 'botanical',
+    summer: 'bright',
+    fall: 'stirred'
+  };
+
+  const primaryKey = vibe.primary === 'balanced' && seasonMap[season] ? seasonMap[season] : vibe.primary;
+  const secondaryKey = contrastMap[primaryKey] || vibe.accent || 'bright';
+  const supportKey = wantsMocktail ? 'zeroProof' : (wantsBeerWine ? 'balanced' : 'zeroProof');
+  const tertiaryKey = season === 'winter' ? 'cozy' : 'zeroProof';
+
+  const uniqueKeys = [...new Set([primaryKey, secondaryKey, supportKey, tertiaryKey].filter(Boolean))].slice(0, 3);
+  while (uniqueKeys.length < 3) uniqueKeys.push('balanced');
+
+  const recs = uniqueKeys.map((key, idx) => {
+    const item = DRINK_LIBRARY[key] || DRINK_LIBRARY.balanced;
+    return {
+      key,
+      label: idx === 0 ? 'Primary direction' : idx === 1 ? 'Contrast' : 'Support',
+      title: item.title,
+      examples: item.examples,
+      note: item.note
+    };
+  });
+
+  const seasonalCue = season ? `${season.charAt(0).toUpperCase() + season.slice(1)}-leaning` : 'Year-round';
+  const menuText = [
+    `${seasonalCue} drink direction: ${vibe.label}.`,
+    `Primary lane: ${recs[0].title} - ${recs[0].examples}.`,
+    `Contrast lane: ${recs[1].title} - ${recs[1].examples}.`,
+    `Support lane: ${recs[2].title} - ${recs[2].examples}.`,
+    `Why it works: ${vibe.note}`
+  ].join('\n');
+
+  return {
+    season: season || 'year-round',
+    vibe,
+    recs,
+    menuText,
+    hasBeerWine: wantsBeerWine
+  };
+}
+
+function buildQuoteReadiness(q = {}, lead = {}) {
+  const drinkPlan = buildDrinkRecommendations(q);
+  const contact = [lead.email, lead.phone].some(Boolean);
+  const startTime = String(lead.eventStartTime || q.eventStartTime || '').trim();
+  const endTime = String(lead.eventEndTime || q.eventEndTime || '').trim();
+  const timeWindow = !!(startTime && endTime);
+  const barInfo = typeof lead.hasBuiltInBar === 'boolean' || ['yes', 'no', 'unsure'].includes(String(lead.hasBuiltInBar || '').trim().toLowerCase());
+  const drinkInfo = parseLeadListValue(lead.drinks).length > 0;
+  const specialRequests = String(lead.specialRequests || lead.drinkDetail || lead.message || q.notes || '').trim();
+  const drinkText = parseLeadListValue(lead.drinks).join(' ').toLowerCase();
+  const needsGlassware = /champagne|bubbly|toast|prosecco/.test(drinkText);
+  const glasswareInfo = !needsGlassware || !!String(lead.champagneGlassware || lead.glassware || '').trim();
+  const pricingBand = clampMargin(q.marginPct);
+  const sections = [
+    {
+      title: 'Core lead info',
+      items: [
+        { label: 'Lead name', ok: !!String(q.leadName || lead.name || '').trim(), detail: q.leadName || lead.name || 'Missing', required: true },
+        { label: 'Event type', ok: !!String(q.eventType || lead.eventType || '').trim(), detail: q.eventType || lead.eventType || 'Missing', required: true },
+        { label: 'Event date', ok: !!String(q.eventDate || lead.eventDate || '').trim(), detail: q.eventDate || lead.eventDate || 'Missing', required: true },
+        { label: 'Guest count', ok: Number(q.guestCount || lead.guestCount) > 0, detail: Number(q.guestCount || lead.guestCount) > 0 ? `${Number(q.guestCount || lead.guestCount)} guests` : 'Missing', required: true },
+        { label: 'Venue', ok: !!String(q.venue || lead.venue || '').trim(), detail: q.venue || lead.venue || 'Missing', required: true }
+      ]
+    },
+    {
+      title: 'Service logistics',
+      items: [
+        { label: 'Contact info', ok: contact, detail: contact ? [lead.email, lead.phone].filter(Boolean).join(' / ') : 'Need email or phone', required: true },
+        { label: 'Service window', ok: timeWindow, detail: timeWindow ? `${startTime} - ${endTime}` : 'Missing', required: true },
+        { label: 'Built-in bar info', ok: barInfo, detail: barInfo ? String(lead.hasBuiltInBar) : 'Missing', required: true },
+        { label: 'Champagne / glassware', ok: glasswareInfo, detail: glasswareInfo ? (needsGlassware ? (lead.champagneGlassware || lead.glassware) : 'Not needed') : 'Confirm flutes or plastic', required: true }
+      ]
+    },
+    {
+      title: 'Menu direction',
+      items: [
+        { label: 'Drink package', ok: drinkInfo, detail: drinkInfo ? formatLeadListValue(lead.drinks) : 'Missing', required: true },
+        { label: 'Drink direction', ok: !!String(lead.drinkVibes || lead.drinkDetail || '').trim(), detail: lead.drinkVibes || lead.drinkDetail || 'Missing', required: true },
+        { label: 'Special requests / logistics', ok: !!specialRequests, detail: specialRequests || 'Confirm none or add requests', required: true },
+        { label: 'Seasonal fit', ok: !!drinkPlan.season, detail: drinkPlan.season, required: true },
+        { label: 'Contrasting lanes', ok: drinkPlan.recs.length === 3, detail: `${drinkPlan.recs[0].title} / ${drinkPlan.recs[1].title} / ${drinkPlan.recs[2].title}`, required: true }
+      ]
+    },
+    {
+      title: 'Pricing guardrails',
+      items: [
+        { label: 'Bartenders', ok: Number(q.bartenders) > 0, detail: Number(q.bartenders) > 0 ? `${q.bartenders} bartenders` : 'Missing', required: true },
+        { label: 'Bartender pay', ok: Number(q.bartenderPay) > 0, detail: Number(q.bartenderPay) > 0 ? moneyFmt(q.bartenderPay) : 'Missing', required: true },
+        { label: 'Supplies', ok: Number(q.supplies) >= 0, detail: moneyFmt(q.supplies), required: true },
+        { label: 'Travel', ok: Number(q.travel) >= 0, detail: moneyFmt(q.travel), required: true },
+        { label: 'Margin band', ok: pricingBand >= QUOTE_MARGIN_MIN, detail: `${pricingBand}% target`, required: true }
+      ]
+    }
+  ];
+
+  const requiredItems = sections.flatMap((section) => section.items.filter((item) => item.required !== false));
+  const readyCount = requiredItems.filter((item) => item.ok).length;
+  const totalCount = requiredItems.length;
+  const canLock = requiredItems.every((item) => item.ok);
+  return { sections, readyCount, totalCount, canLock, canSend: canLock, drinkPlan };
+}
+
+/* Readiness details are narrow (~110px in the 2-col grid), so an unbounded value —
+   e.g. the client's full inquiry message under "Special requests" — collapses into a
+   one-word-per-line ribbon that blows out the panel. Collapse whitespace, cap the
+   preview, and keep the full text in a tooltip. */
+const READINESS_DETAIL_MAX = 60;
+function readinessDetailParts(raw) {
+  const text = String(raw == null ? '' : raw).replace(/\s+/g, ' ').trim();
+  // `full` carries the complete text even when no truncation happened: the
+  // 3-line CSS clamp can still hide the tail (a 43-char venue clips in this
+  // column), so the tooltip has to cover both cases.
+  if (text.length <= READINESS_DETAIL_MAX) return { preview: text, full: text };
+  return { preview: text.slice(0, READINESS_DETAIL_MAX - 1).trimEnd() + '…', full: text };
+}
+
+function renderReadinessHTML(readiness) {
+  const pct = readiness.totalCount ? Math.round((readiness.readyCount / readiness.totalCount) * 100) : 0;
+  const tone = readiness.canLock ? '#22c55e' : pct >= 70 ? '#FACC15' : '#E05252';
+  return `
+    <div style="margin-top:12px;padding:12px;border:1px solid rgba(59,130,246,0.25);border-radius:10px;background:rgba(59,130,246,0.06)">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+        <div>
+          <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:#A8B5D9">Private quote readiness</div>
+          <div class="text-muted" style="font-size:11px;margin-top:2px">${readiness.readyCount}/${readiness.totalCount} required items ready</div>
+        </div>
+        <div style="font-size:13px;font-weight:700;color:${tone}">${readiness.canLock ? 'Ready to lock' : 'Needs attention'}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+        ${readiness.sections.map((section) => `
+          <div style="padding:8px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,0.02)">
+            <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:6px">${section.title}</div>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              ${section.items.map((item) => {
+                const detail = readinessDetailParts(item.detail);
+                return `
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;font-size:12px;line-height:1.35">
+                  <span style="color:${item.ok ? 'var(--text)' : '#E05252'}">${item.ok ? '✓' : '•'}&nbsp;${escapeHtmlSafe(item.label)}</span>
+                  <span class="text-muted"${detail.full ? ` title="${escapeHtmlSafe(detail.full)}"` : ''} style="text-align:right;max-width:56%;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${escapeHtmlSafe(detail.preview)}</span>
+                </div>
+              `;
+              }).join('')}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function buildQuoteGuidance(q = {}, lead = {}) {
+  const season = inferSeasonFromDate(q.eventDate);
+  const vibe = inferDrinkVibe(q, season);
+  const guests = Number(q.guestCount || lead.guestCount) || parseGuests(q.guestCount || lead.guestCount);
+  const bartenderCount = Math.max(1, Math.ceil(guests / QUOTE_DEFAULTS.bartendersPerGuests));
+  const basePay = Number(q.bartenderPay || QUOTE_DEFAULTS.bartenderPayDefault) || QUOTE_DEFAULTS.bartenderPayDefault;
+  const eventText = [q.eventType, lead.eventType].join(' ').toLowerCase();
+  const menuText = [lead.drinks, lead.drinkDetail, q.notes, q.proposal?.menuText].join(' ').toLowerCase();
+
+  let complexity = 0;
+  if (hasAnyKeyword(eventText, ['wedding', 'corporate', 'conference', 'gala', 'festival'])) complexity += 1;
+  if (hasAnyKeyword(menuText, ['signature', 'craft', 'custom', 'featured', 'cocktail'])) complexity += 1;
+  if (hasAnyKeyword(menuText, ['outdoor', 'tent', 'estate', 'mountain', 'remote'])) complexity += 1;
+  if (season === 'winter' || season === 'summer') complexity += 1;
+  if (lead.hasBuiltInBar === false) complexity += 1;
+
+  const payTarget = Math.max(150, Math.round(basePay + (complexity * 15) + (vibe.primary === 'cozy' || vibe.primary === 'polished' ? 10 : 0)));
+  const payLow = Math.max(125, payTarget - 25);
+  const payHigh = payTarget + 25;
+
+  const suppliesBase = Number(q.supplies || QUOTE_DEFAULTS.suppliesDefault) || QUOTE_DEFAULTS.suppliesDefault;
+  const suppliesTarget = Math.max(100, Math.round(suppliesBase + (guests > 150 ? 50 : guests > 80 ? 25 : 0) + (vibe.primary === 'bright' || vibe.primary === 'tropical' ? 20 : 0) + (lead.hasBuiltInBar === false ? 25 : 0)));
+  const suppliesLow = Math.max(75, suppliesTarget - 25);
+  const suppliesHigh = suppliesTarget + 35;
+
+  const travelLocal = 0;
+  const travelNearby = Math.max(25, Math.round(15 + (complexity * 10)));
+  const travelFar = Math.max(75, Math.round(50 + (complexity * 20)));
+
+  const note = [
+    lead.hasBuiltInBar === false ? 'No built-in bar usually means a little more setup pressure.' : 'Built-in bar means you can keep setup leaner.',
+    hasAnyKeyword(menuText, ['wine', 'beer']) ? 'Beer and wine leaning menus usually keep labor cleaner.' : 'A cocktail-heavy menu usually deserves higher labor and supply guardrails.',
+    season ? `${season.charAt(0).toUpperCase() + season.slice(1)} events usually need season-aware garnish and ice planning.` : 'Season is unknown, so stay conservative on supplies.'
+  ].join(' ');
+
+  return {
+    bartender: { count: bartenderCount, low: payLow, target: payTarget, high: payHigh },
+    supplies: { low: suppliesLow, target: suppliesTarget, high: suppliesHigh },
+    travel: { local: travelLocal, nearby: travelNearby, far: travelFar },
+    vibe,
+    note
+  };
+}
+
+function renderGuidanceHTML(guidance, drinkPlan) {
+  return `
+    <div style="margin-top:12px;padding:12px;border:1px solid rgba(139,155,126,0.35);border-radius:10px;background:rgba(139,155,126,0.06)">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+        <div>
+          <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--teal-lt)">Internal cost guidance</div>
+          <div class="text-muted" style="font-size:11px;margin-top:2px">Flexible ranges for labor and expenses, kept inside the 35-40% band.</div>
+        </div>
+        <div style="font-size:12px;font-weight:700;color:var(--gold)">${guidance.bartender.count} bartenders suggested</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
+        <div style="padding:8px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,0.02)">
+          <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:4px">Bartender pay</div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:6px">${moneyFmt(guidance.bartender.low)} - ${moneyFmt(guidance.bartender.high)}</div>
+          <div class="text-muted" style="font-size:11px;line-height:1.45;margin-bottom:8px">Target ${moneyFmt(guidance.bartender.target)} for this event profile.</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button type="button" class="btn btn-ghost btn-sm" data-guidance-action="pay" data-guidance-value="${guidance.bartender.low}" style="padding:3px 8px;font-size:11px">Low</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-guidance-action="pay" data-guidance-value="${guidance.bartender.target}" style="padding:3px 8px;font-size:11px">Target</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-guidance-action="pay" data-guidance-value="${guidance.bartender.high}" style="padding:3px 8px;font-size:11px">High</button>
+          </div>
+        </div>
+        <div style="padding:8px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,0.02)">
+          <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:4px">Supplies / setup</div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:6px">${moneyFmt(guidance.supplies.low)} - ${moneyFmt(guidance.supplies.high)}</div>
+          <div class="text-muted" style="font-size:11px;line-height:1.45;margin-bottom:8px">Target ${moneyFmt(guidance.supplies.target)} for cups, ice, mixers, garnishes, and expendables.</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button type="button" class="btn btn-ghost btn-sm" data-guidance-action="supplies" data-guidance-value="${guidance.supplies.low}" style="padding:3px 8px;font-size:11px">Lean</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-guidance-action="supplies" data-guidance-value="${guidance.supplies.target}" style="padding:3px 8px;font-size:11px">Standard</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-guidance-action="supplies" data-guidance-value="${guidance.supplies.high}" style="padding:3px 8px;font-size:11px">Heavy</button>
+          </div>
+        </div>
+        <div style="padding:8px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,0.02)">
+          <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:4px">Travel</div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:6px">${moneyFmt(guidance.travel.local)} / ${moneyFmt(guidance.travel.nearby)} / ${moneyFmt(guidance.travel.far)}</div>
+          <div class="text-muted" style="font-size:11px;line-height:1.45;margin-bottom:8px">Local, nearby, or long-haul planning bands.</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button type="button" class="btn btn-ghost btn-sm" data-guidance-action="travel" data-guidance-value="${guidance.travel.local}" style="padding:3px 8px;font-size:11px">Local</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-guidance-action="travel" data-guidance-value="${guidance.travel.nearby}" style="padding:3px 8px;font-size:11px">Nearby</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-guidance-action="travel" data-guidance-value="${guidance.travel.far}" style="padding:3px 8px;font-size:11px">Far</button>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:var(--text-muted);line-height:1.5">${escapeHtmlSafe(guidance.note)}</div>
+      ${drinkPlan ? `
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+          <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:6px">Suggested drink direction</div>
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+            ${drinkPlan.recs.map((rec, idx) => `
+              <div style="padding:8px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,0.02)">
+                <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:${idx===0?'var(--gold)':'var(--text-muted)'};margin-bottom:4px">${rec.label}</div>
+                <div style="font-size:13px;font-weight:700;margin-bottom:4px">${escapeHtmlSafe(rec.title)}</div>
+                <div style="font-size:11px;line-height:1.45;color:var(--text-muted)">${escapeHtmlSafe(rec.examples)}</div>
+              </div>
+            `).join('')}
+          </div>
+          <div style="margin-top:8px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+            <div class="text-muted" style="font-size:11px;line-height:1.5">${escapeHtmlSafe(drinkPlan.vibe.note)}</div>
+            <button type="button" class="btn btn-secondary btn-sm" id="qb-use-drink-direction">Use this direction</button>
+          </div>
+        </div>
+      ` : ''}
+    </div>
+  `;
 }
 
 /* ═════════════════════════════════════════════════════════════════════════
@@ -252,10 +782,23 @@ function makeInitialQuote(lead) {
   const guests = parseGuests(lead?.guestCount);
   const budget = parseBudget(lead?.budget);
   const profile = pricingProfileForEventType(lead?.eventType);
+  const style = profile.kind === 'corporate' ? 'corporate' : (String(lead?.eventType || '').toLowerCase().includes('wedding') ? 'wedding' : 'simple');
+  const drinkPlan = buildDrinkRecommendations({
+    eventType: lead?.eventType || '',
+    eventDate: lead?.eventDate || '',
+    venue: lead?.venue || '',
+    drinks: lead?.drinks || '',
+    drinkDetail: lead?.drinkDetail || '',
+    message: lead?.message || '',
+    notes: lead?.notes || '',
+    proposal: { style }
+  });
   return {
     leadId: lead?.id || null,
     leadName: lead?.name || '',
     eventType: lead?.eventType || '',
+    eventDate: lead?.eventDate || '',
+    venue: lead?.venue || '',
     guestCount: guests,
     serviceHours: QUOTE_DEFAULTS.hoursDefault,
 
@@ -267,7 +810,7 @@ function makeInitialQuote(lead) {
 
     /* MARGIN: profile-driven default; user adjusts the slider */
     pricingKind: profile.kind,                          // wedding | private | corporate
-    marginPct: QUOTE_DEFAULTS[profile.marginKey],
+    marginPct: clampMargin(QUOTE_DEFAULTS[profile.marginKey]),
     applyProfitCap: profile.applyCap,                   // weddings/private
     applyCorpFloor: profile.applyCorpFloor,             // corporate
 
@@ -283,9 +826,36 @@ function makeInitialQuote(lead) {
     totalOverride: null,
 
     notes: '',
+    proposal: makeDefaultProposal(lead, style, guests, drinkPlan),
     budgetRaw: budget.raw,
     budgetValid: budget.valid,
-    budgetTarget: budget.valid ? budget.value : 0
+    budgetTarget: budget.valid ? budget.value : 0,
+    drinkPlan
+  };
+}
+
+function makeDefaultProposal(lead, style, guests, drinkPlan = null) {
+  const preset = PROPOSAL_TEMPLATE_PRESETS[style] || PROPOSAL_TEMPLATE_PRESETS.simple;
+  const eventType = lead?.eventType || 'event';
+  const venue = lead?.venue ? ` at ${lead.venue}` : '';
+  const date = lead?.eventDate || '';
+  const serviceWindow = lead?.eventStartTime && lead?.eventEndTime
+    ? `${lead.eventStartTime} - ${lead.eventEndTime}`
+    : '';
+  return {
+    style,
+    eventTitle: `${eventType}${venue}`.trim(),
+    serviceWindow,
+    arrivalPlan: serviceWindow
+      ? `We arrive early enough to set the bar so everything is polished before guests arrive.`
+      : `We arrive early, set the bar, prep garnishes and mixers, and make sure everything is polished before the first guest walks in.`,
+    servicePlan: `Our team pours for ${guests || 'your'} guests with professional bartending, setup, breakdown, mixers, garnishes, ice, and bar equipment included.`,
+    drinkPlan: drinkPlan || buildDrinkRecommendations(lead),
+    menuText: drinkPlan?.menuText || preset.menuText,
+    alcoholNote: preset.alcoholNote,
+    nextSteps: date
+      ? `Reply to move forward and we will lock in ${formatDateForProposal(date)}. A 10% deposit holds your date; the balance is due on or before your event.`
+      : preset.nextSteps
   };
 }
 
@@ -330,7 +900,7 @@ function calcQuote(q) {
   const costBasis = bartenderTotal + supplies + travel;
 
   /* Margin-driven price on the cost basis */
-  const marginPctInput = Math.min(Math.max(Number(q.marginPct) || 0, 0), 95);
+  const marginPctInput = clampMargin(Number(q.marginPct) || 0);
   const marginFloor = QUOTE_DEFAULTS.marginFloorPct || 40;
   const effectiveMargin = Math.max(marginPctInput, marginFloor); // never below floor
   let priceFromMargin = costBasis / (1 - effectiveMargin / 100);
@@ -383,10 +953,97 @@ function calcQuote(q) {
   };
 }
 
+function formatDateForProposal(value) {
+  if (!value) return '';
+  const d = new Date(`${value}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+function firstNameFromLead(name) {
+  return String(name || '').trim().split(/\s+/)[0] || 'there';
+}
+
+function proposalField(q, key) {
+  return q.proposal && q.proposal[key] != null ? q.proposal[key] : '';
+}
+
+function setProposalPreset(q, style) {
+  const preset = PROPOSAL_TEMPLATE_PRESETS[style] || PROPOSAL_TEMPLATE_PRESETS.simple;
+  const drinkPlan = buildDrinkRecommendations(q);
+  q.proposal = {
+    ...makeDefaultProposal(q, style, q.guestCount, drinkPlan),
+    ...(q.proposal || {}),
+    style,
+    drinkPlan,
+    menuText: drinkPlan.menuText || preset.menuText,
+    alcoholNote: preset.alcoholNote,
+    nextSteps: q.eventDate
+      ? `Reply to move forward and we will lock in ${formatDateForProposal(q.eventDate)}. A 10% deposit holds your date; the balance is due on or before your event.`
+      : preset.nextSteps
+  };
+}
+
+function generateProposalText(q, calc) {
+  const proposal = q.proposal || makeDefaultProposal(q, q.pricingKind === 'corporate' ? 'corporate' : 'simple', q.guestCount);
+  const style = proposal.style || 'simple';
+  const title = proposal.eventTitle || [q.eventType, q.venue].filter(Boolean).join(' at ') || 'your event';
+  const dateLine = [q.eventType, formatDateForProposal(q.eventDate), q.venue].filter(Boolean).join('  |  ');
+  const serviceLine = [
+    q.serviceHours ? `${q.serviceHours} hours of service` : '',
+    `${q.bartenders} bartender${q.bartenders === 1 ? '' : 's'}`,
+    q.guestCount ? `${q.guestCount} guests` : ''
+  ].filter(Boolean).join('  |  ');
+  const inclusions = [
+    'Professional bartenders',
+    'Setup and breakdown',
+    'Mobile bar and service equipment',
+    'Mixers, garnishes, ice, cups, and supplies'
+  ];
+  const intro = style === 'corporate'
+    ? `An intentional bar experience changes the room. Here is how Lake Salt would support ${title} - polished service, made-to-order drinks, and a team that owns the flow of the night.`
+    : `Hi ${firstNameFromLead(q.leadName)}, thank you for thinking of Lake Salt for ${title}. Here is how we would bring the bar to life for your event - the plan, what it includes, and the drinks we would love to pour.`;
+  const drinkPlan = proposal.drinkPlan || buildDrinkRecommendations(q);
+  const menuText = proposal.menuText || drinkPlan.menuText || 'Custom drink menu, cocktails and mocktails, with wine and beer service as needed.';
+
+  return [
+    'LAKE SALT BARTENDING',
+    `Prepared for ${q.leadName || 'your event'}${dateLine ? `  |  ${dateLine}` : ''}`,
+    '',
+    intro,
+    '',
+    style === 'corporate' ? 'THE SERVICE PLAN' : 'THE PLAN FOR YOUR EVENT',
+    proposal.arrivalPlan || '',
+    proposal.servicePlan || '',
+    proposal.serviceWindow ? `Service window: ${proposal.serviceWindow}` : '',
+    '',
+    'YOUR INVESTMENT',
+    moneyFmt(calc.total),
+    serviceLine,
+    ...inclusions.map(item => `- ${item}`),
+    '',
+    proposal.alcoholNote || '',
+    '',
+    style === 'corporate' ? 'SIGNATURE COCKTAILS / MENU DIRECTION' : "THE MENU WE'D POUR",
+    menuText,
+    '',
+    'NEXT STEPS',
+    proposal.nextSteps || `A ${q.depositPct}% deposit (${moneyFmt(calc.deposit)}) holds the date. Quote valid for ${QUOTE_DEFAULTS.quoteExpiryDays} days.`,
+    '',
+    `Quote valid for ${QUOTE_DEFAULTS.quoteExpiryDays} days.`,
+    'Kendell | Lake Salt Bartending | contact@lakesalt.us | lakesalt.us'
+  ].filter(line => line !== null && line !== undefined).join('\n');
+}
+
+function generatedProposalPreviewHTML(q, calc) {
+  return escapeHtmlSafe(generateProposalText(q, calc));
+}
+
 /* Client-facing quote text for copy/email. Kendell's rule: quote ONE clean
  * total — no itemized cost breakdown, no bartender pay, supplies, margin, or
  * profit. Just the total, the deposit, the alcohol note, and validity. */
 function quoteText(q, calc) {
+  if (q.proposal) return generateProposalText(q, calc);
   const lines = [
     `Lake Salt Bartending — Quote for ${q.leadName || 'your event'}`,
     `─────────────────────────────────────`,
@@ -484,17 +1141,20 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
         bartenderPay:   li.bartenderPay ?? (li.bartenders ? Math.round(legacyBartenderTotal / li.bartenders) : state.q.bartenderPay),
         supplies:       li.supplies     ?? (legacySupplies || state.q.supplies),
         travel:         li.travel       ?? li.travelFee ?? state.q.travel,
-        marginPct:      li.marginPct      ?? state.q.marginPct,
+        marginPct:      clampMargin(li.marginPct ?? state.q.marginPct),
         pricingKind:    li.pricingKind    ?? state.q.pricingKind,
         applyProfitCap: li.applyProfitCap ?? state.q.applyProfitCap,
         applyCorpFloor: li.applyCorpFloor ?? state.q.applyCorpFloor,
         guestCount:     li.guestCount     ?? state.q.guestCount,
+        eventDate:      saved.eventDate    ?? state.q.eventDate,
+        venue:          saved.venue        ?? state.q.venue,
         lineItems:      Array.isArray(li.custom) ? [...li.custom] : state.q.lineItems,
         discountType:   saved.discountType ?? state.q.discountType,
         discountValue:  saved.discountValue ?? state.q.discountValue,
         depositPct:     saved.depositPct  ?? state.q.depositPct,
         totalOverride:  saved.totalOverride ?? null,
-        notes:          saved.notes || ''
+        notes:          saved.notes || '',
+        proposal:       saved.proposal ? { ...state.q.proposal, ...saved.proposal } : state.q.proposal
       });
       state.priorQuoteId = lead.latestQuoteId;
       state.priorStatus = saved.status;
@@ -506,6 +1166,8 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
     const q = state.q;
     const calc = calcQuote(q);
     const marginColor = calc.marginPct >= 50 ? '#22c55e' : calc.marginPct >= 35 ? '#FACC15' : '#E05252';
+    const readiness = buildQuoteReadiness(q, lead || {});
+    const guidance = buildQuoteGuidance(q, lead || {});
 
     container.innerHTML = `
       <div class="qb-wrap" style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:12px;padding:14px">
@@ -513,6 +1175,9 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
           <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--gold)">💰 Quote builder</div>
           <div id="qb-budget-slot">${budgetBadgeHTML(q, calc)}</div>
         </div>
+
+        <div id="qb-readiness-slot">${renderReadinessHTML(readiness)}</div>
+        <div id="qb-guidance-slot">${renderGuidanceHTML(guidance, readiness.drinkPlan)}</div>
 
         <div id="qb-insights-slot"></div>
 
@@ -534,12 +1199,13 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
             <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">Target margin</div>
             <div id="qb-margin-label" style="font-size:13px;font-weight:700;color:var(--gold)">${Math.round(calc.effectiveMargin)}% · ${moneyFmt(calc.profit)} profit</div>
           </div>
-          <input type="range" id="qb-margin" min="40" max="80" step="1" value="${q.marginPct}" style="width:100%;accent-color:var(--gold)">
+          <input type="range" id="qb-margin" min="${QUOTE_MARGIN_MIN}" max="${QUOTE_MARGIN_MAX}" step="1" value="${clampMargin(q.marginPct)}" style="width:100%;accent-color:var(--gold)">
           <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
-            <button type="button" class="qb-margin-preset btn btn-ghost" data-margin="60" data-kind="wedding" style="padding:2px 10px;font-size:11px">Wedding 60%</button>
-            <button type="button" class="qb-margin-preset btn btn-ghost" data-margin="40" data-kind="private" style="padding:2px 10px;font-size:11px">Private 40%</button>
-            <button type="button" class="qb-margin-preset btn btn-ghost" data-margin="65" data-kind="corporate" style="padding:2px 10px;font-size:11px">Corporate 65%</button>
+            <button type="button" class="qb-margin-preset btn btn-ghost" data-margin="35" data-kind="private" style="padding:2px 10px;font-size:11px">35%</button>
+            <button type="button" class="qb-margin-preset btn btn-ghost" data-margin="37" data-kind="wedding" style="padding:2px 10px;font-size:11px">37%</button>
+            <button type="button" class="qb-margin-preset btn btn-ghost" data-margin="40" data-kind="corporate" style="padding:2px 10px;font-size:11px">40%</button>
           </div>
+          <div class="text-muted" style="font-size:11px;margin-top:6px;line-height:1.5">Keep the quote inside a 35-40% admin margin band. Corporate pricing still has its own profit floor.</div>
         </div>
 
         <!-- USER-DEFINED LINE ITEMS -->
@@ -557,6 +1223,41 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
                   <button type="button" data-li-rm="${i}" class="btn btn-ghost btn-sm" style="padding:4px;font-size:14px;color:#E05252">✕</button>
                 </div>`).join(''))
           }
+        </div>
+
+        <!-- PROPOSAL GENERATOR -->
+        <div style="margin-top:14px;padding:12px;border:1px solid rgba(139,155,126,0.35);border-radius:10px;background:rgba(139,155,126,0.06)">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+            <div>
+              <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--teal-lt)">Proposal generator</div>
+              <div class="text-muted" style="font-size:11px;margin-top:2px">Builds the client-facing quote from your saved examples: plan, investment, dry-hire note, menu, next steps.</div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <select id="qb-proposal-style" class="form-select" style="width:auto;min-width:150px;padding:5px 8px;font-size:12px">
+                ${Object.entries(PROPOSAL_TEMPLATE_PRESETS).map(([key, preset]) => `<option value="${key}" ${proposalField(q, 'style')===key?'selected':''}>${preset.label}</option>`).join('')}
+              </select>
+              <button type="button" id="qb-proposal-preset" class="btn btn-ghost btn-sm">Apply</button>
+            </div>
+          </div>
+          <div class="qb-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px">
+            <label class="qb-field"><span>Proposal title</span>
+              <input type="text" id="qb-prop-title" value="${escapeHtmlSafe(proposalField(q, 'eventTitle'))}" class="form-input qb-proposal-input"></label>
+            <label class="qb-field"><span>Service window</span>
+              <input type="text" id="qb-prop-window" value="${escapeHtmlSafe(proposalField(q, 'serviceWindow'))}" placeholder="5:00 PM - 9:00 PM" class="form-input qb-proposal-input"></label>
+          </div>
+          <label class="qb-field" style="margin-top:8px"><span>Plan</span>
+            <textarea id="qb-prop-plan" class="form-input qb-proposal-input" style="min-height:66px;resize:vertical">${escapeHtmlSafe([proposalField(q, 'arrivalPlan'), proposalField(q, 'servicePlan')].filter(Boolean).join('\n'))}</textarea></label>
+          <label class="qb-field" style="margin-top:8px"><span>Menu / signature cocktails</span>
+            <textarea id="qb-prop-menu" class="form-input qb-proposal-input" style="min-height:76px;resize:vertical">${escapeHtmlSafe(proposalField(q, 'menuText'))}</textarea></label>
+          <label class="qb-field" style="margin-top:8px"><span>Dry-hire alcohol note</span>
+            <textarea id="qb-prop-alcohol" class="form-input qb-proposal-input" style="min-height:56px;resize:vertical">${escapeHtmlSafe(proposalField(q, 'alcoholNote'))}</textarea></label>
+          <label class="qb-field" style="margin-top:8px"><span>Next steps</span>
+            <textarea id="qb-prop-next" class="form-input qb-proposal-input" style="min-height:56px;resize:vertical">${escapeHtmlSafe(proposalField(q, 'nextSteps'))}</textarea></label>
+          <div style="margin-top:10px;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+            <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">Generated copy preview</div>
+            <button type="button" id="qb-copy-proposal" class="btn btn-secondary btn-sm">Copy proposal</button>
+          </div>
+          <pre id="qb-proposal-preview" class="qb-proposal-preview">${generatedProposalPreviewHTML(q, calc)}</pre>
         </div>
 
         <!-- DISCOUNT -->
@@ -601,8 +1302,8 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
         <!-- ACTIONS -->
         <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px">
           <button class="btn btn-secondary btn-sm" id="qb-save">💾 Save draft</button>
-          <button class="btn btn-primary btn-sm" id="qb-lock">🔒 Lock in price</button>
-          <button class="btn btn-primary btn-sm" id="qb-send" style="background:#22c55e;border-color:#22c55e">📤 Send proposal</button>
+          <button class="btn btn-primary btn-sm" id="qb-lock" ${readiness.canLock ? '' : 'disabled title="Complete the readiness checks before locking"'}>🔒 Lock in price</button>
+          <button class="btn btn-primary btn-sm" id="qb-send" style="background:#22c55e;border-color:#22c55e" ${readiness.canSend ? '' : 'disabled title="Complete the readiness checks before sending"'}>📤 Send proposal</button>
           <button class="btn btn-ghost btn-sm" id="qb-copy">📋 Copy text</button>
         </div>
         <div class="text-muted" style="font-size:11px;margin-top:6px;line-height:1.5">
@@ -619,12 +1320,12 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
       el.addEventListener('input', () => { readFieldsIntoState(); repaintTotals(); });
     });
     container.querySelector('#qb-margin')?.addEventListener('input', (e) => {
-      state.q.marginPct = parseFloat(e.target.value) || 0;
+      state.q.marginPct = clampMargin(parseFloat(e.target.value) || 0);
       repaintTotals();
     });
     container.querySelectorAll('.qb-margin-preset').forEach(b => {
       b.addEventListener('click', () => {
-        state.q.marginPct = parseFloat(b.dataset.margin) || state.q.marginPct;
+        state.q.marginPct = clampMargin(parseFloat(b.dataset.margin) || state.q.marginPct);
         state.q.pricingKind = b.dataset.kind;
         if (b.dataset.kind === 'corporate') {
           state.q.applyProfitCap = false;
@@ -669,6 +1370,26 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
         render();
       });
     });
+    container.querySelector('#qb-proposal-preset')?.addEventListener('click', () => {
+      const style = container.querySelector('#qb-proposal-style')?.value || 'simple';
+      setProposalPreset(state.q, style);
+      render();
+      showToast(`Loaded ${PROPOSAL_TEMPLATE_PRESETS[style]?.label || 'proposal'} template`);
+    });
+    container.querySelector('#qb-proposal-style')?.addEventListener('change', (e) => {
+      state.q.proposal = { ...(state.q.proposal || {}), style: e.target.value };
+      repaintTotals();
+    });
+    container.querySelectorAll('.qb-proposal-input').forEach(el => {
+      el.addEventListener('input', () => {
+        readProposalIntoState();
+        repaintTotals();
+      });
+    });
+    container.querySelector('#qb-copy-proposal')?.addEventListener('click', () => {
+      readProposalIntoState();
+      copyToClipboard(generateProposalText(state.q, calcQuote(state.q)));
+    });
     container.querySelector('#qb-override-on')?.addEventListener('change', (e) => {
       if (e.target.checked) {
         const c = calcQuote(state.q);
@@ -701,11 +1422,35 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
       }
     });
     container.querySelector('#qb-notes')?.addEventListener('input', (e) => { state.q.notes = e.target.value; });
+    container.querySelector('#qb-guidance-slot')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-guidance-action], #qb-use-drink-direction');
+      if (!btn) return;
+      if (btn.id === 'qb-use-drink-direction') {
+        const plan = buildDrinkRecommendations(state.q);
+        state.q.proposal = {
+          ...(state.q.proposal || {}),
+          drinkPlan: plan,
+          menuText: plan.menuText
+        };
+        render();
+        showToast('Applied suggested drink direction');
+        return;
+      }
+      const action = btn.dataset.guidanceAction;
+      const value = parseFloat(btn.dataset.guidanceValue) || 0;
+      if (action === 'pay') state.q.bartenderPay = value;
+      if (action === 'supplies') state.q.supplies = value;
+      if (action === 'travel') state.q.travel = value;
+      repaintTotals();
+    });
 
     container.querySelector('#qb-save')?.addEventListener('click', () => saveQuote('draft'));
     container.querySelector('#qb-lock')?.addEventListener('click', () => saveQuote('locked'));
     container.querySelector('#qb-send')?.addEventListener('click', () => openSendProposalMenu(calc));
-    container.querySelector('#qb-copy')?.addEventListener('click', () => copyToClipboard(quoteText(state.q, calc)));
+    container.querySelector('#qb-copy')?.addEventListener('click', () => {
+      readProposalIntoState();
+      copyToClipboard(quoteText(state.q, calcQuote(state.q)));
+    });
 
     loadHistory();
     loadInsights();
@@ -781,19 +1526,41 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
     q.supplies        = v('qb-supplies') ?? q.supplies;
     q.travel          = v('qb-travel') ?? q.travel;
     const marginEl = document.getElementById('qb-margin');
-    if (marginEl) q.marginPct = parseFloat(marginEl.value) || q.marginPct;
+    if (marginEl) q.marginPct = clampMargin(parseFloat(marginEl.value) || q.marginPct);
     const discEl = document.getElementById('qb-discval');
     if (discEl) q.discountValue = parseFloat(discEl.value) || 0;
+  }
+
+  function readProposalIntoState() {
+    const plan = document.getElementById('qb-prop-plan')?.value || '';
+    const planLines = plan.split(/\n+/).map(s => s.trim()).filter(Boolean);
+    state.q.proposal = {
+      ...(state.q.proposal || {}),
+      style: document.getElementById('qb-proposal-style')?.value || state.q.proposal?.style || 'simple',
+      eventTitle: document.getElementById('qb-prop-title')?.value || '',
+      serviceWindow: document.getElementById('qb-prop-window')?.value || '',
+      arrivalPlan: planLines[0] || '',
+      servicePlan: planLines.slice(1).join('\n') || '',
+      menuText: document.getElementById('qb-prop-menu')?.value || '',
+      alcoholNote: document.getElementById('qb-prop-alcohol')?.value || '',
+      nextSteps: document.getElementById('qb-prop-next')?.value || ''
+    };
   }
 
   /* Surgical UI refresh — touches only the parts that depend on calc.
    * No focus loss, no scroll jump. */
   function repaintTotals() {
     const calc = calcQuote(state.q);
+    const readiness = buildQuoteReadiness(state.q, lead || {});
+    const guidance = buildQuoteGuidance(state.q, lead || {});
     const totals = document.getElementById('qb-totals-grid');
     if (totals) totals.innerHTML = totalsGridHTML(state.q, calc);
     const slot = document.getElementById('qb-budget-slot');
     if (slot) slot.innerHTML = budgetBadgeHTML(state.q, calc);
+    const readinessSlot = document.getElementById('qb-readiness-slot');
+    if (readinessSlot) readinessSlot.innerHTML = renderReadinessHTML(readiness);
+    const guidanceSlot = document.getElementById('qb-guidance-slot');
+    if (guidanceSlot) guidanceSlot.innerHTML = renderGuidanceHTML(guidance, readiness.drinkPlan);
     const marginLabel = document.getElementById('qb-margin-label');
     if (marginLabel) marginLabel.textContent = `${Math.round(calc.effectiveMargin)}% · ${moneyFmt(calc.profit)} profit`;
     const margin = document.getElementById('qb-margin-line');
@@ -802,6 +1569,18 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
       margin.style.color = c;
       margin.textContent = `${moneyFmt(calc.profit)} · ${Math.round(calc.marginPct)}% margin`;
     }
+    const lockBtn = document.getElementById('qb-lock');
+    if (lockBtn) {
+      lockBtn.disabled = !readiness.canLock;
+      lockBtn.title = readiness.canLock ? '' : 'Complete the readiness checks before locking';
+    }
+    const sendBtn = document.getElementById('qb-send');
+    if (sendBtn) {
+      sendBtn.disabled = !readiness.canSend;
+      sendBtn.title = readiness.canSend ? '' : 'Complete the readiness checks before sending';
+    }
+    const preview = document.getElementById('qb-proposal-preview');
+    if (preview) preview.textContent = generateProposalText(state.q, calc);
   }
 
   /* Save a quote at the given status.
@@ -814,10 +1593,23 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
    *
    * Lock does NOT change the lead stage — only Send does. */
   async function saveQuote(status, sendMeta = null) {
+    readProposalIntoState();
     const calc = calcQuote(state.q);
     if ((status === 'locked' || status === 'sent') && !state.q.leadId) {
       alert('Link a lead before locking or sending the quote.');
       return null;
+    }
+    if (status === 'locked' || status === 'sent') {
+      const readiness = buildQuoteReadiness(state.q, lead || {});
+      if (!readiness.canLock) {
+        openModal('Quote not ready', `
+          <div style="font-size:13px;line-height:1.5">
+            <p class="text-muted" style="margin-bottom:12px">Finish the required fields before you lock or send this quote.</p>
+            ${renderReadinessHTML(readiness)}
+          </div>
+        `, { wide: true });
+        return null;
+      }
     }
     const now = TS();
     const me = currentUser?.displayName || currentUser?.email || 'Admin';
@@ -826,6 +1618,9 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
     const payload = {
       leadId: state.q.leadId,
       leadName: state.q.leadName,
+      eventType: state.q.eventType,
+      eventDate: state.q.eventDate,
+      venue: state.q.venue,
       lineItems: {
         bartenders: state.q.bartenders,
         bartenderPay: state.q.bartenderPay,
@@ -853,6 +1648,10 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
       marginPct: calc.marginPct,
       budgetTarget: state.q.budgetTarget,
       notes: state.q.notes,
+      proposal: {
+        ...(state.q.proposal || {}),
+        generatedText: generateProposalText(state.q, calc)
+      },
       status,
       expiresAt: new Date(Date.now() + QUOTE_DEFAULTS.quoteExpiryDays * 86400000).toISOString().slice(0,10),
       updatedAt: now,
@@ -926,6 +1725,18 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
    * 'accepted' — that's the "agreement" step the user asked for. */
   async function openSendProposalMenu(calc) {
     if (!state.q.leadId) { alert('Link a lead before sending.'); return; }
+    readProposalIntoState();
+    calc = calcQuote(state.q);
+    const readiness = buildQuoteReadiness(state.q, lead || {});
+    if (!readiness.canSend) {
+      openModal('Quote not ready', `
+        <div style="font-size:13px;line-height:1.5">
+          <p class="text-muted" style="margin-bottom:12px">Finish the required fields before sending the proposal.</p>
+          ${renderReadinessHTML(readiness)}
+        </div>
+      `, { wide: true });
+      return;
+    }
     const email = options.leadEmail || lead?.email || '';
     const phone = (lead?.phone || '').replace(/\D/g, '');
 
@@ -953,6 +1764,9 @@ Quick highlights:
 • ${state.q.bartenders} professional bartender${state.q.bartenders===1?'':'s'}
 • Custom drink menu (cocktails + mocktails) · alcohol not included
 • Total: ${moneyFmt(calc.total)} · ${state.q.depositPct}% deposit (${moneyFmt(calc.deposit)}) holds your date
+
+Proposal copy:
+${text}
 
 Have questions before you decide? Just reply — happy to talk it through.
 
@@ -1215,6 +2029,15 @@ function openNewQuoteModal() {
           <input id="nq-guests" type="number" class="form-input" placeholder="Guest count">
           <input id="nq-venue" class="form-input" placeholder="Venue">
           <input id="nq-budget" type="number" class="form-input" placeholder="Stated budget $">
+          <select id="nq-bar" class="form-select">
+            <option value="">Built-in bar?</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+            <option value="unsure">Unsure</option>
+          </select>
+          <input id="nq-drinks" class="form-input" placeholder="Drinks (comma-separated)">
+          <input id="nq-vibes" class="form-input" placeholder="Drink vibes (comma-separated)">
+          <textarea id="nq-drink-detail" class="form-textarea" style="grid-column:1 / -1;min-height:72px;resize:vertical" placeholder="Drink notes, must-haves, things to avoid…"></textarea>
         </div>
         <button class="btn btn-primary btn-sm" id="nq-create" style="margin-top:10px;width:100%">Create lead & start quote</button>
       </div>
@@ -1281,6 +2104,10 @@ function openNewQuoteModal() {
       guestCount: document.getElementById('nq-guests').value || '',
       venue:      document.getElementById('nq-venue').value.trim(),
       budget:     document.getElementById('nq-budget').value || '',
+      hasBuiltInBar: document.getElementById('nq-bar').value || '',
+      drinks:     parseLeadListValue(document.getElementById('nq-drinks').value || ''),
+      drinkVibes: parseLeadListValue(document.getElementById('nq-vibes').value || ''),
+      drinkDetail: document.getElementById('nq-drink-detail').value || '',
       stage:      'New Lead',
       source:     'Admin · Manual Quote',
       createdAt:  TS()
@@ -1497,7 +2324,7 @@ async function mergeLeads(keepId, dropIds) {
   const mergedTasks = Array.isArray(keep.tasks) ? [...keep.tasks] : [];
   const mergeHistory = Array.isArray(keep.mergeHistory) ? [...keep.mergeHistory] : [];
 
-  const trackedFields = ['name','email','phone','venue','eventType','eventDate','guestCount','budget','message','source','priority','followUpDate','hasBuiltInBar','drinks','drinkDetail','eventStartTime','eventEndTime'];
+  const trackedFields = ['name','email','phone','venue','eventType','eventDate','guestCount','budget','message','source','priority','followUpDate','hasBuiltInBar','drinks','drinkVibes','drinkDetail','eventStartTime','eventEndTime'];
 
   for (const dropId of dropIds) {
     const dropDoc = await db.collection('leads').doc(dropId).get();
@@ -1660,6 +2487,14 @@ async function openQuoteViewModal(quoteId) {
     ${q.notes ? `<div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px">
       <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:6px">Notes</div>
       <div style="font-size:13px;line-height:1.6">${escapeHtmlSafe(q.notes)}</div>
+    </div>` : ''}
+
+    ${q.proposal?.generatedText ? `<div style="background:rgba(139,155,126,0.06);border:1px solid rgba(139,155,126,0.35);border-radius:10px;padding:12px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">
+        <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--teal-lt)">Generated proposal copy</div>
+        <button class="btn btn-secondary btn-sm" onclick="copyToClipboard(${JSON.stringify(q.proposal.generatedText).replace(/"/g, '&quot;')})">Copy</button>
+      </div>
+      <pre class="qb-proposal-preview" style="max-height:260px;margin-top:0">${escapeHtmlSafe(q.proposal.generatedText)}</pre>
     </div>` : ''}
 
     <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px">

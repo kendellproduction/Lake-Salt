@@ -524,7 +524,7 @@ function renderUpcomingWidget(now) {
         <span class="dash-row-sub">${escapeHtmlSafe(l.eventType||'')} · ${l._when.toLocaleDateString('en-US',{month:'short',day:'numeric'})}${l.guestCount?` · ${escapeHtmlSafe(String(l.guestCount))} guests`:''}</span>
       </div>
       <div class="dash-row-side">
-        ${l.budget ? `<span class="dash-row-amt">${fmtMoney(l.budget)}</span>` : ''}
+        ${l.budget ? `<span class="dash-row-amt">${escapeHtmlSafe(fmtMoney(l.budget))}</span>` : ''}
         <span class="badge ${l._staffed?'badge-green':'badge-amber'}">${l._staffed?'✅ staffed':'⚠ staff'}</span>
       </div>
     </button>`).join('')}</div>`;

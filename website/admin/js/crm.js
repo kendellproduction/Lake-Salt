@@ -141,17 +141,18 @@ function filterKanban() { renderKanban(); }
 
 function leadCardHTML(l) {
   const priorityDot = l.priority === 'Urgent' ? '🔴' : l.priority === 'High' ? '🟠' : '';
-  return `<div class="lead-card" onclick="openLeadModal('${l.id}')">
-    <div class="lead-card-name">${priorityDot} ${l.name || 'Unknown'}</div>
+  return `<div class="lead-card" onclick="openLeadModal(${jsStr(l.id)})">
+    <div class="lead-card-name">${priorityDot} ${escapeHtml(l.name || 'Unknown')}</div>
     <div class="lead-card-meta">
-      ${l.email ? `<div class="lead-card-row">✉ ${l.email}</div>` : ''}
-      ${l.eventType ? `<div class="lead-card-row">🎉 ${l.eventType}</div>` : ''}
-      ${l.eventDate ? `<div class="lead-card-row">📅 ${l.eventDate}</div>` : ''}
-      ${l.guestCount ? `<div class="lead-card-row">👥 ${l.guestCount} guests</div>` : ''}
+      ${l.email ? `<div class="lead-card-row">✉ ${escapeHtml(l.email)}</div>` : ''}
+      ${l.eventType ? `<div class="lead-card-row">🎉 ${escapeHtml(l.eventType)}</div>` : ''}
+      ${l.eventDate ? `<div class="lead-card-row">📅 ${escapeHtml(l.eventDate)}</div>` : ''}
+      ${l.guestCount ? `<div class="lead-card-row">👥 ${escapeHtml(l.guestCount)} guests</div>` : ''}
     </div>
     <div class="lead-card-tags">
-      ${l.source ? `<span class="badge" style="background:rgba(201,168,76,0.1);color:var(--gold)">${l.source}</span>` : ''}
-      ${l.budget ? `<span class="badge" style="background:rgba(26,158,143,0.1);color:var(--teal)">${fmtMoney(l.budget)}</span>` : ''}
+      ${l.commsUnread > 0 ? `<span class="badge" style="background:rgba(34,197,94,0.18);color:#22c55e;font-weight:700" title="Unread messages">✉ ${escapeHtml(l.commsUnread)} new</span>` : ''}
+      ${l.source ? `<span class="badge" style="background:rgba(201,168,76,0.1);color:var(--gold)">${escapeHtml(l.source)}</span>` : ''}
+      ${l.budget ? `<span class="badge" style="background:rgba(26,158,143,0.1);color:var(--teal)">${escapeHtml(fmtMoney(l.budget))}</span>` : ''}
       ${l.notes && l.notes.length ? `<span class="badge" style="background:rgba(100,116,139,0.15);color:#8A9DB5">${l.notes.length} note${l.notes.length>1?'s':''}</span>` : ''}
     </div>
   </div>`;
@@ -180,9 +181,12 @@ async function openLeadModal(id) {
   }
 
   const mergeBadge = Array.isArray(l.mergeHistory) && l.mergeHistory.length
-    ? `<button type="button" class="badge" onclick="showMergeHistory('${id}')" style="background:rgba(100,116,139,0.2);color:#94a3b8;border:none;cursor:pointer;margin-left:6px">📎 Merged from ${l.mergeHistory.length} duplicate${l.mergeHistory.length===1?'':'s'} · view</button>`
+    ? `<button type="button" class="badge" onclick="showMergeHistory(${jsStr(id)})" style="background:rgba(100,116,139,0.2);color:#94a3b8;border:none;cursor:pointer;margin-left:6px">📎 Merged from ${l.mergeHistory.length} duplicate${l.mergeHistory.length===1?'':'s'} · view</button>`
     : '';
 
+  /* The title arg is assigned via textContent in openModal (app.js), so it must
+     NOT be escaped here — doing so would surface literal &amp; in the heading.
+     The second arg is innerHTML; everything interpolated into it is escaped. */
   openModal(`Lead: ${l.name || 'Unknown'}${mergeBadge ? '' : ''}`, `
     <div class="lead-modal-grid">
       <!-- Left: info + stage -->
@@ -190,54 +194,63 @@ async function openLeadModal(id) {
         ${mergeBadge ? `<div style="margin-bottom:10px">${mergeBadge}</div>` : ''}
         <div id="lead-call-booking-${id}"></div>
         <div class="form-section-title">Contact Info</div>
-        <div class="lead-info-item"><span class="lead-info-label">Name</span><span class="lead-info-value">${l.name||'—'}</span></div>
-        <div class="lead-info-item"><span class="lead-info-label">Email</span><span class="lead-info-value">${l.email||'—'}</span></div>
-        <div class="lead-info-item"><span class="lead-info-label">Phone</span><span class="lead-info-value">${l.phone||'—'}</span></div>
+        <div class="lead-info-item"><span class="lead-info-label">Name</span><span class="lead-info-value">${escapeHtml(l.name||'—')}</span></div>
+        <div class="lead-info-item"><span class="lead-info-label">Email</span><span class="lead-info-value">${escapeHtml(l.email||'—')}</span></div>
+        <div class="lead-info-item"><span class="lead-info-label">Phone</span><span class="lead-info-value">${escapeHtml(l.phone||'—')}</span></div>
         <div class="divider"></div>
         <div class="form-section-title">Event Details</div>
-        <div class="lead-info-item"><span class="lead-info-label">Type</span><span class="lead-info-value">${l.eventType||'—'}</span></div>
-        <div class="lead-info-item"><span class="lead-info-label">Date</span><span class="lead-info-value">${l.eventDate||'—'}</span></div>
-        <div class="lead-info-item"><span class="lead-info-label">Guests</span><span class="lead-info-value">${l.guestCount||'—'}</span></div>
-        <div class="lead-info-item"><span class="lead-info-label">Venue</span><span class="lead-info-value">${l.venue||'—'}</span></div>
-        <div class="lead-info-item"><span class="lead-info-label">Budget</span><span class="lead-info-value">${l.budget ? fmtMoney(l.budget) : '—'}</span></div>
-        <div class="lead-info-item"><span class="lead-info-label">Source</span><span class="lead-info-value">${l.source||'Website'}</span></div>
-        <div class="lead-info-item"><span class="lead-info-label">Priority</span><span class="lead-info-value"><span class="badge ${priorityBadgeClass(l.priority||'Normal')}">${l.priority||'Normal'}</span></span></div>
-        ${l.followUpDate ? `<div class="lead-info-item"><span class="lead-info-label">Follow-Up</span><span class="lead-info-value" style="color:var(--gold)">${l.followUpDate}</span></div>` : ''}
-        ${l.message ? `<div class="lead-info-item"><span class="lead-info-label">Message</span><span class="lead-info-value">${l.message}</span></div>` : ''}
+        <div class="lead-info-item"><span class="lead-info-label">Type</span><span class="lead-info-value">${escapeHtml(l.eventType||'—')}</span></div>
+        <div class="lead-info-item"><span class="lead-info-label">Date</span><span class="lead-info-value">${escapeHtml(l.eventDate||'—')}</span></div>
+        <div class="lead-info-item"><span class="lead-info-label">Guests</span><span class="lead-info-value">${escapeHtml(l.guestCount||'—')}</span></div>
+        <div class="lead-info-item"><span class="lead-info-label">Venue</span><span class="lead-info-value">${escapeHtml(l.venue||'—')}</span></div>
+        <div class="lead-info-item"><span class="lead-info-label">Budget</span><span class="lead-info-value">${escapeHtml(l.budget ? fmtMoney(l.budget) : '—')}</span></div>
+        <div class="lead-info-item"><span class="lead-info-label">Source</span><span class="lead-info-value">${escapeHtml(l.source||'Website')}</span></div>
+        <div class="lead-info-item"><span class="lead-info-label">Priority</span><span class="lead-info-value"><span class="badge ${priorityBadgeClass(l.priority||'Normal')}">${escapeHtml(l.priority||'Normal')}</span></span></div>
+        ${l.followUpDate ? `<div class="lead-info-item"><span class="lead-info-label">Follow-Up</span><span class="lead-info-value" style="color:var(--gold)">${escapeHtml(l.followUpDate)}</span></div>` : ''}
+        ${l.message ? `<div class="lead-info-item"><span class="lead-info-label">Message</span><span class="lead-info-value">${escapeHtml(l.message)}</span></div>` : ''}
         <div class="divider"></div>
         <div class="form-section-title">Pipeline Stage</div>
-        <select class="form-select" id="lead-stage-select" onchange="updateLeadStage('${id}',this.value)">
+        <select class="form-select" id="lead-stage-select" onchange="updateLeadStage(${jsStr(id)},this.value)">
           ${CRM_STAGES.map(s => `<option ${l.stage===s?'selected':''}>${s}</option>`).join('')}
         </select>
-        ${l.stage === 'Lost' && l.lostReason ? `<div style="font-size:12px;color:var(--red);margin-top:6px">Reason: ${l.lostReason}</div>` : ''}
+        ${l.stage === 'Lost' && l.lostReason ? `<div style="font-size:12px;color:var(--red);margin-top:6px">Reason: ${escapeHtml(l.lostReason)}</div>` : ''}
         <div class="mt-8" style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-ghost btn-sm" onclick="openEditLeadModal('${id}')">✏ Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteLead('${id}')">🗑 Delete</button>
+          <button class="btn btn-ghost btn-sm" onclick="openEditLeadModal(${jsStr(id)})">✏ Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteLead(${jsStr(id)})">🗑 Delete</button>
         </div>
       </div>
 
-      <!-- Right: quote builder + notes + tasks -->
+      <!-- Right: quote builder + communications + notes + tasks -->
       <div class="lead-modal-section">
         <div class="form-section-title">Quote</div>
         <div id="lead-quote-builder-${id}"></div>
+
+        <div class="divider"></div>
+        <div class="form-section-title">Communications</div>
+        <div id="comms-thread-${id}">
+          <div style="font-size:12px;color:var(--text-muted)">Loading messages…</div>
+        </div>
+        <!-- P2 composer mounts here (Send / Draft for me / Polish). Empty in P1. -->
+        <div id="comms-composer-${id}"></div>
+
         <div class="divider"></div>
         <div class="form-section-title">Notes</div>
         <div class="notes-thread" id="notes-thread-${id}">
           ${(l.notes||[]).length ? (l.notes||[]).map(n => `
             <div class="note-entry">
-              <div class="note-meta">${n.author||'Admin'} · ${n.time||''}</div>
-              <div class="note-text">${n.text}</div>
+              <div class="note-meta">${escapeHtml(n.author||'Admin')} · ${escapeHtml(n.time||'')}</div>
+              <div class="note-text">${escapeHtml(n.text)}</div>
             </div>`).join('') : '<div style="font-size:12px;color:var(--text-muted)">No notes yet</div>'}
         </div>
         <div class="note-form mt-8">
-          <input class="form-input" id="note-input-${id}" placeholder="Add a note…" onkeydown="if(event.key==='Enter')addNote('${id}')"/>
-          <button class="btn btn-primary btn-sm" onclick="addNote('${id}')">Add</button>
+          <input class="form-input" id="note-input-${id}" placeholder="Add a note…" onkeydown="if(event.key==='Enter')addNote(${jsStr(id)})"/>
+          <button class="btn btn-primary btn-sm" onclick="addNote(${jsStr(id)})">Add</button>
         </div>
 
         <div class="divider"></div>
         <div class="form-section-title" style="display:flex;align-items:center;justify-content:space-between">
           <span>Tasks</span>
-          <button class="btn btn-ghost btn-sm" onclick="addTask('${id}')">+ Task</button>
+          <button class="btn btn-ghost btn-sm" onclick="addTask(${jsStr(id)})">+ Task</button>
         </div>
         <div class="task-list" id="task-list-${id}">
           ${renderTaskList(l.tasks||[], id)}
@@ -249,6 +262,224 @@ async function openLeadModal(id) {
   loadLeadCallBooking(id, l.name);
   if (typeof renderQuoteBuilder === 'function') {
     renderQuoteBuilder(`lead-quote-builder-${id}`, l, { leadEmail: l.email });
+  }
+  loadLeadComms(id, l);
+}
+
+/* ── Communications Hub (P1: read-only thread view) ──
+ * Live-renders every message mirrored from Gmail into this lead's
+ * threads/{threadId}/messages subcollections, ordered by send time. Bubbles:
+ * outbound (Kendell) right-aligned, inbound left. Channel badge for
+ * Knot/WeddingPro. ALL message bodies are escaped client-side via escapeHtml()
+ * — we never inject server HTML here (defense-in-depth with the server-side
+ * sanitize in syncGmail). The unsub is pushed into _activeListeners so the
+ * shared module cleanup tears it down, exactly like loadLeadCallBooking's
+ * sibling listeners.
+ *
+ * Sending lives in P2 — this function only reads. The empty
+ * #comms-composer-${id} div is where the composer will mount. */
+async function loadLeadComms(id, lead) {
+  const wrap = document.getElementById(`comms-thread-${id}`);
+  if (!wrap) return;
+
+  /* Opening the card "reads" the inbound messages — clear the unread counter
+   * (best-effort; never block the UI on it). The kanban badge updates live. */
+  if (lead && lead.commsUnread > 0) {
+    db.collection('leads').doc(id).update({ commsUnread: 0 }).catch(() => {});
+  }
+
+  /* A lead's messages live in one subcollection per thread
+   * (leads/{id}/threads/{threadId}/messages). We listen on this lead's threads
+   * and, for each thread, attach a live listener on its messages — then merge
+   * and sort everything by sentAt for a single chronological view. One master
+   * unsub (below) tears down every per-thread listener. */
+  const unsubs = [];
+  const messagesByThread = {};
+
+  function renderAll() {
+    const all = [];
+    Object.values(messagesByThread).forEach(arr => arr.forEach(m => all.push(m)));
+    all.sort((a, b) => (a.sentAt?.toMillis?.() || 0) - (b.sentAt?.toMillis?.() || 0));
+    renderComms(wrap, all);
+
+    /* Stash reply context for the composer: the most-recent message's thread +
+     * id are what `sendReply` threads against. Stored on the composer element so
+     * the Send handler reads the live latest even after new mail arrives. */
+    const composer = document.getElementById(`comms-composer-${id}`);
+    if (composer) {
+      const last = all[all.length - 1];
+      if (last) {
+        composer.dataset.gmailThreadId = last.gmailThreadId || '';
+        composer.dataset.inReplyToMessageId = last.gmailMessageId || last.id || '';
+      }
+      if (!composer.dataset.mounted) renderCommsComposer(id);
+    }
+  }
+
+  /* Listen on this lead's threads; for each thread, listen on its messages. */
+  const threadsUnsub = db.collection('leads').doc(id).collection('threads')
+    .onSnapshot(threadSnap => {
+      threadSnap.docChanges().forEach(change => {
+        const threadId = change.doc.id;
+        if (change.type === 'added') {
+          const mUnsub = db.collection('leads').doc(id)
+            .collection('threads').doc(threadId).collection('messages')
+            .orderBy('sentAt', 'asc')
+            .onSnapshot(msgSnap => {
+              messagesByThread[threadId] = msgSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+              renderAll();
+            }, err => console.warn('comms messages listener error:', err));
+          unsubs.push(mUnsub);
+        }
+      });
+      /* If there are no threads at all, show the empty state + mount the
+       * composer so it explains there's nothing to reply to yet. */
+      if (threadSnap.empty && !Object.keys(messagesByThread).length) {
+        wrap.innerHTML = `<div style="font-size:12px;color:var(--text-muted)">No messages yet. Emails sync in automatically once Gmail sync is connected.</div>`;
+        const composer = document.getElementById(`comms-composer-${id}`);
+        if (composer && !composer.dataset.mounted) renderCommsComposer(id);
+      }
+    }, err => {
+      console.warn('comms threads listener error:', err);
+      wrap.innerHTML = `<div style="font-size:12px;color:var(--text-muted)">Couldn't load messages — see console.</div>`;
+    });
+
+  /* Push the master unsub (tears down every per-thread listener too). */
+  const masterUnsub = () => { try { threadsUnsub(); } catch (e) {} unsubs.forEach(u => { try { u(); } catch (e) {} }); };
+  if (typeof _activeListeners !== 'undefined' && Array.isArray(_activeListeners)) {
+    _activeListeners.push(masterUnsub);
+  }
+}
+
+/* Channel badge for non-Gmail sources (The Knot / WeddingPro). */
+function commsChannelBadge(channel) {
+  if (channel === 'theknot') {
+    return `<span class="badge" style="background:rgba(236,72,153,0.15);color:#EC4899">The Knot</span>`;
+  }
+  if (channel === 'weddingpro') {
+    return `<span class="badge" style="background:rgba(139,92,246,0.15);color:#8B5CF6">WeddingPro</span>`;
+  }
+  return '';
+}
+
+/* Render the full bubble thread. Every dynamic value is escaped — bodyText via
+ * escapeHtml, never raw server HTML. */
+function renderComms(wrap, messages) {
+  if (!messages.length) {
+    wrap.innerHTML = `<div style="font-size:12px;color:var(--text-muted)">No messages yet. Emails sync in automatically once Gmail sync is connected.</div>`;
+    return;
+  }
+  wrap.innerHTML = `
+    <div class="comms-thread" style="display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto;padding:4px 2px">
+      ${messages.map(m => {
+        const out = m.direction === 'out';
+        const when = m.sentAt && m.sentAt.toDate
+          ? m.sentAt.toDate().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+          : '';
+        const who = escapeHtml(out ? 'You' : (m.fromDisplay || m.from || 'Them'));
+        const body = escapeHtml(m.bodyText || m.snippet || '').replace(/\n/g, '<br>');
+        const badge = commsChannelBadge(m.sourceChannel);
+        return `
+          <div style="display:flex;justify-content:${out ? 'flex-end' : 'flex-start'}">
+            <div style="max-width:80%;background:${out ? 'rgba(201,168,76,0.14)' : 'rgba(255,255,255,0.04)'};border:1px solid ${out ? 'rgba(201,168,76,0.30)' : 'var(--border)'};border-radius:12px;padding:8px 11px">
+              <div style="display:flex;gap:6px;align-items:center;margin-bottom:3px;flex-wrap:wrap">
+                <span style="font-size:11px;font-weight:700;color:${out ? 'var(--gold)' : 'var(--text)'}">${who}</span>
+                ${badge}
+                <span style="font-size:10px;color:var(--text-muted)">${when}</span>
+              </div>
+              ${m.subject ? `<div style="font-size:11px;color:var(--text-muted);margin-bottom:3px">${escapeHtml(m.subject)}</div>` : ''}
+              <div style="font-size:13px;line-height:1.5;color:var(--text);white-space:normal;word-break:break-word">${body}</div>
+            </div>
+          </div>`;
+      }).join('')}
+    </div>`;
+  /* Pin to newest. */
+  const t = wrap.querySelector('.comms-thread');
+  if (t) t.scrollTop = t.scrollHeight;
+}
+
+/* ── Communications composer (P2: Send) ──
+ * Mounts a textarea + button row into #comms-composer-${id}. Send calls the
+ * `sendReply` callable; the new outbound message appears via the existing
+ * onSnapshot (sendReply mirrors it into Firestore), so we don't touch the DOM
+ * for the bubble — we just clear the textarea. The button mirrors auth.js's
+ * sign-in pattern: disable + "Sending…" while in flight, re-enable on error.
+ *
+ * Draft/Polish are P3 (AI) — rendered disabled with a "coming soon" title so
+ * the layout is final but nothing AI is wired yet. The reply target
+ * (gmailThreadId + inReplyToMessageId) is read live from the composer's dataset,
+ * which loadLeadComms keeps pointed at the newest message in the thread. */
+function renderCommsComposer(id) {
+  const composer = document.getElementById(`comms-composer-${id}`);
+  if (!composer || composer.dataset.mounted) return;
+  composer.dataset.mounted = '1';
+
+  composer.innerHTML = `
+    <div style="margin-top:10px">
+      <textarea id="comms-input-${id}" class="form-input" rows="3"
+        placeholder="Write a reply…"
+        style="width:100%;resize:vertical;min-height:64px;font-family:inherit"></textarea>
+      <div id="comms-error-${id}" style="display:none;font-size:12px;color:var(--red,#ef4444);margin:6px 2px 0"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center">
+        <button class="btn btn-primary btn-sm" id="comms-send-${id}" onclick="sendCommsReply(${jsStr(id)})">Send</button>
+        <button class="btn btn-ghost btn-sm" disabled title="Coming soon (P3 — AI draft)">✨ Draft for me</button>
+        <button class="btn btn-ghost btn-sm" disabled title="Coming soon (P3 — AI polish)">✨ Polish my draft</button>
+        <span id="comms-replyto-${id}" style="font-size:11px;color:var(--text-muted);margin-left:auto"></span>
+      </div>
+    </div>`;
+}
+
+/* Send handler — gated server-side by assertSafeToSend. Surfaces the dedup /
+ * failed-precondition block clearly so Kendell knows a quote already went out. */
+async function sendCommsReply(id) {
+  const composer = document.getElementById(`comms-composer-${id}`);
+  const input    = document.getElementById(`comms-input-${id}`);
+  const btn      = document.getElementById(`comms-send-${id}`);
+  const errEl    = document.getElementById(`comms-error-${id}`);
+  if (!composer || !input || !btn) return;
+  if (btn.disabled) return;
+
+  const bodyText = (input.value || '').trim();
+  if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+
+  if (!bodyText) {
+    if (errEl) { errEl.textContent = 'Write a message before sending.'; errEl.style.display = 'block'; }
+    return;
+  }
+  const gmailThreadId = composer.dataset.gmailThreadId || '';
+  const inReplyToMessageId = composer.dataset.inReplyToMessageId || '';
+  if (!gmailThreadId) {
+    if (errEl) { errEl.textContent = 'No email thread to reply to yet — this lead has no synced messages.'; errEl.style.display = 'block'; }
+    return;
+  }
+
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+
+  try {
+    const sendReply = firebase.functions().httpsCallable('sendReply');
+    const res = await sendReply({ leadId: id, gmailThreadId, bodyText, inReplyToMessageId });
+    if (res && res.data && res.data.success) {
+      /* The onSnapshot listener renders the new bubble — just clear the box. */
+      input.value = '';
+    } else {
+      throw new Error('Send did not confirm — try again.');
+    }
+  } catch (e) {
+    /* failed-precondition is the dedup/quote-gate block — show it prominently. */
+    const code = (e && e.code) || '';
+    const msg  = (e && e.message) || 'Something went wrong sending the reply.';
+    if (errEl) {
+      errEl.textContent = code === 'functions/failed-precondition'
+        ? '⛔ ' + msg
+        : msg;
+      errEl.style.display = 'block';
+    }
+    console.error('sendReply failed:', e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = origText;
   }
 }
 
@@ -273,8 +504,8 @@ async function loadLeadCallBooking(leadId, leadName) {
       return `
         <div style="background:rgba(201,168,76,0.10);border:1px solid rgba(201,168,76,0.35);border-radius:10px;padding:12px 14px;margin-bottom:14px">
           <div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:var(--gold);margin-bottom:4px">📞 Scheduled call</div>
-          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px">${when}</div>
-          <button class="btn btn-danger btn-sm" onclick="cancelCallBooking('${c.id}', ${JSON.stringify(leadName || '').replace(/"/g,'&quot;')})">Cancel booking</button>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px">${escapeHtml(when)}</div>
+          <button class="btn btn-danger btn-sm" onclick="cancelCallBooking(${jsStr(c.id)}, ${jsStr(leadName || '')})">Cancel booking</button>
         </div>`;
     }).join('');
   } catch (err) {
@@ -294,6 +525,7 @@ async function showMergeHistory(leadId) {
   const history = Array.isArray(l.mergeHistory) ? l.mergeHistory : [];
   if (!history.length) { showToast('No merge history on this lead'); return; }
 
+  /* Title goes through textContent — intentionally unescaped. See openLeadModal. */
   openModal(`Merged submissions for ${l.name || 'lead'}`, `
     <p class="text-muted" style="font-size:13px;line-height:1.5;margin-bottom:14px">
       This lead has ${history.length} duplicate submission${history.length===1?'':'s'} merged into it. Full pre-merge data is preserved below so nothing is lost. The current card already includes all unique info; conflicts (where both submissions had different values) are listed so you can decide whether to switch.
@@ -310,18 +542,18 @@ async function showMergeHistory(leadId) {
         return `
           <div style="border:1px solid var(--border);border-radius:10px;padding:12px">
             <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;flex-wrap:wrap;gap:6px">
-              <div style="font-size:13px;font-weight:700">Submission #${i+1} <span class="text-muted" style="font-weight:400">· submitted ${submittedAt}</span></div>
-              <div class="text-muted" style="font-size:11px">merged ${when} by ${h.mergedBy || 'Admin'}</div>
+              <div style="font-size:13px;font-weight:700">Submission #${i+1} <span class="text-muted" style="font-weight:400">· submitted ${escapeHtml(submittedAt)}</span></div>
+              <div class="text-muted" style="font-size:11px">merged ${escapeHtml(when)} by ${escapeHtml(h.mergedBy || 'Admin')}</div>
             </div>
             ${Object.keys(h.conflicts || {}).length ? `
               <div style="background:rgba(250,204,21,0.08);border:1px solid rgba(250,204,21,0.3);border-radius:8px;padding:8px 10px;margin-bottom:8px">
                 <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#FACC15;margin-bottom:4px">Conflicts — current card kept</div>
-                ${Object.entries(h.conflicts).map(([k,v]) => `<div style="font-size:12px;margin:2px 0"><strong>${k}:</strong> kept "${escapeHtml(v.kept)}" · also seen "${escapeHtml(v.dropped)}"</div>`).join('')}
+                ${Object.entries(h.conflicts).map(([k,v]) => `<div style="font-size:12px;margin:2px 0"><strong>${escapeHtml(k)}:</strong> kept "${escapeHtml(v.kept)}" · also seen "${escapeHtml(v.dropped)}"</div>`).join('')}
               </div>` : ''}
             ${Object.keys(h.backfilled || {}).length ? `
               <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.3);border-radius:8px;padding:8px 10px;margin-bottom:8px">
                 <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#22c55e;margin-bottom:4px">Backfilled into current card</div>
-                ${Object.entries(h.backfilled).map(([k,v]) => `<div style="font-size:12px;margin:2px 0"><strong>${k}:</strong> ${escapeHtml(v)}</div>`).join('')}
+                ${Object.entries(h.backfilled).map(([k,v]) => `<div style="font-size:12px;margin:2px 0"><strong>${escapeHtml(k)}:</strong> ${escapeHtml(v)}</div>`).join('')}
               </div>` : ''}
             <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px">Full submission snapshot</div>
             <div style="font-size:12px;line-height:1.7">
@@ -332,8 +564,29 @@ async function showMergeHistory(leadId) {
     </div>
   `, { wide: true });
 }
+/* NOTE: expo.js and scan-widget.js each declare a global `escapeHtml` too, and
+ * nurture.js calls one without declaring any. These are classic scripts, so the
+ * last one loaded wins for everybody — currently expo.js (index.html:192), whose
+ * copy is byte-identical to this one. scan-widget's differs: it uses `String(t
+ * || '')`, which turns 0/false into '' (a display bug, not an escaping gap) and
+ * emits &#039; rather than &#39;. All three escape the same five characters, so
+ * escaping is sound whichever wins — but this only holds by coincidence. If you
+ * reorder the <script> tags or edit one copy, re-check the others. */
 function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* Embed an untrusted value as a JS string literal inside an inline handler
+ * attribute — onclick="fn(${jsStr(x)})".
+ *
+ * Two decodes happen before the value is JS: the HTML parser unescapes the
+ * attribute, then JS parses the literal. So the value must survive both.
+ * JSON.stringify produces the quoted literal (escaping " and \), and escapeHtml
+ * then protects it through the attribute — critically escaping & FIRST, so an
+ * input containing a literal "&quot;" can't decode into a real quote and close
+ * the string early. Emits its own quotes: pass jsStr(x), not '${jsStr(x)}'. */
+function jsStr(s) {
+  return escapeHtml(JSON.stringify(String(s == null ? '' : s)));
 }
 window.showMergeHistory = showMergeHistory;
 
@@ -341,10 +594,10 @@ function renderTaskList(tasks, leadId) {
   if (!tasks.length) return '<div style="font-size:12px;color:var(--text-muted)">No tasks</div>';
   return tasks.map((t,i) => `
     <div class="task-item ${t.done?'done':''}">
-      <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask('${leadId}',${i},this.checked)"/>
-      <span class="task-text">${t.title}</span>
-      <span style="font-size:11px;color:var(--text-muted)">${t.assignee||''}</span>
-      <button class="task-delete" onclick="deleteTask('${leadId}',${i})">✕</button>
+      <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${jsStr(leadId)},${i},this.checked)"/>
+      <span class="task-text">${escapeHtml(t.title)}</span>
+      <span style="font-size:11px;color:var(--text-muted)">${escapeHtml(t.assignee||'')}</span>
+      <button class="task-delete" onclick="deleteTask(${jsStr(leadId)},${i})">✕</button>
     </div>`).join('');
 }
 
@@ -396,7 +649,7 @@ function openLostReasonModal(id) {
     <label class="qb-field" style="margin-top:10px"><span>Notes (optional)</span>
       <textarea class="form-input" id="lost-reason-note" rows="3" placeholder="Anything useful — competitor name, budget gap, etc."></textarea>
     </label>
-    <button class="btn btn-primary" style="margin-top:14px" onclick="confirmLostReason('${id}')">Mark as Lost</button>
+    <button class="btn btn-primary" style="margin-top:14px" onclick="confirmLostReason(${jsStr(id)})">Mark as Lost</button>
   `);
 }
 
@@ -444,8 +697,8 @@ async function addNote(leadId) {
   if (thread) {
     thread.innerHTML = notes.map(n => `
       <div class="note-entry">
-        <div class="note-meta">${n.author} · ${n.time}</div>
-        <div class="note-text">${n.text}</div>
+        <div class="note-meta">${escapeHtml(n.author)} · ${escapeHtml(n.time)}</div>
+        <div class="note-text">${escapeHtml(n.text)}</div>
       </div>`).join('');
     thread.scrollTop = thread.scrollHeight;
   }
@@ -506,13 +759,13 @@ function leadFormHTML(l = {}) {
   <form id="lead-form" onsubmit="${l.id ? '' : 'saveNewLead(event)'}">
     <div class="form-row">
       <div class="form-group"><label class="form-label">Full Name *</label>
-        <input class="form-input" name="name" value="${l.name||''}" required placeholder="Jane Smith"/></div>
+        <input class="form-input" name="name" value="${escapeHtml(l.name||'')}" required placeholder="Jane Smith"/></div>
       <div class="form-group"><label class="form-label">Email *</label>
-        <input class="form-input" name="email" type="email" value="${l.email||''}" required placeholder="jane@email.com"/></div>
+        <input class="form-input" name="email" type="email" value="${escapeHtml(l.email||'')}" required placeholder="jane@email.com"/></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Phone</label>
-        <input class="form-input" name="phone" value="${l.phone||''}" placeholder="(801) 555-0000"/></div>
+        <input class="form-input" name="phone" value="${escapeHtml(l.phone||'')}" placeholder="(801) 555-0000"/></div>
       <div class="form-group"><label class="form-label">Event Type</label>
         <select class="form-select" name="eventType">
           <option value="">Select…</option>
@@ -521,15 +774,17 @@ function leadFormHTML(l = {}) {
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Event Date</label>
-        <input class="form-input" name="eventDate" value="${l.eventDate||''}" placeholder="June 14, 2026"/></div>
+        <input class="form-input" name="eventDate" value="${escapeHtml(l.eventDate||'')}" placeholder="June 14, 2026"/></div>
       <div class="form-group"><label class="form-label">Guest Count</label>
-        <input class="form-input" name="guestCount" value="${l.guestCount||''}" placeholder="~150"/></div>
+        <input class="form-input" name="guestCount" value="${escapeHtml(l.guestCount||'')}" placeholder="~150"/></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Venue / Location</label>
-        <input class="form-input" name="venue" value="${l.venue||''}" placeholder="The Grand, Salt Lake City"/></div>
+        <input class="form-input" name="venue" value="${escapeHtml(l.venue||'')}" placeholder="The Grand, Salt Lake City"/></div>
       <div class="form-group"><label class="form-label">Budget</label>
-        <input class="form-input" name="budget" type="number" value="${l.budget||''}" placeholder="1500"/></div>
+        <!-- Text, not number: /book submits ranges like "$1,500–$2,500", which a
+             number input silently blanks — and saveLeadEdit would then wipe the field. -->
+        <input class="form-input" name="budget" value="${escapeHtml(l.budget||'')}" placeholder="1500 or $1,500–$2,500"/></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Source</label>
@@ -547,10 +802,10 @@ function leadFormHTML(l = {}) {
           ${CRM_STAGES.map(s => `<option ${(l.stage||'New Lead')===s?'selected':''}>${s}</option>`).join('')}
         </select></div>
       <div class="form-group"><label class="form-label">Follow-Up Date</label>
-        <input class="form-input" name="followUpDate" type="date" value="${l.followUpDate||''}"/></div>
+        <input class="form-input" name="followUpDate" type="date" value="${escapeHtml(l.followUpDate||'')}"/></div>
     </div>
     <div class="form-group"><label class="form-label">Message / Notes</label>
-      <textarea class="form-textarea" name="message" placeholder="Vision, theme, special requests…">${l.message||''}</textarea></div>
+      <textarea class="form-textarea" name="message" placeholder="Vision, theme, special requests…">${escapeHtml(l.message||'')}</textarea></div>
     <div class="modal-footer" style="padding:0;margin-top:16px">
       <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button type="submit" class="btn btn-primary">Save Lead</button>

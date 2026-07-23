@@ -135,7 +135,12 @@ function fmtDate(ts) {
 
 function fmtMoney(n) {
   if (n === undefined || n === null || n === '') return '—';
-  return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  // Budgets from the /book wizard arrive as free text ("$1,500–$2,500",
+  // "Still figuring it out"), so Number() would render "$NaN". Strip currency
+  // punctuation, and when what's left still isn't a number, show it verbatim.
+  const num = typeof n === 'number' ? n : Number(String(n).replace(/[$,\s]/g, ''));
+  if (!Number.isFinite(num)) return String(n);
+  return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
 function fmtDateInput(ts) {
