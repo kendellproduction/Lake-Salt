@@ -1471,11 +1471,12 @@ td { padding: 11px 12px; font-size: 12.5px; }
 .brief-chat-error { border-color: rgba(255,90,90,0.5); color: #ffb3b3; }
 .brief-chat-actions { margin-top: 6px; font-size: 12px; opacity: 0.8; }
 .brief-chat-meta { font-size: 10.5px; opacity: 0.5; margin-top: 3px; }
-.brief-chat-form { display: flex; gap: 8px; margin-top: 4px; }
+.brief-chat-form { display: flex; gap: 8px; margin-top: 4px; align-items: flex-end; }
 .brief-chat-input {
-  flex: 1; min-width: 0; min-height: 44px;
+  flex: 1; min-width: 0; min-height: 44px; max-height: 140px;
   background: rgba(255,255,255,0.05); border: 1px solid var(--border);
-  border-radius: 12px; padding: 0 14px; color: inherit; font-size: 13px;
+  border-radius: 12px; padding: 12px 14px; color: inherit; font-size: 13px;
+  font-family: inherit; line-height: 1.4; resize: none; overflow-y: auto;
 }
 .brief-chat-input:focus { outline: none; border-color: rgba(212,175,118,0.6); }
 .brief-chat-send {

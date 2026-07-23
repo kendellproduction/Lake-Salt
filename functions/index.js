@@ -2066,7 +2066,115 @@ async function agentChatContext() {
   return ctx;
 }
 
+/* ─── query_crm: one generic read tool = full CRM visibility ──────────
+ * Instead of a bespoke tool per question, the agent names a collection,
+ * optional filters/sort/projection, and reads live data. Whitelisted
+ * collections only; output is sanitized + capped to keep tokens down. */
+const QUERYABLE_COLLECTIONS = [
+  'leads', 'quotes', 'events', 'expenses', 'activity', 'unmatched_messages',
+  'kendell_followups', 'agent_tasks', 'call_bookings', 'nurture_queue',
+  'inventory', 'projects', 'bartenders', 'payments', 'threads',
+];
+
+function crmSerializeDoc(d, fields) {
+  const raw = d.data();
+  const out = { _id: d.id };
+  const keys = (fields && fields.length) ? fields : Object.keys(raw);
+  for (const k of keys) {
+    let v = raw[k];
+    if (v === undefined) continue;
+    if (v && typeof v.toDate === 'function') v = v.toDate().toISOString();
+    else if (typeof v === 'string' && v.length > 300) v = v.slice(0, 300) + '…';
+    else if (v && typeof v === 'object') {
+      const s = JSON.stringify(v);
+      if (s && s.length > 400) v = s.slice(0, 400) + '…';   /* long nested objects ship as truncated JSON text */
+    }
+    out[k] = v;
+  }
+  return out;
+}
+
+async function runQueryCrm(input) {
+  const coll = String(input.collection || '');
+  if (!QUERYABLE_COLLECTIONS.includes(coll)) {
+    return JSON.stringify({ error: 'unknown collection', allowed: QUERYABLE_COLLECTIONS });
+  }
+  const limit = Math.min(Math.max(parseInt(input.limit, 10) || 15, 1), 25);
+  let base;
+  if (coll === 'threads') {
+    const leadId = String(input.leadId || '');
+    if (!leadId) return JSON.stringify({ error: 'threads requires leadId (a doc id from the leads collection)' });
+    base = db.collection('leads').doc(leadId).collection('threads');
+  } else {
+    base = db.collection(coll);
+  }
+  const filters = (Array.isArray(input.filters) ? input.filters : []).slice(0, 3);
+  const OPS = ['==', '!=', '<', '<=', '>', '>=', 'in', 'array-contains'];
+  let docs;
+  try {
+    let q = base;
+    for (const f of filters) q = q.where(String(f.field), OPS.includes(f.op) ? f.op : '==', f.value);
+    if (input.orderBy) q = q.orderBy(String(input.orderBy), input.direction === 'asc' ? 'asc' : 'desc');
+    docs = (await q.limit(limit).get()).docs;
+  } catch (e) {
+    /* Composite filter+sort combos need Firestore indexes we may not have.
+     * Fall back: pull a capped slice and filter/sort in memory. */
+    const all = (await base.limit(200).get()).docs;
+    const match = (d) => filters.every(f => {
+      let v = d.data()[f.field];
+      if (v && typeof v.toDate === 'function') v = v.toDate().toISOString();
+      switch (f.op) {
+        case '!=': return v !== f.value;
+        case '<': return v < f.value;   case '<=': return v <= f.value;
+        case '>': return v > f.value;   case '>=': return v >= f.value;
+        case 'in': return Array.isArray(f.value) && f.value.includes(v);
+        case 'array-contains': return Array.isArray(v) && v.includes(f.value);
+        default: return v === f.value;
+      }
+    });
+    docs = all.filter(match);
+    if (input.orderBy) {
+      const dir = input.direction === 'asc' ? 1 : -1;
+      const key = (d) => { let v = d.data()[input.orderBy]; return (v && typeof v.toDate === 'function') ? v.toDate().getTime() : v; };
+      docs.sort((a, b) => (key(a) > key(b) ? dir : key(a) < key(b) ? -dir : 0));
+    }
+    docs = docs.slice(0, limit);
+  }
+  const rows = docs.map(d => crmSerializeDoc(d, Array.isArray(input.fields) ? input.fields.map(String) : null));
+  return JSON.stringify({ count: rows.length, rows }).slice(0, 12000);
+}
+
+const QUERY_CRM_TOOL = {
+  name: 'query_crm',
+  description: 'Read live CRM data from any collection: leads, quotes, events, expenses, activity, unmatched_messages, kendell_followups, agent_tasks, threads (email threads under a lead — pass leadId), and more. ALWAYS use this to look up real data before answering questions about the business — dig first, never guess and never ask permission to check. Use the fields projection to fetch only what you need.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      collection: { type: 'string', enum: QUERYABLE_COLLECTIONS },
+      leadId: { type: 'string', description: 'Required when collection is "threads": the lead doc id whose email threads to read' },
+      filters: {
+        type: 'array', maxItems: 3,
+        items: {
+          type: 'object',
+          properties: {
+            field: { type: 'string' },
+            op: { type: 'string', enum: ['==', '!=', '<', '<=', '>', '>=', 'in', 'array-contains'] },
+            value: { description: 'Value to compare against (string/number/bool/array for "in")' },
+          },
+          required: ['field', 'op', 'value'],
+        },
+      },
+      orderBy: { type: 'string', description: 'Field to sort by, e.g. createdAt or updatedAt' },
+      direction: { type: 'string', enum: ['asc', 'desc'] },
+      limit: { type: 'number', description: '1-25, default 15. Keep small to save tokens.' },
+      fields: { type: 'array', items: { type: 'string' }, description: 'Only return these fields (plus _id). Strongly preferred.' },
+    },
+    required: ['collection'],
+  },
+};
+
 const AGENT_CHAT_TOOLS = [
+  QUERY_CRM_TOOL,
   {
     name: 'kick_off_task',
     description: 'Queue a task for one of the Lake Salt agents. Use when Kendell asks for work to be started (email processing, lead hunting, CRM updates, research, anything operational). The task doc is picked up by the agent runner.',
@@ -2097,6 +2205,9 @@ const AGENT_CHAT_TOOLS = [
 
 async function runAgentChatTool(name, input, adminUser) {
   const now = admin.firestore.FieldValue.serverTimestamp();
+  if (name === 'query_crm') {
+    return await runQueryCrm(input);
+  }
   if (name === 'kick_off_task') {
     const ref = await db.collection('agent_tasks').add({
       agent: input.agent || 'general',
@@ -2154,15 +2265,16 @@ exports.agentChat = onCall(
 
     const ctx = await agentChatContext();
     const system =
-`You are the Lake Salt operations agent, chatting with Kendell (the owner) inside his CRM dashboard. Lake Salt is his mobile bar (dry-hire) business in Utah. Be a sharp partner: direct, concise, no flattery. Plain text only — no markdown headers.
+`You're Kendell's right hand for Lake Salt, his mobile bar (dry-hire) business in Utah, chatting inside his CRM. Voice: casual and friendly, like a sharp friend who runs his ops — contractions are good, corporate stiffness and flattery are not. Keep replies short. Plain text only, no markdown headers.
 
-You can act, not just talk: use kick_off_task to queue real work for the comms agent (email/CRM/quotes), lead-gen agent (prospecting), or general agent. Use resolve_followup when Kendell gives a decision on an open item. Confirm what you did in one line. If a request is ambiguous, ask one tight clarifying question instead of guessing.
+DIG FIRST. Before answering anything about the business, use query_crm to pull the real data — leads, quotes, events, email threads, whatever the question needs. Never say you'd "need to check" or ask permission to look something up: just look, then answer with specifics. Only come back with a question when it's a genuine judgment call you can't resolve from data.
+
+You can act, not just talk: kick_off_task queues real work for the comms agent (email/CRM/quotes), lead-gen agent (prospecting), or general agent. resolve_followup closes an open item when Kendell gives a decision. Confirm what you did in one line.
 
 ${AUTONOMY_POLICY}
 
-LIVE BUSINESS CONTEXT
+SNAPSHOT (query_crm for anything deeper)
 Pipeline: ${JSON.stringify(ctx.stages)}
-Recently active leads: ${JSON.stringify(ctx.recentLeads)}
 Open followups (id · type · title): ${ctx.followups.map(f => `${f.id} · ${f.type} · ${f.title}`).join(' | ') || 'none'}
 Unresolved unmatched messages: ${ctx.unmatchedCount}`;
 
@@ -2172,7 +2284,7 @@ Unresolved unmatched messages: ${ctx.unmatchedCount}`;
     const actions = [];
     let messages = history.map(m => ({ role: m.role, content: m.content }));
     let reply = '';
-    for (let turn = 0; turn < 4; turn++) {
+    for (let turn = 0; turn < 6; turn++) {
       const res = await client.messages.create({
         model: 'claude-sonnet-5',
         max_tokens: 1024,
@@ -2190,7 +2302,7 @@ Unresolved unmatched messages: ${ctx.unmatchedCount}`;
         let out;
         try { out = await runAgentChatTool(tu.name, tu.input || {}, adminUser); }
         catch (e) { out = `Tool ${tu.name} failed: ${e.message}`; }
-        actions.push(out);
+        if (tu.name !== 'query_crm') actions.push(out);   /* reads are internal, not user-facing actions */
         results.push({ type: 'tool_result', tool_use_id: tu.id, content: out });
       }
       messages.push({ role: 'user', content: results });
@@ -2286,30 +2398,57 @@ async function generateAgentBriefCore(trigger) {
   const Anthropic = require('@anthropic-ai/sdk');
   const client = new Anthropic({ apiKey: anthropicApiKey.value() });
 
-  const res = await client.messages.create({
-    model: 'claude-sonnet-5',
-    max_tokens: 2048,
-    system:
-`You are Kendell's executive assistant for Lake Salt, his mobile bar (dry-hire) business in Utah. Each morning you write his brief: sharp, warm, zero filler, the judgment of a great chief of staff. Do not restate raw counts he can see elsewhere — interpret: what's hot, what's stalling, what you already handled, the one thing he must do himself.
+  const system =
+`You're Kendell's executive assistant for Lake Salt, his mobile bar (dry-hire) business in Utah. Each morning you write his brief. Voice: casual, friendly, and sharp — like a trusted ops partner texting him the real state of things. No corporate stiffness, no filler, no restating counts he can see elsewhere. Interpret: what's hot, what's stalling, what you already handled, the one thing he must do himself.
+
+DIG BEFORE YOU WRITE. Use query_crm to pull real data first — at minimum the quotes collection (how many are out, how old, which leads they belong to) and the newest leads. Never publish numbers you didn't verify with a query. 2-4 queries is plenty; keep limits small.
+
+KENDELL'S PRIORITIES (in order):
+1. Fresh website/form leads — speed-to-lead wins these. Newest inbound leads get first attention every day.
+2. Outstanding quotes — every quote sent with no reply is a follow-up waiting to happen. Track how long each has been out and plan the chase.
+3. Everything else. The wedding-expo cohort is NOT urgent pipeline: they've already been contacted (some multiple times). They get ONE final follow-up pass — and only leads whose event date hasn't passed. Don't count them as fresh leads or let them dominate the brief.
 
 ${AUTONOMY_POLICY}
 
-Call publish_brief exactly once.
+When you've seen enough, call publish_brief exactly once.
 
-LIVE BUSINESS CONTEXT
+SNAPSHOT (verify anything important with query_crm)
 Pipeline: ${JSON.stringify(ctx.stages)}
-Recently active leads: ${JSON.stringify(ctx.recentLeads)}
 Open followups: ${ctx.followups.map(f => `${f.id} · ${f.type} · ${f.title}`).join(' | ') || 'none'}
 Unresolved unmatched messages (${ctx.unmatchedCount}): ${JSON.stringify(ctx.unmatchedSamples)}
-Events next 14 days: ${JSON.stringify(ctx.upcomingEvents)}`,
-    tools: PUBLISH_BRIEF_TOOL,
-    tool_choice: { type: 'tool', name: 'publish_brief' },
-    messages: [{ role: 'user', content: 'Write this morning\'s brief.' }],
-  });
+Events next 14 days: ${JSON.stringify(ctx.upcomingEvents)}`;
 
-  const call = res.content.find(b => b.type === 'tool_use' && b.name === 'publish_brief');
-  if (!call) throw new Error('model returned no publish_brief call');
-  const brief = call.input;
+  const tools = [QUERY_CRM_TOOL, ...PUBLISH_BRIEF_TOOL];
+  let messages = [{ role: 'user', content: 'Write this morning\'s brief. Dig into the data first.' }];
+  let brief = null;
+  for (let turn = 0; turn < 8 && !brief; turn++) {
+    const res = await client.messages.create({
+      model: 'claude-sonnet-5',
+      max_tokens: 2048,
+      system,
+      tools,
+      /* Last loop turn: stop digging, force the publish. */
+      ...(turn === 7 ? { tool_choice: { type: 'tool', name: 'publish_brief' } } : {}),
+      messages,
+    });
+    const toolUses = res.content.filter(b => b.type === 'tool_use');
+    const pub = toolUses.find(t => t.name === 'publish_brief');
+    if (pub) { brief = pub.input; break; }
+    messages.push({ role: 'assistant', content: res.content });
+    if (!toolUses.length) {
+      messages.push({ role: 'user', content: 'Call publish_brief now.' });
+      continue;
+    }
+    const results = [];
+    for (const tu of toolUses) {
+      let out;
+      try { out = await runQueryCrm(tu.input || {}); }
+      catch (e) { out = `query failed: ${e.message}`; }
+      results.push({ type: 'tool_result', tool_use_id: tu.id, content: out });
+    }
+    messages.push({ role: 'user', content: results });
+  }
+  if (!brief) throw new Error('model returned no publish_brief call');
   const now = admin.firestore.FieldValue.serverTimestamp();
 
   /* Autonomy: queue every task the assistant decided to handle itself. */

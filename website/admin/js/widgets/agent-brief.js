@@ -167,8 +167,8 @@
       '</div>' +
       '<div class="brief-chat-log" id="brief-chat-log" aria-live="polite"></div>' +
       '<form class="brief-chat-form" id="brief-chat-form">' +
-        '<input type="text" id="brief-chat-input" class="brief-chat-input" maxlength="4000" ' +
-          'placeholder="Message your agents…" autocomplete="off" aria-label="Message your agents">' +
+        '<textarea id="brief-chat-input" class="brief-chat-input" maxlength="4000" rows="1" ' +
+          'placeholder="Message your agents…" aria-label="Message your agents"></textarea>' +
         '<button type="submit" class="brief-chat-send" id="brief-chat-send" aria-label="Send">➤</button>' +
       '</form>'
     );
@@ -220,6 +220,24 @@
     form.dataset.wired = '1';
     listenChat();
 
+    /* Multi-line composer: grow with content (capped), Enter sends,
+       Shift+Enter makes a newline. */
+    const composer = document.getElementById('brief-chat-input');
+    const autoGrow = () => {
+      if (!composer) return;
+      composer.style.height = 'auto';
+      composer.style.height = Math.min(composer.scrollHeight, 140) + 'px';
+    };
+    if (composer) {
+      composer.addEventListener('input', autoGrow);
+      composer.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter' && !ev.shiftKey) {
+          ev.preventDefault();
+          form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit', { cancelable: true }));
+        }
+      });
+    }
+
     form.addEventListener('submit', async (ev) => {
       ev.preventDefault();
       if (_chatBusy) return;
@@ -227,6 +245,7 @@
       const text = (input && input.value || '').trim();
       if (!text) return;
       input.value = '';
+      autoGrow();
       setChatBusy(true);
       try {
         await firebase.functions().httpsCallable('agentChat')({ message: text, sessionId: currentSession() });
