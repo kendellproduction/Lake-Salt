@@ -50,6 +50,36 @@
   let _briefUnsub = null;
   let _briefBusy = false;
   let _stats = null;   // computed from _dashData for the neon stat strip
+  let _agentsWorking = 0;  // count of queued/running agent_tasks (from _dashData)
+
+  /* One reassurance line: what the agents are handling in the background.
+     This is the whole point of retiring the Action Queue — Kendell shouldn't
+     see a raw lead list, he should see "it's being worked." */
+  function agentsWorkingHtml() {
+    const n = _agentsWorking || 0;
+    if (n > 0) {
+      return '<div class="brief-agents-line">🤖 Your agents are working on <strong>' + n +
+        '</strong> task' + (n === 1 ? '' : 's') + ' in the background.</div>';
+    }
+    return '<div class="brief-agents-line brief-agents-idle">🤖 Agents are all caught up — queue is clear.</div>';
+  }
+
+  /* Live one-liner from the already-fetched dashboard data, so the hero is
+     never blank even before the 7am brief doc is generated. */
+  function liveSummaryHtml() {
+    if (!_stats) return '';
+    const s = _stats;
+    const plural = (n, w) => '<strong>' + n + '</strong> ' + w + (n === 1 ? '' : 's');
+    const line = 'Right now: ' + plural(s.newLeads, 'new lead') + ' · ' +
+      plural(s.proposals, 'proposal') + ' out · ' + plural(s.booked, 'booked') + '.';
+    let needs;
+    if (s.followups > 0) needs = '<span class="brief-neon brief-neon-3">' + s.followups +
+      ' follow-up' + (s.followups === 1 ? ' needs' : 's need') + ' you.</span>';
+    else if (s.unmatched > 0) needs = '<span class="brief-neon brief-neon-1">' + s.unmatched +
+      ' unmatched message' + (s.unmatched === 1 ? '' : 's') + ' to sort.</span>';
+    else needs = '<span class="brief-allclear">✓ Nothing needs your call right now.</span>';
+    return '<div class="brief-exec">' + line + ' ' + needs + '</div>';
+  }
 
   function statStripHtml() {
     if (!_stats) return '';
@@ -69,9 +99,20 @@
     const el = document.getElementById('brief-summary');
     if (!el) return;
     if (!_brief) {
+      /* No generated brief doc yet — show a live briefing built from the
+         dashboard data so the hero is useful the moment the app opens. */
+      const dateLabel = new Date().toLocaleDateString('en-US',
+        { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase();
       el.innerHTML =
-        '<div class="brief-empty">No brief yet today.</div>' +
-        '<button type="button" class="brief-refresh-cta" id="brief-generate-btn">✨ Generate my brief</button>';
+        '<div class="brief-topbar">' +
+          '<span class="dash-sub-label" style="margin:0">✨ YOUR BRIEF · ' + esc(dateLabel) + '</span>' +
+          '<span class="brief-topbar-right">' +
+            '<button type="button" class="brief-refresh" id="brief-generate-btn" aria-label="Generate full brief">✨ Generate</button>' +
+          '</span>' +
+        '</div>' +
+        liveSummaryHtml() +
+        statStripHtml() +
+        agentsWorkingHtml();
       return;
     }
     const b = _brief;
@@ -112,6 +153,7 @@
       '<div class="brief-exec">' + neonize(b.brief) + '</div>' +
       (tasksHtml ? '<div class="dash-sub-label brief-section">NEEDS YOU NOW</div>' + tasksHtml : '') +
       statStripHtml() +
+      agentsWorkingHtml() +
       ((b.headsUp || bullets) ? '<div class="dash-sub-label brief-section">HEADS UP — TOMORROW & THIS WEEK</div>' +
         (b.headsUp ? '<div class="brief-headsup">' + neonize(b.headsUp) + '</div>' : '') + bullets : '');
   }
@@ -262,6 +304,9 @@
   function renderAgentBriefWidget(data, now) {
     const el = document.getElementById('w-agent-brief');
     if (!el) return;
+
+    /* Background-work count for the reassurance line. */
+    if (data && typeof data.agentTasksActive === 'number') _agentsWorking = data.agentTasksActive;
 
     /* Neon stat strip numbers come from the dashboard's already-fetched data. */
     if (data && data.leads) {

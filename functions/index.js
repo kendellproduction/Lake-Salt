@@ -2925,6 +2925,76 @@ exports.middayLeadSweep = onSchedule(
   }
 );
 
+/* ═══ staleLeadSweep — drain the untouched open-lead backlog ═══════════════
+ * middayLeadSweep only touches leads from the last 36h and SKIPS imports/expo.
+ * That's the population that used to pile up in the (now retired) dashboard
+ * Action Queue — old expo-cohort + imported leads nobody was working. Kendell's
+ * rule: "if we really needed to do something with those people, assign it to
+ * the agent." So this drains that backlog into agent_tasks as *triage* work —
+ * the agent reads each lead + threads and decides conservatively: mark clear
+ * junk/dead Lost, refresh a follow-up on ones waiting on the client, or send
+ * ONE warm re-engagement on real cold leads (never touching active nurture).
+ * Capped at 6 oldest per daily run so it drains gradually and cheaply, and
+ * each lead is triaged at most once. */
+async function hasTriageTask(leadId) {
+  const q = await db.collection('agent_tasks')
+    .where('leadId', '==', leadId).limit(10).get();
+  return q.docs.some(d => d.data().kind === 'triage' &&
+    ['queued', 'running', 'done'].includes(d.data().status));
+}
+
+async function queueTriage(leadId, lead) {
+  return await db.collection('agent_tasks').add({
+    agent: 'comms', kind: 'triage', leadId,
+    title: `Triage: ${lead.name || 'stale lead'}`,
+    instruction:
+      `Backlog triage for lead ${leadId} (${lead.name || '?'} <${lead.email || 'no email'}>, ` +
+      `stage "${lead.stage || 'New Lead'}"${lead.eventDate ? ', event ' + lead.eventDate : ''}). ` +
+      `This lead has been sitting untouched. Use query_crm to read the lead + its threads (and any ` +
+      `nurture/campaign status) FIRST, then act conservatively:\n` +
+      `• If it's clearly not a real lead (no real contact, test/junk, or a duplicate), move stage to Lost with a one-line note explaining why.\n` +
+      `• If we've already been corresponding and it's genuinely waiting on the client, just set/refresh a follow-up date and add a note — do NOT send another email.\n` +
+      `• If it's a real, cold lead we never properly worked and still plausibly winnable, send ONE warm, personal, no-pressure re-engagement email (NO pricing), then move stage to Contacted.\n` +
+      `Never email a lead that's in an active nurture or expo sequence — leave those to the nurture flow and just note status. Keep everything professional and on-brand, and record what you did as a note on the lead.`,
+    status: 'queued', source: 'stale_lead_sweep',
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+}
+
+exports.staleLeadSweep = onSchedule(
+  { schedule: '0 9 * * *', timeZone: 'America/Denver', timeoutSeconds: 300 },
+  async () => {
+    const CLOSED = ['Booked', 'Completed', 'Lost'];
+    const NEGLECT_MS = 5 * 24 * 3600e3;  // untouched for 5+ days counts as backlog
+    let snap;
+    try { snap = await db.collection('leads').get(); }
+    catch (e) { console.warn('staleLeadSweep query failed:', e.message); return; }
+
+    const touchedMs = (lead) => {
+      const t = lead.updatedAt || lead.createdAt;
+      if (t && t.toMillis) return t.toMillis();
+      if (t && t.seconds) return t.seconds * 1000;
+      return 0;  // no timestamp → treat as very old (definitely neglected)
+    };
+
+    // Open + neglected, oldest first.
+    const candidates = snap.docs
+      .map(d => ({ id: d.id, ref: d.ref, lead: d.data() }))
+      .filter(x => !CLOSED.includes(x.lead.stage))
+      .filter(x => (Date.now() - touchedMs(x.lead)) >= NEGLECT_MS)
+      .sort((a, b) => touchedMs(a.lead) - touchedMs(b.lead));
+
+    let queued = 0;
+    for (const x of candidates) {
+      if (queued >= 6) break;               // gradual drain, cost + client-safety cap
+      if (await hasTriageTask(x.id)) continue;  // triage each lead at most once
+      await queueTriage(x.id, x.lead);
+      queued++;
+    }
+    console.log(`staleLeadSweep: ${candidates.length} open+neglected leads, ${queued} triage tasks queued.`);
+  }
+);
+
 /* Manual kick for testing / "run the queue now" from the dashboard. */
 exports.runAgentTasksNow = onCall(
   {

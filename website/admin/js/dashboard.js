@@ -111,12 +111,12 @@ function renderWidgetGrid() {
   const prefs = getDashPrefs();
 
   /* Agent Brief is the command center — it renders full-width at the very
-     top of the page (hero slot), not inside the grid. Toggling it off in
-     Customize still hides it. */
+     top of the page (hero slot), not inside the grid. It is intentionally
+     NOT toggleable: this is the executive briefing you see on open, always. */
   const hero = document.getElementById('dash-agent-hero');
   if (hero) {
     const w = WIDGETS.find(x => x.id === 'agentBrief');
-    hero.innerHTML = (w && prefs.enabled.agentBrief)
+    hero.innerHTML = w
       ? `<div class="card dash-widget dash-agent-hero-card" data-widget="agentBrief">
           <div class="card-header"><span class="card-title">${w.title}</span></div>
           <div id="${w.elId}">Loading…</div>
@@ -181,12 +181,15 @@ function renderCustomizePanel() {
   if (!_customizeMode) { el.innerHTML = ''; el.style.display = 'none'; return; }
   el.style.display = '';
   const prefs = getDashPrefs();
+  /* agentBrief is the permanent hero — not listed here, so it can't be
+     toggled off or reordered out of the top slot. */
+  const visibleOrder = prefs.order.filter(id => id !== 'agentBrief');
   el.innerHTML = `
     <div class="customize-head">
       <span class="dash-sub-label" style="margin:0">CUSTOMIZE YOUR FEED</span>
       <button type="button" class="customize-reset" onclick="resetDashPrefs()">Reset to default</button>
     </div>
-    ${prefs.order.map((id, i) => {
+    ${visibleOrder.map((id, i) => {
       const w = WIDGETS.find(x => x.id === id);
       if (!w) return '';
       const on = !!prefs.enabled[id];
@@ -194,7 +197,7 @@ function renderCustomizePanel() {
       return `<div class="customize-row${on ? '' : ' customize-row-off'}">
         <div class="customize-move">
           <button type="button" class="customize-btn" onclick="moveDashWidget('${w.id}',-1)" ${i === 0 ? 'disabled' : ''} aria-label="Move ${w.title} up">↑</button>
-          <button type="button" class="customize-btn" onclick="moveDashWidget('${w.id}',1)" ${i === prefs.order.length - 1 ? 'disabled' : ''} aria-label="Move ${w.title} down">↓</button>
+          <button type="button" class="customize-btn" onclick="moveDashWidget('${w.id}',1)" ${i === visibleOrder.length - 1 ? 'disabled' : ''} aria-label="Move ${w.title} down">↓</button>
         </div>
         <span class="customize-title">${w.title}</span>
         <div class="customize-sizes">
@@ -269,7 +272,6 @@ async function renderDashboard() {
     <div id="dash-agent-hero" style="margin-bottom:16px"></div>
     <div id="upcoming-calls"></div>
     <div id="quick-actions"></div>
-    <div class="card" id="action-queue" style="margin-bottom:16px"><div class="card-header"><span class="card-title">Action Queue</span><span class="card-subtitle">What needs attention next</span></div><div id="w-action-queue">Loading…</div></div>
     <div id="dash-filter" class="dash-filter"></div>
     <div class="stat-grid" id="dash-stats">
       ${[1,2,3,4,5].map(()=>`<div class="stat-card"><div class="skeleton skeleton-line w-1/4" style="height:11px;margin-bottom:10px;"></div><div class="skeleton skeleton-line w-1/2" style="height:28px;"></div></div>`).join('')}
@@ -280,7 +282,7 @@ async function renderDashboard() {
 
   // Fetch everything in parallel
   const nowTs = firebase.firestore.Timestamp.now();
-  const [leadsSnap, eventsSnap, expensesSnap, paymentsSnap, bartSnap, activitySnap, callsSnap, pageSnap, followupsSnap, unmatchedSnap] = await Promise.all([
+  const [leadsSnap, eventsSnap, expensesSnap, paymentsSnap, bartSnap, activitySnap, callsSnap, pageSnap, followupsSnap, unmatchedSnap, agentTasksSnap] = await Promise.all([
     db.collection('leads').get(),
     db.collection('events').get(),
     db.collection('expenses').get(),
@@ -290,7 +292,10 @@ async function renderDashboard() {
     db.collection('call_bookings').where('slotStart', '>=', nowTs).orderBy('slotStart', 'asc').limit(5).get(),
     db.collection('page_events').orderBy('timestamp','desc').limit(2000).get().catch(()=>({docs:[]})),
     db.collection('kendell_followups').where('status','==','open').get().catch(()=>({docs:[]})),
-    db.collection('unmatched_messages').where('resolved','==',false).limit(25).get().catch(()=>({docs:[]}))
+    db.collection('unmatched_messages').where('resolved','==',false).limit(25).get().catch(()=>({docs:[]})),
+    /* Active background work — what the agents are handling right now, so the
+       brief can reassure Kendell instead of showing him a raw lead list. */
+    db.collection('agent_tasks').where('status','in',['queued','running']).limit(100).get().catch(()=>({docs:[],size:0}))
   ]);
 
   renderUpcomingCalls(callsSnap);
@@ -305,6 +310,7 @@ async function renderDashboard() {
     pageEvents: (pageSnap.docs || []).map(d => ({ id: d.id, ...d.data() })),
     followups: (followupsSnap.docs || []).map(d => ({ id: d.id, ...d.data() })),
     unmatched: (unmatchedSnap.docs || []).map(d => ({ id: d.id, ...d.data() })),
+    agentTasksActive: (agentTasksSnap.size != null ? agentTasksSnap.size : (agentTasksSnap.docs || []).length),
     bartenders: bartSnap.size
   };
 
@@ -342,39 +348,23 @@ function renderAll() {
   const now = new Date();
   const range = DashCore.getDateRange(getActiveFilter(), now);
   renderStats(range, now);
-  renderActionQueue(now);
   // Registered widgets: only enabled ones render (their cards are the only
   // ones in the DOM — see renderWidgetGrid), in the user's order.
   const prefs = getDashPrefs();
-  prefs.order.filter(id => prefs.enabled[id]).forEach(id => {
+  /* agentBrief always renders (it's the permanent hero, not gated by the
+     enabled map); every other widget renders only when enabled. */
+  prefs.order.filter(id => id === 'agentBrief' || prefs.enabled[id]).forEach(id => {
     const w = WIDGETS.find(x => x.id === id);
     if (!w) return;
     try { w.render(now, range); } catch (e) { console.error('widget ' + id + ' failed', e); }
   });
 }
 
-function renderActionQueue(now) {
-  const el = document.getElementById('w-action-queue');
-  if (!el) return;
-  const items = DashCore.computeActionQueue(_dashData.leads || [], now).slice(0, 8);
-  if (!items.length) { el.innerHTML = emptyState('✓', 'No open lead actions'); return; }
-  const styles = {
-    'Needs Kendell': ['var(--red)', 'Your review'],
-    'Quote Ready - Needs Price': ['var(--gold)', 'Price review'],
-    'Needs Reply': ['var(--blue)', 'Reply'],
-    'Follow-Up Due': ['var(--gold)', 'Follow up'],
-    'Waiting on Client': ['var(--text-muted)', 'Waiting']
-  };
-  el.innerHTML = items.map(({ lead, state }) => {
-    const [color, label] = styles[state] || ['var(--text-muted)', state];
-    const name = escapeHtmlSafe(lead.name || lead.email || 'Unnamed lead');
-    const detail = escapeHtmlSafe([lead.eventType, lead.eventDate, lead.venue].filter(Boolean).join(' · '));
-    return `<button type="button" class="dash-list-row" style="width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--border);cursor:pointer" data-lead-id="${escapeHtmlSafe(lead.id)}">
-      <div class="dash-row-main"><span class="dash-row-title">${name}</span><span class="dash-row-sub">${detail || 'Lead details'}</span></div>
-      <span class="badge" style="color:${color};background:${color}22">${escapeHtmlSafe(label)}</span></button>`;
-  }).join('');
-  bindLeadOpenClicks(el);
-}
+/* The Action Queue that used to live at the top of the home screen was
+   retired (Jul 2026). Untouched open leads are now drained into agent_tasks
+   by the staleLeadSweep function and worked by the runner — so the home
+   screen shows the executive brief (with a live "agents working" count),
+   not a static nag list. The raw per-lead actions still live in the CRM. */
 
 /* Lead ids can be client-chosen (public create on /leads), so never interpolate
    them into inline onclick handlers — bind via data attribute instead. */

@@ -287,17 +287,30 @@ async function initQuickScanWidget() {
       <div id="quick-scan-strip"></div>
     </div>`;
 
-  // Ensure hidden file input exists once
+  // Ensure hidden file inputs exist once. Two inputs on purpose:
+  //  • quick-scan-input  — NO `capture`, so iOS shows the native sheet with
+  //    "Photo Library" (multi-select works) + "Take Photo". This is the bulk
+  //    path: pick as many receipt photos as you want in one shot.
+  //  • quick-scan-camera — `capture=environment` for a one-tap live camera scan.
   if (!document.getElementById('quick-scan-input')) {
     const input = document.createElement('input');
     input.type = 'file';
     input.id = 'quick-scan-input';
     input.accept = 'image/*';
-    input.capture = 'environment';
     input.multiple = true;
     input.style.display = 'none';
     input.onchange = function() { quickScanFiles(this.files); };
     document.body.appendChild(input);
+  }
+  if (!document.getElementById('quick-scan-camera')) {
+    const cam = document.createElement('input');
+    cam.type = 'file';
+    cam.id = 'quick-scan-camera';
+    cam.accept = 'image/*';
+    cam.capture = 'environment';
+    cam.style.display = 'none';
+    cam.onchange = function() { quickScanFiles(this.files); };
+    document.body.appendChild(cam);
   }
 
   // Badge listener: count docs with status 'needs-review'
@@ -386,32 +399,33 @@ async function initQuickScanWidget() {
 function quickScanTap() {
   if (navigator.vibrate) navigator.vibrate(10);
 
-  if (scanNeedsCount > 0) {
-    // Show chooser
-    let sheet = document.getElementById('scan-sheet');
-    if (!sheet) {
-      sheet = document.createElement('div');
-      sheet.id = 'scan-sheet';
-      sheet.innerHTML = `
-        <div class="scan-sheet-backdrop" onclick="(()=>{const s=document.getElementById('scan-sheet'); if(s) s.classList.remove('open');})()"></div>
-        <div class="scan-sheet-card" id="scan-sheet-card"></div>
-      `;
-      document.body.appendChild(sheet);
-    }
-
-    const card = document.getElementById('scan-sheet-card');
-    card.innerHTML = `
-      <button class="scan-sheet-close" onclick="document.getElementById('scan-sheet').classList.remove('open')">✕</button>
-      <div style="text-align:center;padding:20px">
-        <div style="font-size:18px;font-weight:700;margin-bottom:24px">What would you like to do?</div>
-        <button class="scan-chip" style="display:block;width:100%;margin-bottom:12px;min-height:48px;font-size:16px" onclick="(()=>{document.getElementById('scan-sheet').classList.remove('open');document.getElementById('quick-scan-input').click();})()">📷 New scan</button>
-        <button class="scan-chip" style="display:block;width:100%;min-height:48px;font-size:16px" onclick="(()=>{document.getElementById('scan-sheet').classList.remove('open');openScanSheet();})()">❓ Answer ${scanNeedsCount} question${scanNeedsCount!==1?'s':''}</button>
-      </div>
+  let sheet = document.getElementById('scan-sheet');
+  if (!sheet) {
+    sheet = document.createElement('div');
+    sheet.id = 'scan-sheet';
+    sheet.innerHTML = `
+      <div class="scan-sheet-backdrop" onclick="(()=>{const s=document.getElementById('scan-sheet'); if(s) s.classList.remove('open');})()"></div>
+      <div class="scan-sheet-card" id="scan-sheet-card"></div>
     `;
-    sheet.classList.add('open');
-  } else {
-    document.getElementById('quick-scan-input').click();
+    document.body.appendChild(sheet);
   }
+
+  const answerBtn = scanNeedsCount > 0
+    ? `<button class="scan-chip scan-chip-muted" style="display:block;width:100%;min-height:48px;font-size:16px" onclick="(()=>{document.getElementById('scan-sheet').classList.remove('open');openScanSheet();})()">❓ Answer ${scanNeedsCount} question${scanNeedsCount!==1?'s':''}</button>`
+    : '';
+
+  const card = document.getElementById('scan-sheet-card');
+  card.innerHTML = `
+    <button class="scan-sheet-close" onclick="document.getElementById('scan-sheet').classList.remove('open')">✕</button>
+    <div style="text-align:center;padding:20px">
+      <div style="font-size:18px;font-weight:700;margin-bottom:6px">Add receipts</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:22px">Upload lets you pick several photos at once.</div>
+      <button class="scan-chip" style="display:block;width:100%;margin-bottom:12px;min-height:48px;font-size:16px" onclick="(()=>{document.getElementById('scan-sheet').classList.remove('open');document.getElementById('quick-scan-input').click();})()">🖼️ Upload receipts (bulk)</button>
+      <button class="scan-chip" style="display:block;width:100%;margin-bottom:12px;min-height:48px;font-size:16px" onclick="(()=>{document.getElementById('scan-sheet').classList.remove('open');document.getElementById('quick-scan-camera').click();})()">📷 Take a photo</button>
+      ${answerBtn}
+    </div>
+  `;
+  sheet.classList.add('open');
 }
 
 async function quickScanFiles(files) {
@@ -441,7 +455,10 @@ async function quickScanFiles(files) {
   }
 
   await updateQueuePill();
-  document.getElementById('quick-scan-input').value = '';
+  ['quick-scan-input', 'quick-scan-camera'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
 }
 
 async function drainScanQueue() {
