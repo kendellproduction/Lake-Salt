@@ -1034,10 +1034,37 @@ async function processMessageId(gmail, messageId) {
 
 /* Resolve → write to lead, or file as unmatched (auto-resolving obvious
  * non-lead mail so the queue only holds messages that need a human). */
+/* Sent-folder → CRM reconciliation: when we see OUR outbound email to a
+ * lead that reads like a quote going out, flip their draft quote(s) to
+ * sent, advance the stage, and log it — closes the "quote emailed but CRM
+ * still says draft" gap. */
+const QUOTE_EMAIL_RE = /\b(quote|proposal|estimate|pricing)\b/i;
+async function reconcileSentQuote(leadId, msg) {
+  if (msg.direction !== 'out') return;
+  if (!QUOTE_EMAIL_RE.test(`${msg.subject || ''} ${(msg.bodyText || '').slice(0, 4000)}`)) return;
+  try {
+    const qs = await db.collection('quotes').where('leadId', '==', leadId).get();
+    const drafts = qs.docs.filter(d => (d.data().status || 'draft') === 'draft');
+    if (!drafts.length) return;
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    for (const q of drafts) await q.ref.update({ status: 'sent', sentAt: now, sentVia: 'gmail_sync' });
+    await db.collection('leads').doc(leadId).update({
+      stage: 'Proposal Sent', latestQuoteStatus: 'sent', updatedAt: now,
+    });
+    await db.collection('activity').add({
+      type: 'quote_sent_detected', leadId,
+      note: `Sent-folder sync: quote email detected ("${(msg.subject || '').slice(0, 100)}") — marked ${drafts.length} draft quote(s) sent, stage → Proposal Sent`,
+      createdAt: now,
+    });
+    console.log(`reconcileSentQuote: lead ${leadId} — ${drafts.length} quote(s) marked sent`);
+  } catch (e) { console.warn('reconcileSentQuote failed:', e.message); }
+}
+
 async function routeMessage(msg) {
   const resolved = await resolveLeadForMessage(msg);
   if (resolved.leadId && resolved.leadRef) {
     await writeMessageToLead(resolved.leadRef, msg);
+    await reconcileSentQuote(resolved.leadId, msg);
     return;
   }
   /* Knot/WeddingPro relays send from noreply-style proxies but ARE real
@@ -2408,6 +2435,8 @@ KENDELL'S PRIORITIES (in order):
 2. Outstanding quotes — every quote sent with no reply is a follow-up waiting to happen. Track how long each has been out and plan the chase.
 3. Everything else. The wedding-expo cohort is NOT urgent pipeline: they've already been contacted (some multiple times). They get ONE final follow-up pass — and only leads whose event date hasn't passed. Don't count them as fresh leads or let them dominate the brief.
 
+MOVING ON RULE: if a lead's event date is close (within ~2 weeks) and they've never responded to our outreach, they've gone another direction. Do NOT queue more follow-ups — recommend marking them Lost and move on. We never annoy people.
+
 ${AUTONOMY_POLICY}
 
 When you've seen enough, call publish_brief exactly once.
@@ -2496,5 +2525,247 @@ exports.refreshAgentBrief = onCall(
   async (request) => {
     await requireAdmin(request);
     return await generateAgentBriefCore('manual');
+  }
+);
+
+/* ═══ Agent Task Runner (Phase 2) — queued work actually gets DONE ════════
+ * Every 30 min during business hours, pull queued agent_tasks and execute
+ * them with a Claude tool loop. Capabilities: read anything (query_crm),
+ * update leads, resolve unmatched messages, and email — routine follow-ups
+ * send directly (Kendell's standing autonomy policy); anything touching
+ * pricing/quotes/contracts becomes a Gmail DRAFT for his review, never an
+ * autonomous send. Every task ends with a logged outcome. */
+
+function rfc822(to, subject, body) {
+  const msg =
+    `From: Lake Salt <${BUSINESS_EMAIL}>\r\nTo: ${to}\r\nSubject: ${subject}\r\n` +
+    `Content-Type: text/plain; charset="UTF-8"\r\n\r\n${body}`;
+  return Buffer.from(msg).toString('base64url');
+}
+
+async function leadEmailAllowed(leadId, to) {
+  const doc = await db.collection('leads').doc(String(leadId)).get();
+  if (!doc.exists) return false;
+  const l = doc.data();
+  const addrs = [l.email, l.replyToAddress, ...(l.emailAliases || [])]
+    .filter(Boolean).map(e => String(e).toLowerCase().trim());
+  return addrs.includes(String(to).toLowerCase().trim());
+}
+
+const MONEY_RE = /\$\s?\d|price|pricing|quote|proposal|estimate|contract|deposit|invoice|discount/i;
+
+const RUNNER_TOOLS = [
+  QUERY_CRM_TOOL,
+  {
+    name: 'update_lead',
+    description: 'Update a lead: move stage, append a note, or set basic fields. Allowed stages: New Lead, Contacted, Proposal Sent, Booked, Booked-Tentative, Completed, Lost, Closed.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        leadId: { type: 'string' },
+        stage: { type: 'string' },
+        note: { type: 'string', description: 'Appended to the lead notes with an [agent] prefix' },
+        fields: { type: 'object', description: 'Other safe fields: eventDate, eventType, budget, guestCount, phone' },
+      },
+      required: ['leadId'],
+    },
+  },
+  {
+    name: 'resolve_unmatched',
+    description: 'Resolve an unmatched_messages doc: mark not_a_lead, or attach it to a lead by id.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        unmatchedId: { type: 'string' },
+        resolution: { type: 'string', enum: ['not_a_lead', 'attached'] },
+        leadId: { type: 'string', description: 'Required when resolution=attached' },
+      },
+      required: ['unmatchedId', 'resolution'],
+    },
+  },
+  {
+    name: 'send_email',
+    description: 'Send a routine email (follow-up, check-in, answer a simple question) from contact@lakesalt.us to a lead. The recipient MUST be that lead\'s email on file. FORBIDDEN for anything involving pricing, quotes, contracts, or money — use create_draft for those.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        leadId: { type: 'string' }, to: { type: 'string' },
+        subject: { type: 'string' }, body: { type: 'string', description: 'Plain text, warm and professional, signed Lake Salt' },
+      },
+      required: ['leadId', 'to', 'subject', 'body'],
+    },
+  },
+  {
+    name: 'create_draft',
+    description: 'Create a Gmail draft for Kendell to review and send himself. Use for anything money-related or sensitive.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        leadId: { type: 'string' }, to: { type: 'string' },
+        subject: { type: 'string' }, body: { type: 'string' },
+      },
+      required: ['leadId', 'to', 'subject', 'body'],
+    },
+  },
+  {
+    name: 'complete_task',
+    description: 'Finish this task. Call exactly once when done (or when blocked and a human is needed).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        outcome: { type: 'string', enum: ['done', 'blocked'] },
+        summary: { type: 'string', description: '1-3 sentences: what you did / why blocked. Shown to Kendell.' },
+      },
+      required: ['outcome', 'summary'],
+    },
+  },
+];
+
+async function runRunnerTool(name, input, gmail) {
+  const now = admin.firestore.FieldValue.serverTimestamp();
+  if (name === 'query_crm') return await runQueryCrm(input);
+  if (name === 'update_lead') {
+    const ref = db.collection('leads').doc(String(input.leadId || ''));
+    const doc = await ref.get();
+    if (!doc.exists) return 'No such lead.';
+    const patch = { updatedAt: now };
+    const STAGES = ['New Lead', 'Contacted', 'Proposal Sent', 'Booked', 'Booked-Tentative', 'Completed', 'Lost', 'Closed'];
+    if (input.stage) {
+      if (!STAGES.includes(input.stage)) return `Invalid stage. Allowed: ${STAGES.join(', ')}`;
+      patch.stage = input.stage;
+    }
+    if (input.note) patch.notes = ((doc.data().notes || '') + `\n[agent ${new Date().toISOString().slice(0, 10)}] ${String(input.note).slice(0, 500)}`).trim();
+    const SAFE = ['eventDate', 'eventType', 'budget', 'guestCount', 'phone'];
+    for (const [k, v] of Object.entries(input.fields || {})) if (SAFE.includes(k)) patch[k] = v;
+    await ref.update(patch);
+    await db.collection('activity').add({ type: 'agent_update', leadId: input.leadId, note: `Agent updated lead: ${Object.keys(patch).filter(k => k !== 'updatedAt').join(', ')}`, createdAt: now });
+    return `Lead updated (${Object.keys(patch).filter(k => k !== 'updatedAt').join(', ')}).`;
+  }
+  if (name === 'resolve_unmatched') {
+    const ref = db.collection('unmatched_messages').doc(String(input.unmatchedId || ''));
+    const doc = await ref.get();
+    if (!doc.exists) return 'No such unmatched message.';
+    if (input.resolution === 'attached' && input.leadId) {
+      const leadRef = db.collection('leads').doc(String(input.leadId));
+      if (!(await leadRef.get()).exists) return 'No such lead to attach to.';
+      await writeMessageToLead(leadRef, doc.data().message || doc.data());
+    }
+    await ref.update({ resolved: true, resolution: input.resolution, resolvedVia: 'agent_runner', resolvedAt: now, ...(input.leadId ? { attachedLeadId: input.leadId } : {}) });
+    return `Unmatched message ${input.resolution === 'attached' ? 'attached to lead' : 'marked not_a_lead'}.`;
+  }
+  if (name === 'send_email' || name === 'create_draft') {
+    if (!gmail) return 'Gmail is not connected (OAuth secrets missing) — cannot email. Complete the task as blocked.';
+    if (!(await leadEmailAllowed(input.leadId, input.to))) return 'Refused: recipient is not this lead\'s email on file.';
+    if (name === 'send_email' && MONEY_RE.test(`${input.subject} ${input.body}`)) {
+      return 'Refused: this reads as money-related. Use create_draft so Kendell reviews it.';
+    }
+    const raw = rfc822(input.to, String(input.subject).slice(0, 200), String(input.body).slice(0, 5000));
+    if (name === 'send_email') {
+      await gmail.users.messages.send({ userId: 'me', requestBody: { raw } });
+      await db.collection('activity').add({ type: 'agent_email_sent', leadId: input.leadId, note: `Agent emailed ${input.to}: "${String(input.subject).slice(0, 100)}"`, createdAt: now });
+      return `Email sent to ${input.to}.`;
+    }
+    await gmail.users.drafts.create({ userId: 'me', requestBody: { message: { raw } } });
+    await db.collection('activity').add({ type: 'agent_draft_created', leadId: input.leadId, note: `Agent drafted email to ${input.to}: "${String(input.subject).slice(0, 100)}" — review in Gmail Drafts`, createdAt: now });
+    return `Draft created for ${input.to} — Kendell will review it in Gmail.`;
+  }
+  return `Unknown tool ${name}.`;
+}
+
+async function executeAgentTask(taskDoc, client, gmail) {
+  const t = taskDoc.data();
+  await taskDoc.ref.update({ status: 'running', startedAt: admin.firestore.FieldValue.serverTimestamp() });
+  const system =
+`You execute one queued task for Lake Salt, Kendell's mobile bar business in Utah. Work it end-to-end with your tools, then call complete_task exactly once.
+
+Rules:
+- Dig with query_crm before acting; verify lead ids and emails from real data.
+- Routine follow-up/check-in emails: send them (send_email). Warm, casual-professional, short, signed "Kendell — Lake Salt". Never pushy.
+- Anything involving pricing, quotes, contracts, or money: create_draft only.
+- MOVING ON RULE: if a lead's event is within ~2 weeks and they never responded, don't email them — mark them Lost with a note instead.
+- If the task can't be done with these tools, complete_task with outcome=blocked and say what's needed.`;
+
+  let messages = [{ role: 'user', content: `TASK: ${t.title}\n\nINSTRUCTIONS: ${t.instruction || t.detail || '(none)'}\n\nQueued by: ${t.source || 'unknown'} · agent hint: ${t.agent || 'general'}` }];
+  let result = null;
+  for (let turn = 0; turn < 10 && !result; turn++) {
+    const res = await client.messages.create({
+      model: 'claude-sonnet-5', max_tokens: 1500, system, tools: RUNNER_TOOLS,
+      ...(turn === 9 ? { tool_choice: { type: 'tool', name: 'complete_task' } } : {}),
+      messages,
+    });
+    const toolUses = res.content.filter(b => b.type === 'tool_use');
+    const done = toolUses.find(b => b.name === 'complete_task');
+    if (done) { result = done.input; break; }
+    if (!toolUses.length) { messages.push({ role: 'assistant', content: res.content }, { role: 'user', content: 'Use your tools or call complete_task.' }); continue; }
+    messages.push({ role: 'assistant', content: res.content });
+    const outs = [];
+    for (const tu of toolUses) {
+      let out;
+      try { out = await runRunnerTool(tu.name, tu.input || {}, gmail); }
+      catch (e) { out = `Tool ${tu.name} failed: ${e.message}`; }
+      outs.push({ type: 'tool_result', tool_use_id: tu.id, content: out });
+    }
+    messages.push({ role: 'user', content: outs });
+  }
+  const now = admin.firestore.FieldValue.serverTimestamp();
+  await taskDoc.ref.update({
+    status: result && result.outcome === 'done' ? 'done' : 'blocked',
+    result: String((result && result.summary) || 'runner gave no summary').slice(0, 1000),
+    completedAt: now,
+  });
+  return result;
+}
+
+exports.agentTaskRunner = onSchedule(
+  {
+    schedule: '*/30 8-20 * * *', timeZone: 'America/Denver',
+    secrets: [anthropicApiKey, GMAIL_OAUTH_CLIENT_ID, GMAIL_OAUTH_CLIENT_SECRET, GMAIL_OAUTH_REFRESH_TOKEN],
+    timeoutSeconds: 540, memory: '512MiB',
+  },
+  async () => {
+    const snap = await db.collection('agent_tasks')
+      .where('status', '==', 'queued').limit(4).get();
+    if (snap.empty) { console.log('agentTaskRunner: queue empty.'); return; }
+    const Anthropic = require('@anthropic-ai/sdk');
+    const client = new Anthropic({ apiKey: anthropicApiKey.value() });
+    const { gmail } = buildGmailClient();
+    const docs = snap.docs.sort((a, b) =>
+      ((a.data().createdAt && a.data().createdAt.seconds) || 0) - ((b.data().createdAt && b.data().createdAt.seconds) || 0));
+    for (const d of docs) {
+      try {
+        const r = await executeAgentTask(d, client, gmail);
+        console.log(`agentTaskRunner: ${d.id} → ${(r && r.outcome) || 'no result'}: ${(r && r.summary || '').slice(0, 150)}`);
+      } catch (e) {
+        console.error(`agentTaskRunner: ${d.id} crashed:`, e.message);
+        await d.ref.update({ status: 'error', result: e.message.slice(0, 500), completedAt: admin.firestore.FieldValue.serverTimestamp() });
+      }
+    }
+  }
+);
+
+/* Manual kick for testing / "run the queue now" from the dashboard. */
+exports.runAgentTasksNow = onCall(
+  {
+    secrets: [anthropicApiKey, GMAIL_OAUTH_CLIENT_ID, GMAIL_OAUTH_CLIENT_SECRET, GMAIL_OAUTH_REFRESH_TOKEN],
+    timeoutSeconds: 540, memory: '512MiB',
+  },
+  async (request) => {
+    await requireAdmin(request);
+    const snap = await db.collection('agent_tasks').where('status', '==', 'queued').limit(3).get();
+    if (snap.empty) return { ran: 0, results: [] };
+    const Anthropic = require('@anthropic-ai/sdk');
+    const client = new Anthropic({ apiKey: anthropicApiKey.value() });
+    const { gmail } = buildGmailClient();
+    const results = [];
+    for (const d of snap.docs) {
+      try {
+        const r = await executeAgentTask(d, client, gmail);
+        results.push({ id: d.id, title: d.data().title, ...(r || { outcome: 'error' }) });
+      } catch (e) {
+        await d.ref.update({ status: 'error', result: e.message.slice(0, 500) });
+        results.push({ id: d.id, title: d.data().title, outcome: 'error', summary: e.message });
+      }
+    }
+    return { ran: results.length, results };
   }
 );
