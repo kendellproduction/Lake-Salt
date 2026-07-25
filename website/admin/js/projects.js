@@ -72,16 +72,16 @@ function renderProjectKanban() {
       const tasks = Object.values(allTasks).filter(t => t.projectId === p.id);
       return `
       <div class="kanban-col" style="min-width:260px">
-        <div class="kanban-col-header" style="flex-direction:column;align-items:flex-start;gap:4px;cursor:pointer" onclick="openProjectModal('${p.id}')">
-          <span class="kanban-col-title">${p.eventName||p.leadName||'Project'}</span>
-          <span style="font-size:11px;color:var(--text-muted)">${p.eventDate||''} · ${tasks.length} tasks</span>
+        <div class="kanban-col-header" style="flex-direction:column;align-items:flex-start;gap:4px;cursor:pointer" onclick="openProjectModal(${jsStr(p.id)})">
+          <span class="kanban-col-title">${escapeHtml(p.eventName||p.leadName||'Project')}</span>
+          <span style="font-size:11px;color:var(--text-muted)">${escapeHtml(p.eventDate||'')} · ${tasks.length} tasks</span>
         </div>
         <div class="kanban-cards">
           ${TASK_STATUSES.map(status => {
             const ts = tasks.filter(t => t.status === status);
             return ts.length ? ts.map(t => taskCardHTML(t)).join('') : '';
           }).join('')}
-          <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:4px" onclick="openAddTaskModal('${p.id}')">+ Add Task</button>
+          <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:4px" onclick="openAddTaskModal(${jsStr(p.id)})">+ Add Task</button>
         </div>
       </div>`;
     }).join('')}
@@ -89,14 +89,14 @@ function renderProjectKanban() {
 }
 
 function taskCardHTML(t) {
-  return `<div class="lead-card" onclick="openTaskModal('${t.id}')">
-    <div class="lead-card-name" style="font-size:12px">${t.title}</div>
+  return `<div class="lead-card" onclick="openTaskModal(${jsStr(t.id)})">
+    <div class="lead-card-name" style="font-size:12px">${escapeHtml(t.title)}</div>
     <div class="lead-card-tags" style="margin-top:6px">
-      <span class="badge ${priorityBadgeClass(t.priority)}">${t.priority||'Normal'}</span>
-      <span class="badge ${t.status==='Done'?'badge-booked':t.status==='In Progress'?'badge-contacted':'badge-todo'}">${t.status||'To Do'}</span>
-      ${t.dueDate ? `<span style="font-size:10px;color:var(--text-muted)">📅 ${t.dueDate}</span>` : ''}
+      <span class="badge ${priorityBadgeClass(t.priority)}">${escapeHtml(t.priority||'Normal')}</span>
+      <span class="badge ${t.status==='Done'?'badge-booked':t.status==='In Progress'?'badge-contacted':'badge-todo'}">${escapeHtml(t.status||'To Do')}</span>
+      ${t.dueDate ? `<span style="font-size:10px;color:var(--text-muted)">📅 ${escapeHtml(t.dueDate)}</span>` : ''}
     </div>
-    ${t.assignee ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px">👤 ${t.assignee}</div>` : ''}
+    ${t.assignee ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px">👤 ${escapeHtml(t.assignee)}</div>` : ''}
   </div>`;
 }
 
@@ -119,13 +119,13 @@ function renderTaskList_all() {
     </tr></thead><tbody>
     ${tasks.map(t => {
       const p = allProjects[t.projectId];
-      return `<tr style="cursor:pointer" onclick="openTaskModal('${t.id}')">
-        <td>${t.title}</td>
-        <td><span class="text-muted">${p?.eventName||'—'}</span></td>
-        <td>${t.assignee||'—'}</td>
-        <td>${t.dueDate||'—'}</td>
-        <td><span class="badge ${priorityBadgeClass(t.priority)}">${t.priority||'Normal'}</span></td>
-        <td><span class="badge ${t.status==='Done'?'badge-booked':t.status==='In Progress'?'badge-inprogress':'badge-todo'}">${t.status||'To Do'}</span></td>
+      return `<tr style="cursor:pointer" onclick="openTaskModal(${jsStr(t.id)})">
+        <td>${escapeHtml(t.title)}</td>
+        <td><span class="text-muted">${escapeHtml(p?.eventName||'—')}</span></td>
+        <td>${escapeHtml(t.assignee||'—')}</td>
+        <td>${escapeHtml(t.dueDate||'—')}</td>
+        <td><span class="badge ${priorityBadgeClass(t.priority)}">${escapeHtml(t.priority||'Normal')}</span></td>
+        <td><span class="badge ${t.status==='Done'?'badge-booked':t.status==='In Progress'?'badge-inprogress':'badge-todo'}">${escapeHtml(t.status||'To Do')}</span></td>
       </tr>`;
     }).join('')}
     </tbody></table></div></div>`;
@@ -146,13 +146,13 @@ function renderMyTasks() {
     <div style="margin-bottom:20px">
       <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);font-weight:700;margin-bottom:10px">${status} (${ts.length})</div>
       ${ts.length ? ts.map(t => `
-        <div class="lead-card" style="margin-bottom:8px" onclick="openTaskModal('${t.id}')">
+        <div class="lead-card" style="margin-bottom:8px" onclick="openTaskModal(${jsStr(t.id)})">
           <div style="display:flex;align-items:center;gap:8px">
-            <input type="checkbox" ${t.status==='Done'?'checked':''} onclick="event.stopPropagation();quickCompleteTask('${t.id}',this.checked)" style="accent-color:var(--teal)"/>
-            <span style="font-size:13px;font-weight:600;${t.status==='Done'?'text-decoration:line-through;color:var(--text-muted)':''}">${t.title}</span>
-            <span class="badge ${priorityBadgeClass(t.priority)}" style="margin-left:auto">${t.priority||'Normal'}</span>
+            <input type="checkbox" ${t.status==='Done'?'checked':''} onclick="event.stopPropagation();quickCompleteTask(${jsStr(t.id)},this.checked)" style="accent-color:var(--teal)"/>
+            <span style="font-size:13px;font-weight:600;${t.status==='Done'?'text-decoration:line-through;color:var(--text-muted)':''}">${escapeHtml(t.title)}</span>
+            <span class="badge ${priorityBadgeClass(t.priority)}" style="margin-left:auto">${escapeHtml(t.priority||'Normal')}</span>
           </div>
-          ${t.dueDate ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;margin-left:22px">📅 ${t.dueDate}</div>` : ''}
+          ${t.dueDate ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;margin-left:22px">📅 ${escapeHtml(t.dueDate)}</div>` : ''}
         </div>`).join('') : `<div style="font-size:12px;color:var(--text-muted);padding:8px">No tasks</div>`}
     </div>`).join('');
 }
@@ -167,7 +167,7 @@ function openTaskModal(id) {
   const p = allProjects[t.projectId];
   openModal(`Task: ${t.title}`, `
     <div class="form-group"><label class="form-label">Title</label>
-      <input class="form-input" id="task-title" value="${t.title||''}"/></div>
+      <input class="form-input" id="task-title" value="${escapeHtml(t.title||'')}"/></div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Status</label>
         <select class="form-select" id="task-status">
@@ -185,14 +185,14 @@ function openTaskModal(id) {
           <option ${t.assignee==='Manager'?'selected':''}>Manager</option>
         </select></div>
       <div class="form-group"><label class="form-label">Due Date</label>
-        <input class="form-input" type="date" id="task-due" value="${t.dueDate||''}"/></div>
+        <input class="form-input" type="date" id="task-due" value="${escapeHtml(t.dueDate||'')}"/></div>
     </div>
     <div class="form-group"><label class="form-label">Notes</label>
-      <textarea class="form-textarea" id="task-notes">${t.notes||''}</textarea></div>
+      <textarea class="form-textarea" id="task-notes">${escapeHtml(t.notes||'')}</textarea></div>
     <div class="modal-footer" style="padding:0;margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn btn-danger btn-sm" onclick="deleteTask_project('${id}')">Delete</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteTask_project(${jsStr(id)})">Delete</button>
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveTask('${id}')">Save</button>
+      <button class="btn btn-primary" onclick="saveTask(${jsStr(id)})">Save</button>
     </div>`);
 }
 
@@ -231,7 +231,7 @@ function openAddTaskModal(projectId) {
         <div class="form-group"><label class="form-label">Project</label>
           <select class="form-select" name="projectId">
             <option value="">— None —</option>
-            ${projects.map(p=>`<option value="${p.id}" ${p.id===projectId?'selected':''}>${p.eventName||p.leadName}</option>`).join('')}
+            ${projects.map(p=>`<option value="${escapeHtml(p.id)}" ${p.id===projectId?'selected':''}>${escapeHtml(p.eventName||p.leadName)}</option>`).join('')}
           </select></div>
         <div class="form-group"><label class="form-label">Assigned To</label>
           <select class="form-select" name="assignee">
@@ -313,23 +313,23 @@ function openProjectModal(id) {
   openModal(`Project: ${p.eventName||p.leadName}`, `
     <div style="display:flex;flex-direction:column;gap:14px">
       <div class="stat-grid" style="margin-bottom:0">
-        <div class="stat-card gold"><div class="stat-label">Revenue</div><div class="stat-value">${fmtMoney(p.revenue)}</div></div>
+        <div class="stat-card gold"><div class="stat-label">Revenue</div><div class="stat-value">${escapeHtml(fmtMoney(p.revenue))}</div></div>
         <div class="stat-card teal"><div class="stat-label">Tasks</div><div class="stat-value">${tasks.length}</div></div>
         <div class="stat-card green"><div class="stat-label">Done</div><div class="stat-value">${tasks.filter(t=>t.status==='Done').length}</div></div>
       </div>
       <div class="form-row">
-        <div class="lead-info-item"><span class="lead-info-label">Date</span><span class="lead-info-value">${p.eventDate||'—'}</span></div>
-        <div class="lead-info-item"><span class="lead-info-label">Venue</span><span class="lead-info-value">${p.venue||'—'}</span></div>
+        <div class="lead-info-item"><span class="lead-info-label">Date</span><span class="lead-info-value">${escapeHtml(p.eventDate||'—')}</span></div>
+        <div class="lead-info-item"><span class="lead-info-label">Venue</span><span class="lead-info-value">${escapeHtml(p.venue||'—')}</span></div>
       </div>
       <div class="divider"></div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <span class="form-section-title" style="margin:0">Tasks</span>
-        <button class="btn btn-primary btn-sm" onclick="closeModal();openAddTaskModal('${id}')">+ Task</button>
+        <button class="btn btn-primary btn-sm" onclick="closeModal();openAddTaskModal(${jsStr(id)})">+ Task</button>
       </div>
       ${tasks.map(t => taskCardHTML(t)).join('') || '<div class="text-muted" style="font-size:13px">No tasks yet</div>'}
       <div class="divider"></div>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-danger btn-sm" onclick="deleteProject('${id}')">Delete Project</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteProject(${jsStr(id)})">Delete Project</button>
       </div>
     </div>`, { wide: true });
 }
