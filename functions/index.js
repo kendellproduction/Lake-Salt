@@ -2755,10 +2755,25 @@ async function runRunnerTool(name, input, gmail) {
     if (name === 'send_email' && MONEY_RE.test(`${input.subject} ${input.body}`)) {
       return 'Refused: this reads as money-related. Use create_draft so Kendell reviews it.';
     }
+    if (name === 'send_email') {
+      /* Idempotency guard: never email the same address twice in 7 days,
+       * no matter what the prompt/model thinks. Catches duplicate tool
+       * calls AND overlapping campaigns (first-touch vs batch sweeps). */
+      try {
+        const since = admin.firestore.Timestamp.fromMillis(Date.now() - 7 * 86400e3);
+        const recent = await db.collection('activity')
+          .where('type', '==', 'agent_email_sent').where('createdAt', '>=', since).limit(200).get();
+        const addr = String(input.to).toLowerCase().trim();
+        const already = recent.docs.some(d =>
+          String(d.data().to || '').toLowerCase() === addr ||
+          String(d.data().note || '').toLowerCase().includes(`emailed ${addr}:`));
+        if (already) return `Refused: ${input.to} already received an agent email in the last 7 days — do not send another. Note the skip in your summary.`;
+      } catch (e) { console.warn('send guard check failed (allowing):', e.message); }
+    }
     const raw = rfc822(input.to, String(input.subject).slice(0, 200), String(input.body).slice(0, 5000));
     if (name === 'send_email') {
       await gmail.users.messages.send({ userId: 'me', requestBody: { raw } });
-      await db.collection('activity').add({ type: 'agent_email_sent', leadId: input.leadId, note: `Agent emailed ${input.to}: "${String(input.subject).slice(0, 100)}"`, createdAt: now });
+      await db.collection('activity').add({ type: 'agent_email_sent', leadId: input.leadId, to: String(input.to).toLowerCase().trim(), note: `Agent emailed ${input.to}: "${String(input.subject).slice(0, 100)}"`, createdAt: now });
       return `Email sent to ${input.to}.`;
     }
     await gmail.users.drafts.create({ userId: 'me', requestBody: { message: { raw } } });
