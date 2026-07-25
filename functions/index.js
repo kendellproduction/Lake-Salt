@@ -2728,7 +2728,7 @@ Rules:
 
 exports.agentTaskRunner = onSchedule(
   {
-    schedule: '*/30 8-20 * * *', timeZone: 'America/Denver',
+    schedule: '0 8,12,17 * * *', timeZone: 'America/Denver',
     secrets: [anthropicApiKey, GMAIL_OAUTH_CLIENT_ID, GMAIL_OAUTH_CLIENT_SECRET, GMAIL_OAUTH_REFRESH_TOKEN],
     timeoutSeconds: 540, memory: '512MiB',
   },
@@ -2769,7 +2769,7 @@ async function hasPendingFirstTouch(leadId) {
 }
 
 async function queueFirstTouch(leadId, lead, source) {
-  await db.collection('agent_tasks').add({
+  return await db.collection('agent_tasks').add({
     agent: 'comms', kind: 'first_touch', leadId,
     title: `First-touch: ${lead.name || 'new lead'}`,
     instruction:
@@ -2782,15 +2782,34 @@ async function queueFirstTouch(leadId, lead, source) {
 }
 
 const { onDocumentCreated: onDocCreatedLead } = require('firebase-functions/v2/firestore');
-exports.onLeadCreated = onDocCreatedLead('leads/{leadId}', async (event) => {
+exports.onLeadCreated = onDocCreatedLead(
+  {
+    document: 'leads/{leadId}',
+    secrets: [anthropicApiKey, GMAIL_OAUTH_CLIENT_ID, GMAIL_OAUTH_CLIENT_SECRET, GMAIL_OAUTH_REFRESH_TOKEN],
+    timeoutSeconds: 300, memory: '512MiB',
+  },
+  async (event) => {
   const lead = event.data && event.data.data();
   if (!lead || !lead.email) return;
   const src = String(lead.source || '').toLowerCase();
   /* Imports/backfills don't get insta-touched — only organic arrivals. */
   if (lead.importBatch || src.includes('knot') || src.includes('import') || src.includes('expo')) return;
   if (await hasPendingFirstTouch(event.params.leadId)) return;
-  await queueFirstTouch(event.params.leadId, lead, 'lead_created_trigger');
+  const taskRef = await queueFirstTouch(event.params.leadId, lead, 'lead_created_trigger');
   console.log(`onLeadCreated: first-touch queued for ${lead.name || event.params.leadId}`);
+  /* Speed-to-lead: execute the first-touch NOW instead of waiting for the
+   * next scheduled runner pass (batch runs are 8am/noon/5pm). */
+  try {
+    const Anthropic = require('@anthropic-ai/sdk');
+    const client = new Anthropic({ apiKey: anthropicApiKey.value() });
+    const { gmail } = buildGmailClient();
+    const taskDoc = await taskRef.get();
+    const r = await executeAgentTask(taskDoc, client, gmail);
+    console.log(`onLeadCreated: first-touch executed → ${(r && r.outcome) || 'no result'}`);
+  } catch (e) {
+    console.warn('onLeadCreated immediate execution failed (re-queued for the next batch run):', e.message);
+    try { await taskRef.update({ status: 'queued' }); } catch (e2) { /* leave as-is */ }
+  }
   try {
     await db.collection('notifications').add({
       title: '🔥 New lead: ' + (lead.name || 'unknown'),
