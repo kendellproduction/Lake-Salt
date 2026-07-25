@@ -1,7 +1,7 @@
 /* Use v2 (Gen 2) — required because Cloud Run services already exist with
  * these names and can't be migrated back to Gen 1. v2 callable handlers
  * receive a single `request` parameter with `.data`, `.auth`, etc. */
-const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
@@ -2849,5 +2849,85 @@ exports.runAgentTasksNow = onCall(
       }
     }
     return { ran: results.length, results };
+  }
+);
+
+/* ═══ MCP connector (Phase F) — talk to the business from Claude apps ═════
+ * Minimal MCP streamable-HTTP server exposing query_crm + kick_off_task,
+ * so Kendell can add it as a custom connector on claude.ai and ask "how's
+ * the business doing?" by voice from his phone.
+ * Auth: capability token in the URL path (like Zapier MCP) — the token
+ * lives in Secret Manager; requests without it get 404. */
+const MCP_ACCESS_TOKEN = defineSecret('MCP_ACCESS_TOKEN');
+
+const MCP_TOOLS = [
+  { name: 'query_crm', description: QUERY_CRM_TOOL.description, inputSchema: QUERY_CRM_TOOL.input_schema },
+  {
+    name: 'kick_off_task',
+    description: 'Queue real work for a Lake Salt agent (comms = email/CRM/quotes, lead-gen = prospecting, general = anything else). The task runner executes it within ~30 minutes during business hours.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        agent: { type: 'string', enum: ['comms', 'lead-gen', 'general'] },
+        title: { type: 'string' },
+        instruction: { type: 'string' },
+      },
+      required: ['agent', 'title', 'instruction'],
+    },
+  },
+];
+
+exports.mcp = onRequest(
+  { secrets: [MCP_ACCESS_TOKEN], timeoutSeconds: 60, cors: true },
+  async (req, res) => {
+    const token = MCP_ACCESS_TOKEN.value();
+    const pathTok = (req.path || '').split('/').filter(Boolean).pop();
+    const bearer = String(req.get('authorization') || '').replace(/^Bearer\s+/i, '');
+    if (!token || (pathTok !== token && bearer !== token)) { res.status(404).send('Not found'); return; }
+    if (req.method === 'GET') { res.status(405).send('POST only'); return; }
+    if (req.method !== 'POST') { res.status(405).send('POST only'); return; }
+
+    const rpc = req.body || {};
+    const reply = (result) => res.status(200).json({ jsonrpc: '2.0', id: rpc.id, result });
+    const rpcError = (code, message) => res.status(200).json({ jsonrpc: '2.0', id: rpc.id, error: { code, message } });
+
+    try {
+      switch (rpc.method) {
+        case 'initialize':
+          return reply({
+            protocolVersion: rpc.params && rpc.params.protocolVersion || '2025-03-26',
+            capabilities: { tools: {} },
+            serverInfo: { name: 'lake-salt-crm', version: '1.0.0' },
+          });
+        case 'notifications/initialized':
+          res.status(202).send(''); return;
+        case 'ping':
+          return reply({});
+        case 'tools/list':
+          return reply({ tools: MCP_TOOLS });
+        case 'tools/call': {
+          const { name, arguments: args } = rpc.params || {};
+          let out;
+          if (name === 'query_crm') out = await runQueryCrm(args || {});
+          else if (name === 'kick_off_task') {
+            const a = args || {};
+            const ref = await db.collection('agent_tasks').add({
+              agent: ['comms', 'lead-gen', 'general'].includes(a.agent) ? a.agent : 'general',
+              title: String(a.title || '').slice(0, 120),
+              instruction: String(a.instruction || '').slice(0, 4000),
+              status: 'queued', source: 'mcp_connector',
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            out = `Task queued (${ref.id}) — the runner picks it up within ~30 minutes during business hours.`;
+          } else return rpcError(-32602, `Unknown tool ${name}`);
+          return reply({ content: [{ type: 'text', text: String(out) }] });
+        }
+        default:
+          return rpcError(-32601, `Method not found: ${rpc.method}`);
+      }
+    } catch (e) {
+      console.error('mcp error:', e.message);
+      return rpcError(-32603, e.message);
+    }
   }
 );
