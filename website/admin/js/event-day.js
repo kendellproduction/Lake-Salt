@@ -101,7 +101,7 @@ async function renderEventDay() {
       .filter((b) => b);
 
     const drinkMenuBadges = (event.drinkMenu || [])
-      .map((drink) => `<span class="badge" style="background: var(--navy-lt); color: #e2e8f0; margin-right: 0.5rem; margin-bottom: 0.5rem;">${drink}</span>`)
+      .map((drink) => `<span class="badge" style="background: var(--navy-lt); color: #e2e8f0; margin-right: 0.5rem; margin-bottom: 0.5rem;">${escapeHtmlSafe(drink)}</span>`)
       .join('');
 
     const statusColor =
@@ -115,9 +115,9 @@ async function renderEventDay() {
       .map(
         (b) => `
       <div style="padding: 0.75rem; background: var(--navy-lt); border-radius: 0.5rem; margin-bottom: 0.5rem;">
-        <div style="font-weight: 600; color: #e2e8f0;">${b.name}</div>
+        <div style="font-weight: 600; color: #e2e8f0;">${escapeHtmlSafe(b.name)}</div>
         <div style="font-size: 0.875rem; color: var(--text-muted);">
-          <a href="tel:${b.phone}" style="color: var(--teal); text-decoration: none;">${b.phone}</a>
+          <a href="tel:${escapeHtmlSafe(b.phone)}" style="color: var(--teal); text-decoration: none;">${escapeHtmlSafe(b.phone)}</a>
         </div>
       </div>
     `
@@ -130,10 +130,10 @@ async function renderEventDay() {
         <div class="card-header" style="background: var(--navy); padding: 1rem;">
           <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
             <div>
-              <h3 class="card-title" style="color: white; margin-bottom: 0.25rem;">${event.name}</h3>
-              <span class="badge" style="background: var(--gold); color: #0D1B2A; font-size: 0.75rem;">${event.eventType}</span>
+              <h3 class="card-title" style="color: white; margin-bottom: 0.25rem;">${escapeHtmlSafe(event.name)}</h3>
+              <span class="badge" style="background: var(--gold); color: #0D1B2A; font-size: 0.75rem;">${escapeHtmlSafe(event.eventType)}</span>
             </div>
-            <span class="badge" style="background: ${statusColor}; color: white; font-size: 0.75rem;">${event.status}</span>
+            <span class="badge" style="background: ${statusColor}; color: white; font-size: 0.75rem;">${escapeHtmlSafe(event.status)}</span>
           </div>
         </div>
 
@@ -150,28 +150,28 @@ async function renderEventDay() {
           <!-- Venue -->
           <div style="margin-bottom: 1rem;">
             <div style="font-size: 0.875rem; color: var(--text-muted); font-weight: 600; margin-bottom: 0.25rem;">VENUE</div>
-            <div style="font-size: 1rem; color: #e2e8f0; font-weight: 600; margin-bottom: 0.25rem;">${event.venue}</div>
-            <a href="${mapsUrl}" target="_blank" style="color: var(--teal); text-decoration: none; font-size: 0.875rem; display: inline-block; padding: 0.5rem; margin: -0.5rem;">
-              ${event.venueAddress || 'View on Maps'}
+            <div style="font-size: 1rem; color: #e2e8f0; font-weight: 600; margin-bottom: 0.25rem;">${escapeHtmlSafe(event.venue)}</div>
+            <a href="${escapeHtmlSafe(mapsUrl)}" target="_blank" style="color: var(--teal); text-decoration: none; font-size: 0.875rem; display: inline-block; padding: 0.5rem; margin: -0.5rem;">
+              ${escapeHtmlSafe(event.venueAddress || 'View on Maps')}
             </a>
           </div>
 
           <!-- Guest Count -->
           <div style="margin-bottom: 1rem;">
             <div style="font-size: 0.875rem; color: var(--text-muted); font-weight: 600; margin-bottom: 0.25rem;">GUESTS</div>
-            <div style="font-size: 1rem; color: #e2e8f0; font-weight: 600;">${event.guestCount || 0}</div>
+            <div style="font-size: 1rem; color: #e2e8f0; font-weight: 600;">${escapeHtmlSafe(event.guestCount || 0)}</div>
           </div>
 
           <!-- Client Info -->
           <div style="margin-bottom: 1rem;">
             <div style="font-size: 0.875rem; color: var(--text-muted); font-weight: 600; margin-bottom: 0.5rem;">CLIENT</div>
-            <div style="font-size: 1rem; color: #e2e8f0; font-weight: 600; margin-bottom: 0.25rem;">${event.clientName}</div>
+            <div style="font-size: 1rem; color: #e2e8f0; font-weight: 600; margin-bottom: 0.25rem;">${escapeHtmlSafe(event.clientName)}</div>
             <div style="display: flex; gap: 1rem; font-size: 0.875rem;">
-              <a href="tel:${event.clientPhone}" style="color: var(--teal); text-decoration: none; padding: 0.5rem; margin: -0.5rem;">
-                ${event.clientPhone}
+              <a href="tel:${escapeHtmlSafe(event.clientPhone)}" style="color: var(--teal); text-decoration: none; padding: 0.5rem; margin: -0.5rem;">
+                ${escapeHtmlSafe(event.clientPhone)}
               </a>
-              <a href="mailto:${event.clientEmail}" style="color: var(--teal); text-decoration: none; padding: 0.5rem; margin: -0.5rem;">
-                ${event.clientEmail}
+              <a href="mailto:${escapeHtmlSafe(event.clientEmail)}" style="color: var(--teal); text-decoration: none; padding: 0.5rem; margin: -0.5rem;">
+                ${escapeHtmlSafe(event.clientEmail)}
               </a>
             </div>
           </div>
@@ -196,7 +196,7 @@ async function renderEventDay() {
           <div style="margin-bottom: 1rem;">
             <div style="font-size: 0.875rem; color: var(--text-muted); font-weight: 600; margin-bottom: 0.25rem;">REVENUE</div>
             <div style="font-size: 1.25rem; color: var(--green); font-weight: 700;">
-              ${fmtMoney(event.revenue || 0)}
+              ${escapeHtmlSafe(fmtMoney(event.revenue || 0))}
             </div>
           </div>
         </div>
@@ -215,17 +215,17 @@ async function renderEventDay() {
       <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
           <div style="flex: 1;">
-            <h3 style="font-weight: 600; color: #e2e8f0; margin-bottom: 0.25rem;">${event.name}</h3>
+            <h3 style="font-weight: 600; color: #e2e8f0; margin-bottom: 0.25rem;">${escapeHtmlSafe(event.name)}</h3>
             <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.5rem;">
               ${dateStr} • ${formatTime(event.startTime)} – ${formatTime(event.endTime)}
             </div>
             <div style="font-size: 0.875rem; color: #e2e8f0;">
-              ${event.venue} • ${event.guestCount || 0} guests
+              ${escapeHtmlSafe(event.venue)} • ${escapeHtmlSafe(event.guestCount || 0)} guests
             </div>
           </div>
           <div style="text-align: right;">
-            <div style="font-weight: 700; color: var(--green);">${fmtMoney(event.revenue || 0)}</div>
-            <span class="badge" style="background: var(--gold); color: #0D1B2A; font-size: 0.75rem; margin-top: 0.5rem;">${event.eventType}</span>
+            <div style="font-weight: 700; color: var(--green);">${escapeHtmlSafe(fmtMoney(event.revenue || 0))}</div>
+            <span class="badge" style="background: var(--gold); color: #0D1B2A; font-size: 0.75rem; margin-top: 0.5rem;">${escapeHtmlSafe(event.eventType)}</span>
           </div>
         </div>
       </div>

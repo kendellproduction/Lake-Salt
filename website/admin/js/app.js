@@ -243,6 +243,20 @@ function escapeHtmlSafe(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+/* Canonical helper for embedding an untrusted value as a JS string literal
+ * inside an inline handler attribute — onclick="fn(${jsStr(x)})". Defined here
+ * in app.js (loaded before every module) so all admin modules share ONE copy.
+ *
+ * Two decodes happen before the value reaches JS: the HTML parser unescapes the
+ * attribute, then JS parses the literal — so the value must survive both.
+ * JSON.stringify produces the quoted, JS-escaped literal; escapeHtmlSafe then
+ * protects it through the attribute, escaping & FIRST so a literal "&quot;" in
+ * the input can't decode into a real quote and close the string early.
+ * Emits its own surrounding quotes: write jsStr(x), NOT '${jsStr(x)}'. */
+function jsStr(s) {
+  return escapeHtmlSafe(JSON.stringify(String(s == null ? '' : s)));
+}
+
 function stageColor(stage) {
   const map = {
     'New Lead':         '#1A9E8F',

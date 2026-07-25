@@ -202,15 +202,15 @@ async function renderAnalytics() {
       const net        = (e.revenue||0) - totalCosts;
       const margin     = e.revenue > 0 ? ((net/e.revenue)*100).toFixed(0) : 0;
       return `<tr>
-        <td><strong>${e.name||'—'}</strong></td>
-        <td>${e.date||'—'}</td>
-        <td><span class="badge ${e.eventType==='Wedding'?'badge-wedding':'badge-corporate'}">${e.eventType||'—'}</span></td>
-        <td class="text-gold">${fmtMoney(e.revenue)}</td>
-        <td style="color:${net>=0?'var(--green)':'var(--red)'}">${fmtMoney(net)}</td>
+        <td><strong>${escapeHtmlSafe(e.name||'—')}</strong></td>
+        <td>${escapeHtmlSafe(e.date||'—')}</td>
+        <td><span class="badge ${e.eventType==='Wedding'?'badge-wedding':'badge-corporate'}">${escapeHtmlSafe(e.eventType||'—')}</span></td>
+        <td class="text-gold">${escapeHtmlSafe(fmtMoney(e.revenue))}</td>
+        <td style="color:${net>=0?'var(--green)':'var(--red)'}">${escapeHtmlSafe(fmtMoney(net))}</td>
         <td>${margin}%</td>
-        <td>${e.guestCount||'—'}</td>
+        <td>${escapeHtmlSafe(e.guestCount||'—')}</td>
         <td>${e.rating ? '⭐'.repeat(e.rating) : '—'}</td>
-        <td><button class="btn btn-ghost btn-sm" onclick="openEventModal('${e.id}')">Edit</button></td>
+        <td><button class="btn btn-ghost btn-sm" onclick="openEventModal(${jsStr(e.id)})">Edit</button></td>
       </tr>`;
     }).join('')}
     </tbody></table>` :
@@ -328,9 +328,9 @@ function eventFormHTML(e = {}) {
   <form id="event-form">
     <div class="form-row">
       <div class="form-group"><label class="form-label">Event Name *</label>
-        <input class="form-input" name="name" value="${e.name||''}" required placeholder="Smith Wedding"/></div>
+        <input class="form-input" name="name" value="${escapeHtmlSafe(e.name||'')}" required placeholder="Smith Wedding"/></div>
       <div class="form-group"><label class="form-label">Date *</label>
-        <input class="form-input" name="date" type="date" value="${e.date||''}" required/></div>
+        <input class="form-input" name="date" type="date" value="${escapeHtmlSafe(e.date||'')}" required/></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Event Type</label>
@@ -338,13 +338,13 @@ function eventFormHTML(e = {}) {
           ${['Wedding','Corporate Event','Private Celebration','Themed Experience'].map(t=>`<option ${e.eventType===t?'selected':''}>${t}</option>`).join('')}
         </select></div>
       <div class="form-group"><label class="form-label">Guest Count</label>
-        <input class="form-input" name="guestCount" type="number" value="${e.guestCount||''}" placeholder="150"/></div>
+        <input class="form-input" name="guestCount" type="number" value="${escapeHtmlSafe(e.guestCount||'')}" placeholder="150"/></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Gross Revenue ($)</label>
-        <input class="form-input" name="revenue" type="number" value="${e.revenue||''}" placeholder="3500"/></div>
+        <input class="form-input" name="revenue" type="number" value="${escapeHtmlSafe(e.revenue||'')}" placeholder="3500"/></div>
       <div class="form-group"><label class="form-label">Supply Costs ($)</label>
-        <input class="form-input" name="supplyCosts" type="number" value="${e.supplyCosts||''}" placeholder="250"/></div>
+        <input class="form-input" name="supplyCosts" type="number" value="${escapeHtmlSafe(e.supplyCosts||'')}" placeholder="250"/></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Rating (1-5)</label>
@@ -355,13 +355,13 @@ function eventFormHTML(e = {}) {
       <div class="form-group"><label class="form-label">Linked Project</label>
         <select class="form-select" name="projectId">
           <option value="">— None —</option>
-          ${Object.values(allProjects||{}).map(p=>`<option value="${p.id}" ${e.projectId===p.id?'selected':''}>${p.eventName||p.leadName}</option>`).join('')}
+          ${Object.values(allProjects||{}).map(p=>`<option value="${escapeHtmlSafe(p.id)}" ${e.projectId===p.id?'selected':''}>${escapeHtmlSafe(p.eventName||p.leadName)}</option>`).join('')}
         </select></div>
     </div>
     <div class="form-group"><label class="form-label">Post-Event Notes</label>
-      <textarea class="form-textarea" name="notes" placeholder="How did it go? Anything to improve?">${e.notes||''}</textarea></div>
+      <textarea class="form-textarea" name="notes" placeholder="How did it go? Anything to improve?">${escapeHtmlSafe(e.notes||'')}</textarea></div>
     <div class="modal-footer" style="padding:0;margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
-      ${e.id ? `<button type="button" class="btn btn-danger btn-sm" onclick="deleteEvent('${e.id}')">Delete</button>` : ''}
+      ${e.id ? `<button type="button" class="btn btn-danger btn-sm" onclick="deleteEvent(${jsStr(e.id)})">Delete</button>` : ''}
       <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button type="submit" class="btn btn-primary">Save Event</button>
     </div>

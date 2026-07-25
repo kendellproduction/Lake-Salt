@@ -102,28 +102,28 @@ function renderNotesList() {
     const date = note.updatedAt?.toDate
       ? note.updatedAt.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
       : '—';
-    const preview = (note.body || '').slice(0, 180).replace(/</g, '&lt;');
+    const preview = escapeHtmlSafe((note.body || '').slice(0, 180));
     return `
-      <div class="note-card ${note.pinned ? 'pinned' : ''}" onclick="openNoteEditor('${note.category || 'general'}', '${note.id}')">
+      <div class="note-card ${note.pinned ? 'pinned' : ''}" onclick="openNoteEditor(${jsStr(note.category || 'general')}, ${jsStr(note.id)})">
         <div class="note-card-header">
           <div>
-            <div class="note-card-title">${note.title || 'Untitled'}</div>
+            <div class="note-card-title">${escapeHtmlSafe(note.title || 'Untitled')}</div>
             <div class="note-card-meta" style="margin-top:4px">
-              <span class="note-cat-pill ${note.category || 'general'}">${capitalise(note.category || 'general')}</span>
+              <span class="note-cat-pill ${escapeHtmlSafe(note.category || 'general')}">${escapeHtmlSafe(capitalise(note.category || 'general'))}</span>
               <span>·</span>
-              <span>${note.createdBy || 'Team'}</span>
+              <span>${escapeHtmlSafe(note.createdBy || 'Team')}</span>
               <span>·</span>
-              <span>${date}</span>
+              <span>${escapeHtmlSafe(date)}</span>
               ${note.pinned ? '<span style="color:var(--gold);font-size:10px">📌 pinned</span>' : ''}
             </div>
           </div>
           <div class="note-card-actions">
             <button class="btn btn-ghost btn-sm btn-icon" title="${note.pinned ? 'Unpin' : 'Pin'}"
-              onclick="event.stopPropagation();toggleNotePin('${note.id}',${!!note.pinned})">
+              onclick="event.stopPropagation();toggleNotePin(${jsStr(note.id)},${!!note.pinned})">
               ${note.pinned ? '📌' : '📍'}
             </button>
             <button class="btn btn-ghost btn-sm btn-icon" title="Delete" style="color:var(--text-muted)"
-              onclick="event.stopPropagation();deleteNote('${note.id}')">✕</button>
+              onclick="event.stopPropagation();deleteNote(${jsStr(note.id)})">✕</button>
           </div>
         </div>
         <div class="note-card-body">${preview || '<span style="opacity:0.4">No content</span>'}</div>
@@ -150,7 +150,7 @@ function openNoteEditor(defaultCat = 'general', noteId = null) {
     <div class="note-editor">
       <div class="form-group">
         <label class="form-label">Title</label>
-        <input class="form-input" id="note-title" value="${existing?.title || ''}" placeholder="e.g. Bar setup checklist, Brand voice rules…">
+        <input class="form-input" id="note-title" value="${escapeHtmlSafe(existing?.title || '')}" placeholder="e.g. Bar setup checklist, Brand voice rules…">
       </div>
       <div class="form-row">
         <div class="form-group">
@@ -167,14 +167,14 @@ function openNoteEditor(defaultCat = 'general', noteId = null) {
       <div class="form-group">
         <label class="form-label">Content</label>
         <textarea id="note-body" class="form-textarea" style="min-height:220px;font-size:13px;line-height:1.6"
-          placeholder="Write procedures, notes, brand rules, client preferences…">${existing?.body || ''}</textarea>
+          placeholder="Write procedures, notes, brand rules, client preferences…">${escapeHtmlSafe(existing?.body || '')}</textarea>
       </div>
     </div>
     <div class="modal-footer" style="padding:0;margin-top:4px;justify-content:space-between">
-      ${existing ? `<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteNote('${noteId}');closeModal()">Delete</button>` : '<span></span>'}
+      ${existing ? `<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteNote(${jsStr(noteId)});closeModal()">Delete</button>` : '<span></span>'}
       <div style="display:flex;gap:8px">
         <button class="btn btn-ghost btn-sm" onclick="closeModal()">Cancel</button>
-        <button class="btn btn-gold btn-sm" onclick="saveNote('${noteId || ''}')">Save Note</button>
+        <button class="btn btn-gold btn-sm" onclick="saveNote(${jsStr(noteId || '')})">Save Note</button>
       </div>
     </div>
   `, { wide: false });

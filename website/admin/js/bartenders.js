@@ -70,13 +70,13 @@ function bartenderCardHTML(b) {
   const eventsWrkd = [...new Set(payments.map(p=>p.eventId).filter(Boolean))].length;
 
   const statusClass = { Active:'badge-active', Inactive:'badge-inactive', 'On-Call':'badge-oncall' }[b.status] || '';
-  return `<div class="bartender-card" onclick="openBartenderModal('${b.id}')">
+  return `<div class="bartender-card" onclick="openBartenderModal(${jsStr(b.id)})">
     <div class="bartender-card-header">
       <div class="bartender-avatar">🍸</div>
       <div>
-        <div class="bartender-name">${b.name||'—'}</div>
-        <div class="bartender-email">${b.email||b.phone||'—'}</div>
-        <span class="badge ${statusClass}" style="margin-top:4px;display:inline-block">${b.status||'Active'}</span>
+        <div class="bartender-name">${escapeHtmlSafe(b.name||'—')}</div>
+        <div class="bartender-email">${escapeHtmlSafe(b.email||b.phone||'—')}</div>
+        <span class="badge ${statusClass}" style="margin-top:4px;display:inline-block">${escapeHtmlSafe(b.status||'Active')}</span>
       </div>
     </div>
     <div class="bartender-stats">
@@ -90,10 +90,10 @@ function bartenderCardHTML(b) {
       </div>
       <div class="bartender-stat">
         <span class="bartender-stat-label">Rate</span>
-        <span class="bartender-stat-value">${b.payRate ? '$'+b.payRate+'/hr' : '—'}</span>
+        <span class="bartender-stat-value">${b.payRate ? escapeHtmlSafe('$'+b.payRate+'/hr') : '—'}</span>
       </div>
     </div>
-    ${lastPay ? `<div style="font-size:11px;color:var(--text-muted);margin-top:10px">Last paid: ${lastPay.date||'—'}</div>` : ''}
+    ${lastPay ? `<div style="font-size:11px;color:var(--text-muted);margin-top:10px">Last paid: ${escapeHtmlSafe(lastPay.date||'—')}</div>` : ''}
   </div>`;
 }
 
@@ -107,52 +107,52 @@ function openBartenderModal(id) {
     <div class="lead-modal-grid">
       <div class="lead-modal-section">
         <div class="form-section-title">Profile</div>
-        <div class="lead-info-item"><span class="lead-info-label">Phone</span><span class="lead-info-value">${b.phone||'—'}</span></div>
-        <div class="lead-info-item"><span class="lead-info-label">Email</span><span class="lead-info-value">${b.email||'—'}</span></div>
+        <div class="lead-info-item"><span class="lead-info-label">Phone</span><span class="lead-info-value">${escapeHtmlSafe(b.phone||'—')}</span></div>
+        <div class="lead-info-item"><span class="lead-info-label">Email</span><span class="lead-info-value">${escapeHtmlSafe(b.email||'—')}</span></div>
         <div class="lead-info-item"><span class="lead-info-label">Status</span>
-          <select class="form-select" style="width:auto" onchange="updateBartenderStatus('${id}',this.value)">
+          <select class="form-select" style="width:auto" onchange="updateBartenderStatus(${jsStr(id)},this.value)">
             ${['Active','On-Call','Inactive'].map(s=>`<option ${b.status===s?'selected':''}>${s}</option>`).join('')}
           </select>
         </div>
         <div class="lead-info-item"><span class="lead-info-label">Default Pay Rate</span>
-          <input class="form-input" style="width:auto" type="number" id="bart-rate-${id}" value="${b.payRate||''}" placeholder="$ /hr" onblur="updateBartenderRate('${id}',this.value)"/>
+          <input class="form-input" style="width:auto" type="number" id="bart-rate-${escapeHtmlSafe(id)}" value="${escapeHtmlSafe(b.payRate||'')}" placeholder="$ /hr" onblur="updateBartenderRate(${jsStr(id)},this.value)"/>
         </div>
         <div class="lead-info-item"><span class="lead-info-label">Date Added</span><span class="lead-info-value">${fmtDate(b.createdAt)}</span></div>
-        ${b.notes ? `<div class="lead-info-item"><span class="lead-info-label">Notes</span><span class="lead-info-value">${b.notes}</span></div>` : ''}
+        ${b.notes ? `<div class="lead-info-item"><span class="lead-info-label">Notes</span><span class="lead-info-value">${escapeHtmlSafe(b.notes)}</span></div>` : ''}
 
         ${b.w9Url ? `
           <div class="lead-info-item">
             <span class="lead-info-label">W-9</span>
-            <a href="${b.w9Url}" target="_blank" class="btn btn-ghost btn-sm">📄 View W-9</a>
+            <a href="${escapeHtmlSafe(b.w9Url)}" target="_blank" class="btn btn-ghost btn-sm">📄 View W-9</a>
           </div>` : `
           <div class="lead-info-item">
             <span class="lead-info-label">W-9</span>
             <label class="btn btn-ghost btn-sm" style="cursor:pointer">
               📎 Upload W-9
-              <input type="file" accept=".pdf,.png,.jpg" style="display:none" onchange="uploadW9('${id}',this)"/>
+              <input type="file" accept=".pdf,.png,.jpg" style="display:none" onchange="uploadW9(${jsStr(id)},this)"/>
             </label>
           </div>`}
 
         <div class="divider"></div>
         <div style="display:flex;gap:8px">
-          <button class="btn btn-ghost btn-sm" onclick="closeModal();openAddBartenderModal('${id}')">✏ Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteBartender('${id}')">Delete</button>
+          <button class="btn btn-ghost btn-sm" onclick="closeModal();openAddBartenderModal(${jsStr(id)})">✏ Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteBartender(${jsStr(id)})">Delete</button>
         </div>
       </div>
 
       <div class="lead-modal-section">
         <div class="form-section-title" style="display:flex;align-items:center;justify-content:space-between">
-          <span>Payment Log — YTD: ${fmtMoney(ytd)}</span>
-          <button class="btn btn-primary btn-sm" onclick="openAddPaymentModal('${id}')">+ Payment</button>
+          <span>Payment Log — YTD: ${escapeHtmlSafe(fmtMoney(ytd))}</span>
+          <button class="btn btn-primary btn-sm" onclick="openAddPaymentModal(${jsStr(id)})">+ Payment</button>
         </div>
         ${payments.length ? `
           <div class="table-wrap">
           <table><thead><tr><th>Date</th><th>Amount</th><th>Event</th><th>Method</th></tr></thead><tbody>
           ${payments.map(p => `<tr>
-            <td>${p.date||'—'}</td>
-            <td style="color:var(--green);font-weight:700">${fmtMoney(p.amount)}</td>
-            <td class="text-muted">${p.eventName||'—'}</td>
-            <td class="text-muted">${p.method||'—'}</td>
+            <td>${escapeHtmlSafe(p.date||'—')}</td>
+            <td style="color:var(--green);font-weight:700">${escapeHtmlSafe(fmtMoney(p.amount))}</td>
+            <td class="text-muted">${escapeHtmlSafe(p.eventName||'—')}</td>
+            <td class="text-muted">${escapeHtmlSafe(p.method||'—')}</td>
           </tr>`).join('')}
           </tbody></table></div>` :
           `<div class="text-muted" style="font-size:13px">No payments logged yet</div>`}
@@ -193,16 +193,16 @@ async function deleteBartender(id) {
 function openAddBartenderModal(editId) {
   const b = editId ? allBartenders[editId] : {};
   openModal(editId ? 'Edit Bartender' : 'Add Bartender', `
-    <form onsubmit="saveBartender(event,'${editId||''}')">
+    <form onsubmit="saveBartender(event,${jsStr(editId||'')})">
       <div class="form-row">
         <div class="form-group"><label class="form-label">Full Name *</label>
-          <input class="form-input" name="name" value="${b?.name||''}" required placeholder="Alex Johnson"/></div>
+          <input class="form-input" name="name" value="${escapeHtmlSafe(b?.name||'')}" required placeholder="Alex Johnson"/></div>
         <div class="form-group"><label class="form-label">Phone</label>
-          <input class="form-input" name="phone" value="${b?.phone||''}" placeholder="(801) 555-0000"/></div>
+          <input class="form-input" name="phone" value="${escapeHtmlSafe(b?.phone||'')}" placeholder="(801) 555-0000"/></div>
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Email</label>
-          <input class="form-input" name="email" type="email" value="${b?.email||''}" placeholder="alex@email.com"/></div>
+          <input class="form-input" name="email" type="email" value="${escapeHtmlSafe(b?.email||'')}" placeholder="alex@email.com"/></div>
         <div class="form-group"><label class="form-label">Status</label>
           <select class="form-select" name="status">
             ${['Active','On-Call','Inactive'].map(s=>`<option ${b?.status===s?'selected':''}>${s}</option>`).join('')}
@@ -210,10 +210,10 @@ function openAddBartenderModal(editId) {
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Default Pay Rate ($/hr)</label>
-          <input class="form-input" name="payRate" type="number" value="${b?.payRate||''}" placeholder="20"/></div>
+          <input class="form-input" name="payRate" type="number" value="${escapeHtmlSafe(b?.payRate||'')}" placeholder="20"/></div>
       </div>
       <div class="form-group"><label class="form-label">Notes</label>
-        <textarea class="form-textarea" name="notes" placeholder="Any notes about this bartender…">${b?.notes||''}</textarea></div>
+        <textarea class="form-textarea" name="notes" placeholder="Any notes about this bartender…">${escapeHtmlSafe(b?.notes||'')}</textarea></div>
       <div class="modal-footer" style="padding:0;margin-top:16px">
         <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
         <button type="submit" class="btn btn-primary">${editId ? 'Save Changes' : 'Add Bartender'}</button>
@@ -241,7 +241,7 @@ async function saveBartender(e, editId) {
 function openAddPaymentModal(bartenderId) {
   const projects = Object.values(allProjects || {});
   openModal('Log Payment', `
-    <form onsubmit="savePayment(event,'${bartenderId}')">
+    <form onsubmit="savePayment(event,${jsStr(bartenderId)})">
       <div class="form-row">
         <div class="form-group"><label class="form-label">Amount ($) *</label>
           <input class="form-input" name="amount" type="number" required placeholder="250"/></div>
@@ -252,7 +252,7 @@ function openAddPaymentModal(bartenderId) {
         <div class="form-group"><label class="form-label">Linked Event</label>
           <select class="form-select" name="eventId">
             <option value="">— None —</option>
-            ${projects.map(p=>`<option value="${p.id}">${p.eventName||p.leadName}</option>`).join('')}
+            ${projects.map(p=>`<option value="${escapeHtmlSafe(p.id)}">${escapeHtmlSafe(p.eventName||p.leadName)}</option>`).join('')}
           </select></div>
         <div class="form-group"><label class="form-label">Payment Method</label>
           <select class="form-select" name="method">

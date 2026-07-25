@@ -575,19 +575,8 @@ async function showMergeHistory(leadId) {
 function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-
-/* Embed an untrusted value as a JS string literal inside an inline handler
- * attribute — onclick="fn(${jsStr(x)})".
- *
- * Two decodes happen before the value is JS: the HTML parser unescapes the
- * attribute, then JS parses the literal. So the value must survive both.
- * JSON.stringify produces the quoted literal (escaping " and \), and escapeHtml
- * then protects it through the attribute — critically escaping & FIRST, so an
- * input containing a literal "&quot;" can't decode into a real quote and close
- * the string early. Emits its own quotes: pass jsStr(x), not '${jsStr(x)}'. */
-function jsStr(s) {
-  return escapeHtml(JSON.stringify(String(s == null ? '' : s)));
-}
+/* jsStr() (inline-handler escaping) is defined once in app.js, which loads
+ * before this module — used here for onclick/onchange id arguments. */
 window.showMergeHistory = showMergeHistory;
 
 function renderTaskList(tasks, leadId) {

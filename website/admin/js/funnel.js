@@ -219,7 +219,7 @@ async function renderFunnel() {
           return `
           <div class="stat-card" style="text-align:center;padding:14px">
             <div style="font-size:22px;margin-bottom:4px">${sourceIcons[src]||'📋'}</div>
-            <div style="font-size:13px;font-weight:600;margin-bottom:2px">${src}</div>
+            <div style="font-size:13px;font-weight:600;margin-bottom:2px">${escapeHtmlSafe(src)}</div>
             <div style="font-size:20px;font-weight:700;color:var(--gold)">${count}</div>
             <div style="font-size:11px;color:#64748b">${pct}% of leads</div>
             ${rev > 0 ? `<div style="font-size:11px;color:var(--green);margin-top:4px">${fmtMoney(rev)} pipeline</div>` : ''}

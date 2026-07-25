@@ -214,15 +214,15 @@ function filterExpenses() {
       <th>Date</th><th>Description</th><th>Vendor</th><th>Category</th><th>Event</th><th>Amount</th><th title="Scanned receipt">📎</th><th>Receipt</th><th></th>
     </tr></thead><tbody>
     ${filtered.map(e => `<tr>
-      <td>${e.date || '—'}</td>
-      <td><strong>${e.description||'—'}</strong>${e.taxDeductible ? ' <span style="color:var(--green);font-size:10px" title="Tax deductible">✓tax</span>' : ''}</td>
-      <td class="text-muted">${e.vendor||'—'}</td>
-      <td><span class="badge">${e.category||'Misc'}</span></td>
-      <td class="text-muted">${eventMap[e.eventId]||'—'}</td>
-      <td class="text-gold"><strong>${fmtMoney(e.amount)}</strong></td>
+      <td>${escapeHtmlSafe(e.date || '—')}</td>
+      <td><strong>${escapeHtmlSafe(e.description||'—')}</strong>${e.taxDeductible ? ' <span style="color:var(--green);font-size:10px" title="Tax deductible">✓tax</span>' : ''}</td>
+      <td class="text-muted">${escapeHtmlSafe(e.vendor||'—')}</td>
+      <td><span class="badge">${escapeHtmlSafe(e.category||'Misc')}</span></td>
+      <td class="text-muted">${escapeHtmlSafe(eventMap[e.eventId]||'—')}</td>
+      <td class="text-gold"><strong>${escapeHtmlSafe(fmtMoney(e.amount))}</strong></td>
       <td title="Has receipt">${e.receiptPath ? '📎' : ''}</td>
-      <td>${e.receiptUrl ? `<a href="${e.receiptUrl}" target="_blank" style="color:var(--teal);font-size:12px">View</a>` : '<span class="text-muted">—</span>'}</td>
-      <td><button class="btn btn-ghost btn-sm" onclick="openExpenseModal('${e.id}')">Edit</button></td>
+      <td>${e.receiptUrl ? `<a href="${escapeHtmlSafe(e.receiptUrl)}" target="_blank" style="color:var(--teal);font-size:12px">View</a>` : '<span class="text-muted">—</span>'}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="openExpenseModal(${jsStr(e.id)})">Edit</button></td>
     </tr>`).join('')}
     </tbody></table>`;
 }
@@ -409,7 +409,7 @@ function handleReceiptPreview(ev) {
     reader.onload = (e) => { prev.innerHTML = `<img src="${e.target.result}" style="max-width:100%;max-height:140px;border-radius:6px;margin-top:8px;"/>` };
     reader.readAsDataURL(file);
   } else {
-    prev.innerHTML = `<div style="font-size:12px;color:var(--teal);margin-top:6px">📄 ${file.name}</div>`;
+    prev.innerHTML = `<div style="font-size:12px;color:var(--teal);margin-top:6px">📄 ${escapeHtmlSafe(file.name)}</div>`;
   }
 }
 
@@ -419,15 +419,15 @@ function expenseFormHTML(e = {}) {
   <form id="expense-form">
     <div class="form-row">
       <div class="form-group"><label class="form-label">Date *</label>
-        <input class="form-input" name="date" type="date" value="${e.date||''}" required/></div>
+        <input class="form-input" name="date" type="date" value="${escapeHtmlSafe(e.date||'')}" required/></div>
       <div class="form-group"><label class="form-label">Amount ($) *</label>
-        <input class="form-input" name="amount" type="number" step="0.01" value="${e.amount||''}" required placeholder="0.00"/></div>
+        <input class="form-input" name="amount" type="number" step="0.01" value="${escapeHtmlSafe(e.amount||'')}" required placeholder="0.00"/></div>
     </div>
     <div class="form-group"><label class="form-label">Description *</label>
-      <input class="form-input" name="description" value="${e.description||''}" required placeholder="What was purchased?"/></div>
+      <input class="form-input" name="description" value="${escapeHtmlSafe(e.description||'')}" required placeholder="What was purchased?"/></div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Vendor</label>
-        <input class="form-input" name="vendor" value="${e.vendor||''}" placeholder="Store / supplier name"/></div>
+        <input class="form-input" name="vendor" value="${escapeHtmlSafe(e.vendor||'')}" placeholder="Store / supplier name"/></div>
       <div class="form-group"><label class="form-label">Category</label>
         <select class="form-select" name="category">
           ${EXPENSE_CATEGORIES.map(c=>`<option ${e.category===c?'selected':''}>${c}</option>`).join('')}
@@ -435,14 +435,14 @@ function expenseFormHTML(e = {}) {
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">State <span style="color:var(--text-muted);font-weight:400">(for out-of-state flagging)</span></label>
-        <input class="form-input" name="state" value="${e.state||'UT'}" maxlength="2" placeholder="UT" style="text-transform:uppercase"/></div>
+        <input class="form-input" name="state" value="${escapeHtmlSafe(e.state||'UT')}" maxlength="2" placeholder="UT" style="text-transform:uppercase"/></div>
       <div class="form-group"></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Linked Event</label>
         <select class="form-select" name="eventId">
           <option value="">— None —</option>
-          ${events.map(ev=>`<option value="${ev.id}" ${e.eventId===ev.id?'selected':''}>${ev.name||ev.id}</option>`).join('')}
+          ${events.map(ev=>`<option value="${escapeHtmlSafe(ev.id)}" ${e.eventId===ev.id?'selected':''}>${escapeHtmlSafe(ev.name||ev.id)}</option>`).join('')}
         </select></div>
       <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:8px">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text-light)">
@@ -458,7 +458,7 @@ function expenseFormHTML(e = {}) {
           <option value="event" ${(e.deductionType||'general')==='event'?'selected':''}>Event expense</option>
         </select></div>
       <div class="form-group"><label class="form-label">Payment Method</label>
-        <input class="form-input" name="paymentMethod" id="exp-payment" value="${e.paymentMethod||''}" placeholder="e.g. VISA ****4821"/></div>
+        <input class="form-input" name="paymentMethod" id="exp-payment" value="${escapeHtmlSafe(e.paymentMethod||'')}" placeholder="e.g. VISA ****4821"/></div>
     </div>
     <div class="form-group">
       <label class="form-label">Receipt ${e.receiptUrl?'(replace)':''}</label>
@@ -468,13 +468,13 @@ function expenseFormHTML(e = {}) {
         <input id="receipt-input" type="file" accept="image/*,application/pdf" capture="environment" style="display:none"/>
       </label>
       ${e.receiptPath ? `<img id="exp-receipt-thumb" style="max-width:120px;max-height:120px;border-radius:8px;cursor:pointer;margin-top:8px;display:block" alt="Receipt"/>` : ''}
-      ${e.receiptUrl ? `<a href="${e.receiptUrl}" target="_blank" style="font-size:12px;color:var(--teal);display:block;margin-top:4px">Current receipt ↗</a>` : ''}
+      ${e.receiptUrl ? `<a href="${escapeHtmlSafe(e.receiptUrl)}" target="_blank" style="font-size:12px;color:var(--teal);display:block;margin-top:4px">Current receipt ↗</a>` : ''}
       <div id="receipt-preview"></div>
     </div>
     <div class="form-group"><label class="form-label">Notes</label>
-      <textarea class="form-textarea" name="notes" placeholder="Any additional details…">${e.notes||''}</textarea></div>
+      <textarea class="form-textarea" name="notes" placeholder="Any additional details…">${escapeHtmlSafe(e.notes||'')}</textarea></div>
     <div class="modal-footer" style="padding:0;margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
-      ${e.id ? `<button type="button" class="btn btn-danger btn-sm" onclick="deleteExpense('${e.id}')">Delete</button>` : ''}
+      ${e.id ? `<button type="button" class="btn btn-danger btn-sm" onclick="deleteExpense(${jsStr(e.id)})">Delete</button>` : ''}
       <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button type="submit" class="btn btn-primary">Save Expense</button>
     </div>
@@ -660,26 +660,26 @@ function renderRecentScans(snap, eventsById) {
     } else if (d.status === 'ok') {
       if (d.eventId) {
         const eventName = eventsById[d.eventId] || 'Event';
-        const confidence = d.matchConfidence != null ? ` · ${d.matchConfidence}%` : '';
-        statusChip = `→ ${eventName}${confidence}`;
+        const confidence = d.matchConfidence != null ? ` · ${escapeHtmlSafe(d.matchConfidence)}%` : '';
+        statusChip = `→ ${escapeHtmlSafe(eventName)}${confidence}`;
       } else {
         statusChip = 'General deduction';
       }
     } else if (d.status === 'needs-review') {
       statusChip = '<span style="color:#d97706">⚠ Needs review</span>';
     } else if (d.status === 'duplicate') {
-      statusChip = `<span style="color:var(--text-muted)">Duplicate</span> <button class="btn btn-ghost btn-sm" onclick="restoreDuplicate('${doc.id}')">Restore</button>`;
+      statusChip = `<span style="color:var(--text-muted)">Duplicate</span> <button class="btn btn-ghost btn-sm" onclick="restoreDuplicate(${jsStr(doc.id)})">Restore</button>`;
     }
 
     return `<div style="display:flex;align-items:center;gap:12px;padding:12px;border-bottom:1px solid var(--navy-bd);justify-content:space-between">
       <div style="flex:1">
-        <div style="font-weight:500;font-size:14px">${merchant}</div>
-        <div style="font-size:12px;color:var(--text-muted)">${amount}</div>
+        <div style="font-weight:500;font-size:14px">${escapeHtmlSafe(merchant)}</div>
+        <div style="font-size:12px;color:var(--text-muted)">${escapeHtmlSafe(amount)}</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;font-size:13px">
         ${statusChip}
       </div>
-      <button class="btn btn-ghost btn-sm" onclick="openExpenseModal('${doc.id}')">Edit</button>
+      <button class="btn btn-ghost btn-sm" onclick="openExpenseModal(${jsStr(doc.id)})">Edit</button>
     </div>`;
   }).join('');
 

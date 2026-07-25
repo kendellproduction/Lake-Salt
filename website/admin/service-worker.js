@@ -7,7 +7,7 @@
    • Static assets (html/css/js/img under /admin/) → stale-while-revalidate.
    • Everything else (googleapis, gstatic, firestore, storage) → network only.
    Bump CACHE_VERSION to force-refresh the cached shell after a deploy. */
-const CACHE_VERSION = 'ls-admin-v9';
+const CACHE_VERSION = 'ls-admin-v10';
 const SHELL = [
   '/admin/',
   '/admin/index.html',

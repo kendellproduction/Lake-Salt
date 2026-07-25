@@ -100,21 +100,21 @@ function renderInventoryTable() {
       const value   = ((i.stock||0) * (i.costPerUnit||0));
       const statusLabel = isOut ? `<span class="badge badge-lost">Out</span>` : isLow ? `<span class="badge badge-contacted">Low</span>` : `<span class="badge badge-booked">OK</span>`;
       return `<tr>
-        <td><strong>${i.name||'—'}</strong>${i.notes ? `<br><span class="text-muted" style="font-size:11px">${i.notes}</span>` : ''}</td>
-        <td><span class="badge">${i.category||'Other'}</span></td>
+        <td><strong>${escapeHtmlSafe(i.name||'—')}</strong>${i.notes ? `<br><span class="text-muted" style="font-size:11px">${escapeHtmlSafe(i.notes)}</span>` : ''}</td>
+        <td><span class="badge">${escapeHtmlSafe(i.category||'Other')}</span></td>
         <td>
           <div style="display:flex;align-items:center;gap:6px">
-            <button class="btn btn-ghost btn-sm" style="padding:2px 6px;font-size:16px;line-height:1" onclick="adjustStock('${i.id}',-1)">−</button>
-            <strong style="min-width:24px;text-align:center;color:${isLow?'var(--red)':'inherit'}">${i.stock||0}</strong>
-            <button class="btn btn-ghost btn-sm" style="padding:2px 6px;font-size:16px;line-height:1" onclick="adjustStock('${i.id}',1)">+</button>
+            <button class="btn btn-ghost btn-sm" style="padding:2px 6px;font-size:16px;line-height:1" onclick="adjustStock(${jsStr(i.id)},-1)">−</button>
+            <strong style="min-width:24px;text-align:center;color:${isLow?'var(--red)':'inherit'}">${escapeHtmlSafe(i.stock||0)}</strong>
+            <button class="btn btn-ghost btn-sm" style="padding:2px 6px;font-size:16px;line-height:1" onclick="adjustStock(${jsStr(i.id)},1)">+</button>
           </div>
         </td>
-        <td class="text-muted">${i.threshold||0}</td>
-        <td class="text-muted">${i.unit||'—'}</td>
-        <td class="text-muted">${i.costPerUnit ? fmtMoney(i.costPerUnit) : '—'}</td>
-        <td class="text-muted">${value > 0 ? fmtMoney(value) : '—'}</td>
+        <td class="text-muted">${escapeHtmlSafe(i.threshold||0)}</td>
+        <td class="text-muted">${escapeHtmlSafe(i.unit||'—')}</td>
+        <td class="text-muted">${i.costPerUnit ? escapeHtmlSafe(fmtMoney(i.costPerUnit)) : '—'}</td>
+        <td class="text-muted">${value > 0 ? escapeHtmlSafe(fmtMoney(value)) : '—'}</td>
         <td>${statusLabel}</td>
-        <td><button class="btn btn-ghost btn-sm" onclick="openInventoryModal('${i.id}')">Edit</button></td>
+        <td><button class="btn btn-ghost btn-sm" onclick="openInventoryModal(${jsStr(i.id)})">Edit</button></td>
       </tr>`;
     }).join('')}
     </tbody></table>`;
@@ -153,7 +153,7 @@ function inventoryFormHTML(i = {}) {
   <form id="inv-form">
     <div class="form-row">
       <div class="form-group"><label class="form-label">Item Name *</label>
-        <input class="form-input" name="name" value="${i.name||''}" required placeholder="e.g. Grey Goose Vodka"/></div>
+        <input class="form-input" name="name" value="${escapeHtmlSafe(i.name||'')}" required placeholder="e.g. Grey Goose Vodka"/></div>
       <div class="form-group"><label class="form-label">Category</label>
         <select class="form-select" name="category">
           ${INV_CATEGORIES.map(c=>`<option ${i.category===c?'selected':''}>${c}</option>`).join('')}
@@ -161,20 +161,20 @@ function inventoryFormHTML(i = {}) {
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Current Stock *</label>
-        <input class="form-input" name="stock" type="number" min="0" value="${i.stock||0}" required/></div>
+        <input class="form-input" name="stock" type="number" min="0" value="${escapeHtmlSafe(i.stock||0)}" required/></div>
       <div class="form-group"><label class="form-label">Low-Stock Threshold</label>
-        <input class="form-input" name="threshold" type="number" min="0" value="${i.threshold||5}" placeholder="5"/></div>
+        <input class="form-input" name="threshold" type="number" min="0" value="${escapeHtmlSafe(i.threshold||5)}" placeholder="5"/></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Unit</label>
-        <input class="form-input" name="unit" value="${i.unit||''}" placeholder="bottle, case, each…"/></div>
+        <input class="form-input" name="unit" value="${escapeHtmlSafe(i.unit||'')}" placeholder="bottle, case, each…"/></div>
       <div class="form-group"><label class="form-label">Cost per Unit ($)</label>
-        <input class="form-input" name="costPerUnit" type="number" step="0.01" value="${i.costPerUnit||''}" placeholder="0.00"/></div>
+        <input class="form-input" name="costPerUnit" type="number" step="0.01" value="${escapeHtmlSafe(i.costPerUnit||'')}" placeholder="0.00"/></div>
     </div>
     <div class="form-group"><label class="form-label">Supplier / Notes</label>
-      <input class="form-input" name="notes" value="${i.notes||''}" placeholder="Where to reorder, brand notes…"/></div>
+      <input class="form-input" name="notes" value="${escapeHtmlSafe(i.notes||'')}" placeholder="Where to reorder, brand notes…"/></div>
     <div class="modal-footer" style="padding:0;margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
-      ${i.id ? `<button type="button" class="btn btn-danger btn-sm" onclick="deleteInventoryItem('${i.id}')">Delete</button>` : ''}
+      ${i.id ? `<button type="button" class="btn btn-danger btn-sm" onclick="deleteInventoryItem(${jsStr(i.id)})">Delete</button>` : ''}
       <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button type="submit" class="btn btn-primary">Save Item</button>
     </div>
