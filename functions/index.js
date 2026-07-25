@@ -2046,6 +2046,66 @@ async function applyParsedReceipt(expenseRef, parsed, nearbyEvents) {
   });
 }
 
+/* ═══ receiptStuckSweep — rescue receipts frozen in 'processing' ═══════════
+ * parseReceipt only fires on the Storage finalize event. If that event is
+ * ever missed (a failed upload, a deploy gap, a dropped trigger) the expense
+ * sits at status:'processing' forever — that's the receipt that "loaded for
+ * weeks." This runs every 30 min: any processing doc older than ~8 min gets a
+ * second chance — re-parse if the image is present, else flip to needs-review
+ * so it stops shimmering and Kendell can act on it. Capped per run for cost. */
+exports.receiptStuckSweep = onSchedule(
+  {
+    schedule: '*/30 * * * *', timeZone: 'America/Denver',
+    secrets: [anthropicApiKey], memory: '512MiB', timeoutSeconds: 300,
+  },
+  async () => {
+    const cutoffMs = Date.now() - 8 * 60e3;
+    let snap;
+    try {
+      snap = await db.collection('expenses').where('status', '==', 'processing').limit(25).get();
+    } catch (e) { console.warn('receiptStuckSweep query failed:', e.message); return; }
+
+    const stuck = snap.docs.filter(d => {
+      const c = d.data().createdAt;
+      // No timestamp yet, or created before the cutoff → it's been sitting too long.
+      return !c || !c.toMillis || c.toMillis() <= cutoffMs;
+    }).slice(0, 10);
+    if (!stuck.length) { console.log('receiptStuckSweep: nothing stuck.'); return; }
+
+    const bucket = admin.storage().bucket();
+    let fixed = 0, flagged = 0;
+    for (const d of stuck) {
+      const path = d.data().receiptPath || ('receipts/' + d.id + '.jpg');
+      try {
+        const [exists] = await bucket.file(path).exists();
+        if (!exists) {
+          await d.ref.update({ status: 'needs-review', description: 'Receipt image missing — re-upload or delete' });
+          flagged++;
+          continue;
+        }
+        const [imageBuffer] = await bucket.file(path).download();
+        const now = new Date();
+        const windowMs = 45 * 24 * 60 * 60 * 1000;
+        const eventsSnap = await db.collection('events').get();
+        const nearbyEvents = eventsSnap.docs
+          .map(x => ({ id: x.id, ...x.data() }))
+          .filter(e => {
+            const t = e.date && e.date.toDate ? e.date.toDate().getTime() : Date.parse(e.date);
+            return !isNaN(t) && Math.abs(t - now.getTime()) <= windowMs;
+          });
+        const parsed = await parseReceiptWithClaude(imageBuffer, nearbyEvents, anthropicApiKey.value());
+        await applyParsedReceipt(d.ref, parsed, nearbyEvents);
+        fixed++;
+      } catch (e) {
+        console.error(`receiptStuckSweep: ${d.id} failed`, e.message);
+        try { await d.ref.update({ status: 'needs-review', description: 'Auto-parse failed — please review' }); } catch (_) {}
+        flagged++;
+      }
+    }
+    console.log(`receiptStuckSweep: ${stuck.length} stuck → ${fixed} re-parsed, ${flagged} flagged.`);
+  }
+);
+
 /* ═══ Agent Chat — talk to your agents from the CRM ═══════════════════════
  * onCall backing the Agent Brief chat. Kendell types a message; we load the
  * recent thread + live business context, hand it to Claude with two tools
@@ -2597,6 +2657,18 @@ const RUNNER_TOOLS = [
     },
   },
   {
+    name: 'close_followup',
+    description: 'Close an open kendell_followups item that is obsolete, duplicated by the agent system, or already resolved. Never close items needing a real Kendell decision (money, personal commitments).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        followupId: { type: 'string' },
+        reason: { type: 'string', description: 'Why this no longer needs Kendell' },
+      },
+      required: ['followupId', 'reason'],
+    },
+  },
+  {
     name: 'send_email',
     description: 'Send a routine email (follow-up, check-in, quote/proposal follow-up nudge, answer a simple question) from contact@lakesalt.us to a lead. The recipient MUST be that lead\'s email on file. FORBIDDEN when the email states or changes money — specific figures, discounts, contracts, payment terms — use create_draft for those.',
     input_schema: {
@@ -2666,6 +2738,17 @@ async function runRunnerTool(name, input, gmail) {
     await ref.update({ resolved: true, resolution: input.resolution, resolvedVia: 'agent_runner', resolvedAt: now, ...(input.leadId ? { attachedLeadId: input.leadId } : {}) });
     return `Unmatched message ${input.resolution === 'attached' ? 'attached to lead' : 'marked not_a_lead'}.`;
   }
+  if (name === 'close_followup') {
+    const ref = db.collection('kendell_followups').doc(String(input.followupId || ''));
+    const doc = await ref.get();
+    if (!doc.exists) return 'No such followup.';
+    await ref.update({
+      status: 'answered', completed: true, decision: 'dismissed',
+      decisionNote: `[agent triage] ${String(input.reason || '').slice(0, 300)}`,
+      answeredVia: 'agent_runner', answeredAt: now,
+    });
+    return `Followup "${doc.data().title || input.followupId}" closed.`;
+  }
   if (name === 'send_email' || name === 'create_draft') {
     if (!gmail) return 'Gmail is not connected (OAuth secrets missing) — cannot email. Complete the task as blocked.';
     if (!(await leadEmailAllowed(input.leadId, input.to))) return 'Refused: recipient is not this lead\'s email on file.';
@@ -2700,10 +2783,11 @@ Rules:
 
   let messages = [{ role: 'user', content: `TASK: ${t.title}\n\nINSTRUCTIONS: ${t.instruction || t.detail || '(none)'}\n\nQueued by: ${t.source || 'unknown'} · agent hint: ${t.agent || 'general'}` }];
   let result = null;
-  for (let turn = 0; turn < 10 && !result; turn++) {
+  const MAX_TURNS = 16;
+  for (let turn = 0; turn < MAX_TURNS && !result; turn++) {
     const res = await client.messages.create({
       model: 'claude-sonnet-5', max_tokens: 1500, system, tools: RUNNER_TOOLS,
-      ...(turn === 9 ? { tool_choice: { type: 'tool', name: 'complete_task' } } : {}),
+      ...(turn === MAX_TURNS - 1 ? { tool_choice: { type: 'tool', name: 'complete_task' } } : {}),
       messages,
     });
     const toolUses = res.content.filter(b => b.type === 'tool_use');
@@ -2951,3 +3035,30 @@ exports.mcp = onRequest(
     }
   }
 );
+
+/* ═══ Review engine — automated Google review requests ════════════════════
+ * Armed by settings/google_review { url } (Kendell supplies the link).
+ * When a lead moves to Completed, queue a thank-you + review-request email
+ * with a human-feel delay of ~2 days after the event. One per lead, ever. */
+exports.onLeadCompleted = onDocumentUpdated('leads/{leadId}', async (event) => {
+  const before = event.data.before.data() || {};
+  const after = event.data.after.data() || {};
+  if (before.stage === after.stage || after.stage !== 'Completed') return;
+  if (after.reviewRequestQueued) return;
+  if (!after.email) return;
+  let review;
+  try { review = (await db.collection('settings').doc('google_review').get()).data(); } catch (e) { review = null; }
+  if (!review || !review.url) { console.log('onLeadCompleted: no review link configured — skipping.'); return; }
+  await db.collection('agent_tasks').add({
+    agent: 'comms', kind: 'review_request', leadId: event.params.leadId,
+    title: `Review request: ${after.name || 'completed event'}`,
+    instruction:
+      `${after.name || 'A client'} <${after.email}> just wrapped their event with us` +
+      `${after.eventDate ? ' (' + after.eventDate + ')' : ''}. Send a warm, personal thank-you email — reference their actual event details from the lead record — and ask if they'd share a quick Google review. Include this exact link: ${review.url} . One short paragraph, zero pressure, signed "Kendell — Lake Salt".`,
+    status: 'queued', source: 'review_engine',
+    notBefore: admin.firestore.Timestamp.fromMillis(Date.now() + 2 * 86400e3),
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  await event.data.after.ref.update({ reviewRequestQueued: true });
+  console.log(`onLeadCompleted: review request queued for ${after.name || event.params.leadId}`);
+});
