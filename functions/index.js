@@ -2417,6 +2417,15 @@ async function buildExecBriefContext() {
       from: d.data().fromDisplay || d.data().from || '', subject: d.data().subject || '',
     }));
   } catch (e) { ctx.unmatchedSamples = []; }
+  /* What the runner actually completed in the last 24h — the brief reports
+   * finished work, not intentions. */
+  try {
+    const since = admin.firestore.Timestamp.fromMillis(Date.now() - 24 * 3600e3);
+    const done = await db.collection('agent_tasks').where('completedAt', '>=', since).get();
+    ctx.recentAgentWork = done.docs.map(d => ({
+      title: d.data().title, status: d.data().status, result: String(d.data().result || '').slice(0, 200),
+    })).slice(0, 12);
+  } catch (e) { ctx.recentAgentWork = []; }
   return ctx;
 }
 
@@ -2445,7 +2454,8 @@ SNAPSHOT (verify anything important with query_crm)
 Pipeline: ${JSON.stringify(ctx.stages)}
 Open followups: ${ctx.followups.map(f => `${f.id} · ${f.type} · ${f.title}`).join(' | ') || 'none'}
 Unresolved unmatched messages (${ctx.unmatchedCount}): ${JSON.stringify(ctx.unmatchedSamples)}
-Events next 14 days: ${JSON.stringify(ctx.upcomingEvents)}`;
+Events next 14 days: ${JSON.stringify(ctx.upcomingEvents)}
+Agent work completed in the last 24h (report these as DONE, with outcomes): ${JSON.stringify(ctx.recentAgentWork || [])}`;
 
   const tools = [QUERY_CRM_TOOL, ...PUBLISH_BRIEF_TOOL];
   let messages = [{ role: 'user', content: 'Write this morning\'s brief. Dig into the data first.' }];
@@ -2740,6 +2750,78 @@ exports.agentTaskRunner = onSchedule(
         await d.ref.update({ status: 'error', result: e.message.slice(0, 500), completedAt: admin.firestore.FieldValue.serverTimestamp() });
       }
     }
+  }
+);
+
+/* ═══ Proactive Manager Loop (Phase 3) ════════════════════════════════════
+ * The manager doesn't wait to be asked:
+ *  - onLeadCreated: a fresh organic lead instantly queues a first-touch
+ *    task (speed-to-lead) and pings Kendell's phone.
+ *  - middayLeadSweep: noon catch-all — any recent lead with no outbound
+ *    contact and no pending first-touch task gets one queued.
+ *  - The morning brief reports what the runner DID (last 24h), so
+ *    "handled" means completed work, not intentions. */
+
+async function hasPendingFirstTouch(leadId) {
+  const q = await db.collection('agent_tasks')
+    .where('leadId', '==', leadId).limit(5).get();
+  return q.docs.some(d => ['queued', 'running', 'done'].includes(d.data().status) && d.data().kind === 'first_touch');
+}
+
+async function queueFirstTouch(leadId, lead, source) {
+  await db.collection('agent_tasks').add({
+    agent: 'comms', kind: 'first_touch', leadId,
+    title: `First-touch: ${lead.name || 'new lead'}`,
+    instruction:
+      `New lead just came in: ${lead.name || '?'} <${lead.email || 'no email'}> — ` +
+      `${lead.eventType || 'event'}${lead.eventDate ? ' on ' + lead.eventDate : ''}` +
+      `${lead.guestCount ? ', ~' + lead.guestCount + ' guests' : ''}. ` +
+      `Query the lead + threads first; if we've already replied, complete with a note. Otherwise send a warm, personal first-touch email (lead id ${leadId}): thank them, confirm we'd love to help, ask one useful clarifying question if key details are missing. No pricing. Then move stage to Contacted.`,
+    status: 'queued', source, createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+}
+
+const { onDocumentCreated: onDocCreatedLead } = require('firebase-functions/v2/firestore');
+exports.onLeadCreated = onDocCreatedLead('leads/{leadId}', async (event) => {
+  const lead = event.data && event.data.data();
+  if (!lead || !lead.email) return;
+  const src = String(lead.source || '').toLowerCase();
+  /* Imports/backfills don't get insta-touched — only organic arrivals. */
+  if (lead.importBatch || src.includes('knot') || src.includes('import') || src.includes('expo')) return;
+  if (await hasPendingFirstTouch(event.params.leadId)) return;
+  await queueFirstTouch(event.params.leadId, lead, 'lead_created_trigger');
+  console.log(`onLeadCreated: first-touch queued for ${lead.name || event.params.leadId}`);
+  try {
+    await db.collection('notifications').add({
+      title: '🔥 New lead: ' + (lead.name || 'unknown'),
+      body: `${lead.eventType || 'Event'}${lead.eventDate ? ' · ' + lead.eventDate : ''} — first-touch queued, agent will reach out within 30 min.`,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  } catch (e) { console.warn('lead push failed:', e.message); }
+});
+
+exports.middayLeadSweep = onSchedule(
+  { schedule: '0 12 * * *', timeZone: 'America/Denver', timeoutSeconds: 120 },
+  async () => {
+    const since = admin.firestore.Timestamp.fromMillis(Date.now() - 36 * 3600e3);
+    let snap;
+    try {
+      snap = await db.collection('leads').where('createdAt', '>=', since).get();
+    } catch (e) { console.warn('middayLeadSweep query failed:', e.message); return; }
+    let queued = 0;
+    for (const d of snap.docs) {
+      const lead = d.data();
+      if (!lead.email) continue;
+      const src = String(lead.source || '').toLowerCase();
+      if (lead.importBatch || src.includes('knot') || src.includes('import') || src.includes('expo')) continue;
+      /* Skip anyone we've already emailed. */
+      const threads = await d.ref.collection('threads').limit(5).get();
+      const contacted = threads.docs.some(t => (t.data().lastDirection === 'out') || t.data().hasOutbound);
+      if (contacted || await hasPendingFirstTouch(d.id)) continue;
+      await queueFirstTouch(d.id, lead, 'midday_sweep');
+      queued++;
+    }
+    console.log(`middayLeadSweep: ${snap.size} recent leads, ${queued} first-touch queued.`);
   }
 );
 
