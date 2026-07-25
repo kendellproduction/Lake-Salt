@@ -2357,8 +2357,8 @@ Unresolved unmatched messages: ${ctx.unmatchedCount}`;
 
 const AUTONOMY_POLICY =
 `AUTONOMY POLICY (Kendell's standing orders):
-- Follow-ups, routine email responses, CRM cleanup/hygiene, lead triage: ACT — queue the work yourself, then report it in the brief as already handled.
-- Quotes, pricing, discounts, contracts, anything money: PROPOSE with needsApproval=true and wait.
+- Follow-ups (including quote/proposal follow-up nudges), routine email responses, CRM cleanup/hygiene, lead triage: ACT — queue the work yourself, then report it in the brief as already handled.
+- NEW pricing, discounts, contracts, anything that states or changes money: PROPOSE with needsApproval=true and wait.
 - Keep proactively improving the CRM data quality without being asked.`;
 
 const PUBLISH_BRIEF_TOOL = [{
@@ -2562,7 +2562,10 @@ async function leadEmailAllowed(leadId, to) {
   return addrs.includes(String(to).toLowerCase().trim());
 }
 
-const MONEY_RE = /\$\s?\d|price|pricing|quote|proposal|estimate|contract|deposit|invoice|discount/i;
+/* Follow-ups ABOUT an existing quote may send autonomously (Kendell: "I
+ * don't want to babysit follow-ups"). What still requires his review:
+ * emails that state or change money — figures, discounts, contracts. */
+const MONEY_RE = /\$\s?\d|\bprice[sd]?\b|pricing|discount|contract|deposit|invoice|payment/i;
 
 const RUNNER_TOOLS = [
   QUERY_CRM_TOOL,
@@ -2595,7 +2598,7 @@ const RUNNER_TOOLS = [
   },
   {
     name: 'send_email',
-    description: 'Send a routine email (follow-up, check-in, answer a simple question) from contact@lakesalt.us to a lead. The recipient MUST be that lead\'s email on file. FORBIDDEN for anything involving pricing, quotes, contracts, or money — use create_draft for those.',
+    description: 'Send a routine email (follow-up, check-in, quote/proposal follow-up nudge, answer a simple question) from contact@lakesalt.us to a lead. The recipient MUST be that lead\'s email on file. FORBIDDEN when the email states or changes money — specific figures, discounts, contracts, payment terms — use create_draft for those.',
     input_schema: {
       type: 'object',
       properties: {
@@ -2690,8 +2693,8 @@ async function executeAgentTask(taskDoc, client, gmail) {
 
 Rules:
 - Dig with query_crm before acting; verify lead ids and emails from real data.
-- Routine follow-up/check-in emails: send them (send_email). Warm, casual-professional, short, signed "Kendell — Lake Salt". Never pushy.
-- Anything involving pricing, quotes, contracts, or money: create_draft only.
+- Routine follow-up/check-in emails — INCLUDING follow-ups on an already-sent quote/proposal: send them (send_email). Warm, casual-professional, short, signed "Kendell — Lake Salt". Never pushy. Don't restate dollar figures in follow-ups.
+- Emails that state or change money (figures, discounts, contracts, payment terms): create_draft only.
 - MOVING ON RULE: if a lead's event is within ~2 weeks and they never responded, don't email them — mark them Lost with a note instead.
 - If the task can't be done with these tools, complete_task with outcome=blocked and say what's needed.`;
 
@@ -2728,18 +2731,22 @@ Rules:
 
 exports.agentTaskRunner = onSchedule(
   {
-    schedule: '0 8,12,17 * * *', timeZone: 'America/Denver',
+    schedule: '*/30 8-20 * * *', timeZone: 'America/Denver',
     secrets: [anthropicApiKey, GMAIL_OAUTH_CLIENT_ID, GMAIL_OAUTH_CLIENT_SECRET, GMAIL_OAUTH_REFRESH_TOKEN],
     timeoutSeconds: 540, memory: '512MiB',
   },
   async () => {
     const snap = await db.collection('agent_tasks')
-      .where('status', '==', 'queued').limit(4).get();
-    if (snap.empty) { console.log('agentTaskRunner: queue empty.'); return; }
+      .where('status', '==', 'queued').limit(8).get();
+    const ready = snap.docs.filter(d => {
+      const nb = d.data().notBefore;
+      return !nb || nb.toMillis() <= Date.now();
+    }).slice(0, 4);
+    if (!ready.length) { console.log('agentTaskRunner: nothing ready.'); return; }
     const Anthropic = require('@anthropic-ai/sdk');
     const client = new Anthropic({ apiKey: anthropicApiKey.value() });
     const { gmail } = buildGmailClient();
-    const docs = snap.docs.sort((a, b) =>
+    const docs = ready.sort((a, b) =>
       ((a.data().createdAt && a.data().createdAt.seconds) || 0) - ((b.data().createdAt && b.data().createdAt.seconds) || 0));
     for (const d of docs) {
       try {
@@ -2771,6 +2778,9 @@ async function hasPendingFirstTouch(leadId) {
 async function queueFirstTouch(leadId, lead, source) {
   return await db.collection('agent_tasks').add({
     agent: 'comms', kind: 'first_touch', leadId,
+    /* Human-feel delay: never reply to a brand-new lead in under ~12 min —
+     * an instant response reads as automated. Runner skips until notBefore. */
+    notBefore: admin.firestore.Timestamp.fromMillis(Date.now() + 12 * 60e3),
     title: `First-touch: ${lead.name || 'new lead'}`,
     instruction:
       `New lead just came in: ${lead.name || '?'} <${lead.email || 'no email'}> — ` +
@@ -2795,25 +2805,12 @@ exports.onLeadCreated = onDocCreatedLead(
   /* Imports/backfills don't get insta-touched — only organic arrivals. */
   if (lead.importBatch || src.includes('knot') || src.includes('import') || src.includes('expo')) return;
   if (await hasPendingFirstTouch(event.params.leadId)) return;
-  const taskRef = await queueFirstTouch(event.params.leadId, lead, 'lead_created_trigger');
-  console.log(`onLeadCreated: first-touch queued for ${lead.name || event.params.leadId}`);
-  /* Speed-to-lead: execute the first-touch NOW instead of waiting for the
-   * next scheduled runner pass (batch runs are 8am/noon/5pm). */
-  try {
-    const Anthropic = require('@anthropic-ai/sdk');
-    const client = new Anthropic({ apiKey: anthropicApiKey.value() });
-    const { gmail } = buildGmailClient();
-    const taskDoc = await taskRef.get();
-    const r = await executeAgentTask(taskDoc, client, gmail);
-    console.log(`onLeadCreated: first-touch executed → ${(r && r.outcome) || 'no result'}`);
-  } catch (e) {
-    console.warn('onLeadCreated immediate execution failed (re-queued for the next batch run):', e.message);
-    try { await taskRef.update({ status: 'queued' }); } catch (e2) { /* leave as-is */ }
-  }
+  await queueFirstTouch(event.params.leadId, lead, 'lead_created_trigger');
+  console.log(`onLeadCreated: first-touch queued for ${lead.name || event.params.leadId} (sends after ~12min human-feel delay)`);
   try {
     await db.collection('notifications').add({
       title: '🔥 New lead: ' + (lead.name || 'unknown'),
-      body: `${lead.eventType || 'Event'}${lead.eventDate ? ' · ' + lead.eventDate : ''} — first-touch queued, agent will reach out within 30 min.`,
+      body: `${lead.eventType || 'Event'}${lead.eventDate ? ' · ' + lead.eventDate : ''} — first-touch queued, agent replies in ~15-40 min (human-feel delay).`,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
   } catch (e) { console.warn('lead push failed:', e.message); }
@@ -2852,13 +2849,17 @@ exports.runAgentTasksNow = onCall(
   },
   async (request) => {
     await requireAdmin(request);
-    const snap = await db.collection('agent_tasks').where('status', '==', 'queued').limit(3).get();
-    if (snap.empty) return { ran: 0, results: [] };
+    const snap = await db.collection('agent_tasks').where('status', '==', 'queued').limit(6).get();
+    const ready = snap.docs.filter(d => {
+      const nb = d.data().notBefore;
+      return !nb || nb.toMillis() <= Date.now();
+    }).slice(0, 3);
+    if (!ready.length) return { ran: 0, results: [] };
     const Anthropic = require('@anthropic-ai/sdk');
     const client = new Anthropic({ apiKey: anthropicApiKey.value() });
     const { gmail } = buildGmailClient();
     const results = [];
-    for (const d of snap.docs) {
+    for (const d of ready) {
       try {
         const r = await executeAgentTask(d, client, gmail);
         results.push({ id: d.id, title: d.data().title, ...(r || { outcome: 'error' }) });
