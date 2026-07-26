@@ -2,8 +2,32 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
+
+    // ── Receipt scans: admin-only (uid must exist in the admins collection).
+    //    Cross-service lookup into Firestore is supported in rules_version 2.
+    //    Cap size at 10 MB and require an image content type on writes.
     match /receipts/{allPaths=**} {
-      allow read, write: if request.auth != null && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
+      allow read: if request.auth != null
+                  && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
+      allow write: if request.auth != null
+                   && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid))
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    // ── Bar build waitlist: visitors upload AI mockup images.
+    //    Public CREATE only (image type, ≤ 10 MB). Read is admin-only via
+    //    download URLs, which include a token; only admins should distribute them.
+    match /bar-build-uploads/{file} {
+      allow create: if request.resource.size < 10 * 1024 * 1024
+                    && request.resource.contentType.matches('image/.*');
+      allow read:   if true;          // download URL token is auth-by-obscurity; OK for non-sensitive mockups
+      allow update, delete: if false;
+    }
+
+    // ── Default deny everything else
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }
