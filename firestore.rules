@@ -8,9 +8,48 @@ service cloud.firestore {
              exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
+    // ── Public-lead field guards (defense-in-depth on top of render-side
+    //    HTML-escaping). Non-strings pass untouched — numbers (tableCount,
+    //    subtotal), booleans (includeBar), timestamps (createdAt), arrays
+    //    (drinkSelections), and nested maps (quoteData) are never string-checked,
+    //    so evolving payload shapes never get rejected. Fields are read via
+    //    .get(k,'') so absent keys don't error. Only listed fields are
+    //    constrained; anything else is allowed, so new form fields keep working.
+    //    - leadStrOk : structured fields that never legitimately contain angle
+    //                  brackets (name, email, venue…) — cap length AND reject <>.
+    //    - leadTextOk: free-text (message, notes) — cap length only; the render
+    //                  layer escapes them, and customers may type anything. ──
+    function leadStrOk(v, maxLen) {
+      return !(v is string) || (v.size() <= maxLen && v.matches('[^<>]*'));
+    }
+    function leadTextOk(v, maxLen) {
+      return !(v is string) || v.size() <= maxLen;
+    }
+    function leadFieldsSafe(d) {
+      return leadStrOk(d.get('name', ''),        200) &&
+             leadStrOk(d.get('email', ''),       320) &&
+             leadStrOk(d.get('phone', ''),        60) &&
+             leadStrOk(d.get('eventType', ''),   120) &&
+             leadStrOk(d.get('eventDate', ''),    80) &&
+             leadStrOk(d.get('guestCount', ''),   60) &&
+             leadStrOk(d.get('venue', ''),       300) &&
+             leadStrOk(d.get('location', ''),    300) &&
+             leadStrOk(d.get('source', ''),      120) &&
+             leadStrOk(d.get('budget', ''),      120) &&
+             leadStrOk(d.get('rentalType', ''),  120) &&
+             leadTextOk(d.get('message', ''),        8000) &&
+             leadTextOk(d.get('notes', ''),          8000) &&
+             leadTextOk(d.get('drinkDetail', ''),    4000) &&
+             leadTextOk(d.get('drinkSummary', ''),   4000) &&
+             leadTextOk(d.get('quoteSummary', ''),   8000) &&
+             leadTextOk(d.get('drinks', ''),         1000) &&
+             leadTextOk(d.get('mockupName', ''),      300) &&
+             leadTextOk(d.get('vision', ''),         4000);
+    }
+
     // ── leads — public create (website form + /expo raffle), admin everything else ──
     match /leads/{id} {
-      allow create: if true;
+      allow create: if leadFieldsSafe(request.resource.data);
       allow read, update, delete: if isAdmin();
 
       // Communications Hub — message threads mirrored from Gmail.
