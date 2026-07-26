@@ -671,7 +671,7 @@
     <div class="step-inner">
       <span class="eyebrow">Step 4 · The venue</span>
       <h1 class="q">Where's it <em>happening</em>?</h1>
-      <p class="sub">Pick a vibe and (optionally) drop a venue name if you have one.</p>
+      <p class="sub">Pick a venue setting and tell us whether we need to bring the bar. Both help us price the service accurately.</p>
 
       <div id="venue-pills" class="pill-group" style="margin-bottom: 18px">
         <button type="button" class="pill" data-venue="Indoor venue">Indoor venue</button>
@@ -683,7 +683,7 @@
       </div>
 
       <div class="input-group">
-        <label class="input-label" for="venueName">Venue name (optional)</label>
+        <label class="input-label" for="venueName">Venue name</label>
         <input type="text" class="input" id="venueName" placeholder="e.g. The Grand · SLC" />
       </div>
 
@@ -713,6 +713,16 @@
         <button type="button" class="pill" data-drink="Champagne / bubbly">Champagne / bubbly</button>
         <button type="button" class="pill" data-drink="Themed (speakeasy, tiki…)">Themed</button>
         <button type="button" class="pill" data-drink="Not sure yet">Not sure</button>
+      </div>
+
+      <p class="input-label" style="margin-top:20px">Which direction sounds most like you? Choose at least one.</p>
+      <div id="drink-vibe-pills" class="pill-group">
+        <button type="button" class="pill" data-vibe="Bright & citrusy">Bright &amp; citrusy</button>
+        <button type="button" class="pill" data-vibe="Spirit-forward">Spirit-forward</button>
+        <button type="button" class="pill" data-vibe="Rich & dessert-like">Rich &amp; dessert-like</button>
+        <button type="button" class="pill" data-vibe="Seasonal & herbal">Seasonal &amp; herbal</button>
+        <button type="button" class="pill" data-vibe="Refreshing & sparkling">Refreshing &amp; sparkling</button>
+        <button type="button" class="pill" data-vibe="Surprise me">Surprise me</button>
       </div>
 
       <div class="input-group" style="margin-top:18px">
@@ -940,6 +950,7 @@
     venueName: '',
     hasBuiltInBar: '',
     drinks: [],
+    drinkVibes: [],
     drinkDetail: '',
     budget: '',
     notes: '',
@@ -955,6 +966,25 @@
     /* From URL query string (from /expo) */
     fromExpo: false,
   };
+
+  function getQuoteIntakeStatus() {
+    return {
+      eventDate: !!state.eventDate,
+      guestCount: !!state.guestCount,
+      venue: !!state.venue,
+      hasBuiltInBar: !!state.hasBuiltInBar,
+      drinks: state.drinks.length > 0,
+      drinkVibes: state.drinkVibes.length > 0,
+      budget: !!state.budget,
+      name: !!state.name,
+      email: !!state.email,
+      phone: !!state.phone,
+    };
+  }
+
+  function isQuoteIntakeComplete() {
+    return Object.values(getQuoteIntakeStatus()).every(Boolean);
+  }
 
   /* ─── URL pre-fill from /expo ─── */
   const url = new URL(window.location.href);
@@ -1093,15 +1123,15 @@
     let label = 'Continue →';
     switch (currentStep) {
       /* No more event-type step (1) — flow starts at 2. */
-      case 2: ok = true; /* date is optional */ break;
+      case 2: ok = state.infoOnly ? !!state.eventDate : true; break;
       case 3: ok = !!state.guestCount; break;
-      case 4: ok = true; /* venue is optional */ break;
-      case 5: ok = true; /* drinks is optional */ break;
+      case 4: ok = state.infoOnly ? !!state.venue && !!state.hasBuiltInBar : true; break;
+      case 5: ok = state.infoOnly ? state.drinks.length > 0 && state.drinkVibes.length > 0 : true; break;
       case 6: ok = !!state.budget; break;
       case 7: ok = true; break;
       case 8: ok = !!state.name && !!state.email && !!state.phone; break;
       case 9:
-        if (state.infoOnly) { ok = true; label = 'Send me wedding info →'; }
+        if (state.infoOnly) { ok = isQuoteIntakeComplete(); label = 'Send me wedding info →'; }
         else { ok = !!state.selectedSlotMs; label = 'Book this 15-min call →'; }
         break;
       case 11: { /* Raffle quick-form */
@@ -1167,6 +1197,7 @@
     refreshNextButton();
   });
   document.getElementById('date-not-sure').addEventListener('click', () => {
+    if (state.infoOnly) return;
     state.eventDate = '';
     eventDateEl.value = '';
     goTo(currentStep + 1);
@@ -1178,6 +1209,7 @@
       document.querySelectorAll('#venue-pills .pill').forEach(x => x.classList.remove('selected'));
       p.classList.add('selected');
       state.venue = p.dataset.venue;
+      refreshNextButton();
     });
   });
   document.getElementById('venueName').addEventListener('input', e => state.venueName = e.target.value);
@@ -1188,6 +1220,7 @@
       document.querySelectorAll('#bar-pills .pill').forEach(x => x.classList.remove('selected'));
       p.classList.add('selected');
       state.hasBuiltInBar = p.dataset.bar;
+      refreshNextButton();
     });
   });
 
@@ -1202,6 +1235,20 @@
         state.drinks.push(drink);
         p.classList.add('selected');
       }
+      refreshNextButton();
+    });
+  });
+  document.querySelectorAll('#drink-vibe-pills .pill').forEach(p => {
+    p.addEventListener('click', () => {
+      const vibe = p.dataset.vibe;
+      if (state.drinkVibes.includes(vibe)) {
+        state.drinkVibes = state.drinkVibes.filter(v => v !== vibe);
+        p.classList.remove('selected');
+      } else {
+        state.drinkVibes.push(vibe);
+        p.classList.add('selected');
+      }
+      refreshNextButton();
     });
   });
   document.getElementById('drinkDetail').addEventListener('input', e => state.drinkDetail = e.target.value);
@@ -1399,11 +1446,12 @@
 
     const venueDisplay = state.venue + (state.venueName ? ' · ' + state.venueName : '');
     const drinksDisplay = state.drinks.length ? state.drinks.join(', ') : '';
+    const drinkVibesDisplay = state.drinkVibes.length ? state.drinkVibes.join(', ') : '';
 
     stepEl.innerHTML = `
       <span class="eyebrow">Almost done</span>
       <h1 class="q">Look <em>good</em>?</h1>
-      <p class="sub">Here's what we'll send Kendell. Tap "Send me wedding info" below — he'll email you a starting quote within a couple days.</p>
+      <p class="sub">Here's the private intake we'll send Kendell. The instant quote result is disabled here, so he'll email you the quote directly.</p>
 
       <div style="background:rgba(250,248,244,0.04);border:1px solid var(--border);border-radius:14px;padding:14px 16px">
         ${[
@@ -1412,13 +1460,15 @@
           ['Guests', state.guestCount],
           ['Venue', venueDisplay || '—'],
           ['Built-in bar', state.hasBuiltInBar || '—'],
-          ['Drinks', drinksDisplay || '—'],
+          ['Drink preferences', drinksDisplay || '—'],
+          ['Drink vibe', drinkVibesDisplay || '—'],
           ['Drink notes', state.drinkDetail || '—'],
           ['Budget', state.budget],
           ['Notes', state.notes || '—'],
           ['Name', state.name],
           ['Email', state.email],
           ['Phone', state.phone],
+          ['Quote result', 'Private / disabled'],
         ].filter(([_, v]) => v).map(([l, v]) =>
           `<div style="display:flex;justify-content:space-between;gap:12px;padding:6px 0;font-size:13px;border-top:1px solid var(--border)">
              <span style="color:var(--muted)">${l}</span>
@@ -1438,6 +1488,11 @@
 
   /* ─── Submit info-only ─── */
   async function submitInfoOnly() {
+    if (!isQuoteIntakeComplete()) {
+      showToast('Please finish the quote intake first.');
+      refreshNextButton();
+      return;
+    }
     btnNext.disabled = true;
     btnNext.innerHTML = '<span class="spinner"></span>Sending…';
     try {
@@ -1458,6 +1513,7 @@
 
   /* ─── Submit booking ─── */
   function buildPayload() {
+    const quoteIntakeComplete = isQuoteIntakeComplete();
     return {
       name: state.name,
       email: state.email,
@@ -1467,12 +1523,22 @@
       guestCount: state.guestCount,
       venue: state.venue + (state.venueName ? ' · ' + state.venueName : ''),
       drinks: state.drinks,
+      drinkPreferences: state.drinks,
+      drinkPreferencesText: state.drinks.join(', '),
+      drinkVibes: state.drinkVibes,
+      drinkVibePreferences: state.drinkVibes,
+      drinkVibeText: state.drinkVibes.join(', '),
       drinkDetail: state.drinkDetail,
+      drinkNotes: state.drinkDetail,
       budget: state.budget,
       hasBuiltInBar: state.hasBuiltInBar,
       notes: state.notes,
       instagramFollowed: state.instagramFollowed,
       raffleEntered: state.raffleEntered,
+      intakePath: state.infoOnly ? 'instant-quote' : 'call-booking',
+      quoteResultEnabled: false,
+      quoteVisibility: 'private',
+      quoteIntakeComplete,
       campaign: 'WeddingExpo2026-05-09',
       source: state.capturedByEmail ? 'Booth /book (staff-assisted)' : (state.fromExpo ? 'Expo /book (from raffle)' : 'Public /book'),
       capturedByEmail: state.capturedByEmail,
@@ -1523,8 +1589,15 @@
         guest_count: state.guestCount,
         venue: state.venue + (state.venueName ? ' · ' + state.venueName : ''),
         drinks: state.drinks.join(', '),
+        drink_preferences: state.drinks.join(', '),
+        drink_preferences_text: state.drinks.join(', '),
+        drink_vibes: state.drinkVibes.join(', '),
+        drink_vibe_preferences: state.drinkVibes.join(', '),
+        drink_vibe_text: state.drinkVibes.join(', '),
         drink_detail: state.drinkDetail,
+        drink_notes: state.drinkDetail,
         budget: state.budget,
+        quote_visibility: 'private',
         message: messageBody,
       });
     } catch (e) { console.warn('Email send failed:', e); }

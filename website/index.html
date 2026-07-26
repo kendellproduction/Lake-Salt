@@ -143,6 +143,14 @@
       },
       {
         "@type": "Question",
+        "name": "How much space does the Lake Salt mobile bar need?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Lake Salt's 6-foot mobile bar plus working area needs a minimum footprint of 8 by 8 feet, with 10 by 9 feet preferred — covering the bar, bartender working area, and a folding prep table. Only standard power outlet access is required, and indoor or outdoor placement both work. Lake Salt handles delivery, setup, and breakdown."
+        }
+      },
+      {
+        "@type": "Question",
         "name": "Are Lake Salt bartenders certified?",
         "acceptedAnswer": {
           "@type": "Answer",
@@ -2789,6 +2797,8 @@
       transition: max-height 0.45s var(--ease);
     }
     .faq-a.open { max-height: 240px; padding-bottom: 1.5rem; }
+    .faq-a.tall.open { max-height: 1000px; }
+    .faq-a img.faq-img { width: 100%; height: auto; border-radius: 12px; margin-top: 0.75rem; }
     .faq-a p { font-size: 0.88rem; color: var(--muted); line-height: 1.78; }
 
     /* ─────────────────────────────────────────
@@ -4838,6 +4848,17 @@
 
       <div class="faq-item">
         <button class="faq-q" onclick="toggleFaq(this)">
+          How much space does the bar need?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a tall">
+          <p>Our 6' mobile bar plus working area needs a minimum footprint of <strong>8' × 8'</strong>, with <strong>10' × 9'</strong> preferred — that covers the bar, the bartender working area, and a folding prep table behind it. All we need from your venue is access to a standard power outlet. Indoor or outdoor both work, and we handle delivery, setup, and breakdown.</p>
+          <img class="faq-img" src="images/bar-setup-footprint.png" alt="Lake Salt mobile bar setup diagram — 6 foot bar, minimum 8 by 8 foot footprint, preferred 10 by 9 feet" loading="lazy" />
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
           Are your bartenders certified?
           <span class="faq-icon">+</span>
         </button>
@@ -4946,11 +4967,11 @@
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Phone</label>
-            <input type="tel" name="phone" class="form-input" placeholder="(801) 555-0000" />
+            <input type="tel" name="phone" class="form-input" placeholder="(801) 555-0000" required />
           </div>
           <div class="form-group">
             <label class="form-label">Event Type</label>
-            <select name="event_type" class="form-select form-input">
+            <select name="event_type" class="form-select form-input" required>
               <option value="">Select event type...</option>
               <option>Wedding</option>
               <option>Corporate Event</option>
@@ -4986,7 +5007,7 @@
           </div>
           <div class="form-group">
             <label class="form-label">Built-in Bar?</label>
-            <select name="has_built_in_bar" class="form-select form-input">
+            <select name="has_built_in_bar" class="form-select form-input" required>
               <option value="">Select...</option>
               <option value="Yes">Yes</option>
               <option value="No">No</option>
@@ -5008,7 +5029,7 @@
         </div>
         <div class="form-group">
           <label class="form-label">Tell Us About Your Event</label>
-          <textarea name="message" class="form-textarea" placeholder="Drinks/menu interests, vision, theme, special requests..."></textarea>
+          <textarea name="message" class="form-textarea" placeholder="Drinks/menu interests, vision, theme, special requests..." required></textarea>
         </div>
         <input type="hidden" name="email" id="form-email-hidden" />
         <input type="hidden" name="event_time" id="form-event-time" />
@@ -5016,6 +5037,19 @@
         <input type="hidden" name="has_built_in_bar" id="form-has-built-in-bar" />
         <input type="hidden" name="drinks" id="form-drinks" />
         <input type="hidden" name="drink_detail" id="form-drink-detail" />
+        <input type="hidden" name="quote_event_type" id="form-quote-event-type" />
+        <input type="hidden" name="quote_event_date" id="form-quote-event-date" />
+        <input type="hidden" name="quote_event_start_time" id="form-quote-event-start-time" />
+        <input type="hidden" name="quote_event_end_time" id="form-quote-event-end-time" />
+        <input type="hidden" name="quote_guest_count" id="form-quote-guest-count" />
+        <input type="hidden" name="quote_venue" id="form-quote-venue" />
+        <input type="hidden" name="quote_has_built_in_bar" id="form-quote-has-built-in-bar" />
+        <input type="hidden" name="quote_budget" id="form-quote-budget" />
+        <input type="hidden" name="quote_drinks" id="form-quote-drinks" />
+        <input type="hidden" name="quote_drink_detail" id="form-quote-drink-detail" />
+        <input type="hidden" name="quote_drink_vibe" id="form-quote-drink-vibe" />
+        <input type="hidden" name="quote_drink_summary" id="form-quote-drink-summary" />
+        <input type="hidden" name="quote_summary" id="form-quote-summary" />
         <button type="submit" class="form-submit">Send My Inquiry →</button>
       </form>
       </div><!-- /.form-glow-wrap -->
@@ -5429,6 +5463,7 @@ let obData = {
   eventType: 'all',
   drinks: [],
   drinkDetail: '',
+  drinkVibe: '',
   venue: null,
   venueText: '',
   date: '',
@@ -5455,6 +5490,185 @@ function obToggleChip(el, key, singleSelect, containerId) {
     el.classList.toggle('selected');
     obData[key] = Array.from(container.querySelectorAll('.ob-chip.selected')).map(c => c.dataset.val);
   }
+}
+
+const OB_EVENT_TYPE_LABELS = {
+  wedding: 'Wedding',
+  corporate: 'Corporate Event',
+  all: 'Private Celebration'
+};
+
+const OB_VENUE_LABELS = {
+  home: 'At a Home',
+  business: 'At a Business',
+  venue_hall: 'At a Venue',
+  outdoors: 'Outdoors'
+};
+
+const OB_BAR_LABELS = {
+  yes: 'Yes',
+  no: 'No',
+  unsure: 'Unsure'
+};
+
+const OB_DRINK_LABELS = {
+  beer_wine_only: 'Beer & Wine Only',
+  dry_bar: 'Dry Bar (No Alcohol)',
+  margaritas: 'Margaritas',
+  mojitos: 'Mojitos',
+  moscow_mules: 'Moscow Mules',
+  old_fashioned: 'Old Fashioneds',
+  gin_tonic: 'Gin & Tonics',
+  espresso_martini: 'Espresso Martinis',
+  aperol_spritz: 'Aperol Spritz',
+  cosmopolitan: 'Cosmos',
+  whiskey_sour: 'Whiskey Sours',
+  paloma: 'Palomas',
+  daiquiri: 'Daiquiris',
+  mule_bar: 'Spicy Mules',
+  craft_beer: 'Craft Beer',
+  domestic_beer: 'Domestic Beer',
+  hard_seltzer: 'Hard Seltzer',
+  cider: 'Cider',
+  red_wine: 'Red Wine',
+  white_wine: 'White Wine',
+  rose: 'Rosé',
+  champagne: 'Champagne',
+  mimosas: 'Mimosas',
+  sangria: 'Sangria',
+  prosecco: 'Prosecco Bar',
+  mocktails: 'Mocktails',
+  lemonade: 'Fresh Lemonade',
+  iced_tea: 'Iced Tea',
+  sparkling_water: 'Sparkling Water',
+  juice_bar: 'Juice Bar'
+};
+
+const OB_COCKTAIL_KEYS = new Set([
+  'margaritas', 'mojitos', 'moscow_mules', 'old_fashioned', 'gin_tonic',
+  'espresso_martini', 'aperol_spritz', 'cosmopolitan', 'whiskey_sour',
+  'paloma', 'daiquiri', 'mule_bar'
+]);
+
+const OB_BEER_WINE_KEYS = new Set([
+  'beer_wine_only', 'craft_beer', 'domestic_beer', 'hard_seltzer',
+  'cider', 'red_wine', 'white_wine', 'rose', 'champagne', 'mimosas',
+  'sangria', 'prosecco'
+]);
+
+const OB_ZERO_PROOF_KEYS = new Set([
+  'dry_bar', 'mocktails', 'lemonade', 'iced_tea', 'sparkling_water', 'juice_bar'
+]);
+
+function obLabel(map, key) {
+  return key && map[key] ? map[key] : '';
+}
+
+function obReverseLabel(map, value) {
+  if (!value) return '';
+  const entry = Object.entries(map).find(([, label]) => label === value);
+  return entry ? entry[0] : value;
+}
+
+function obNormalizeDateValue(value) {
+  if (!value) return '';
+  const parsed = new Date(value);
+  if (isNaN(parsed.getTime())) return value.trim();
+  return parsed.toISOString().split('T')[0];
+}
+
+function obBuildDrinkMeta(data) {
+  const selected = Array.isArray(data?.drinks) ? data.drinks : [];
+  const labels = selected.map(k => OB_DRINK_LABELS[k] || k).filter(Boolean);
+  const hasCocktail = selected.some(k => OB_COCKTAIL_KEYS.has(k));
+  const hasBeerWine = selected.some(k => OB_BEER_WINE_KEYS.has(k));
+  const hasZeroProof = selected.some(k => OB_ZERO_PROOF_KEYS.has(k));
+
+  let vibe = '';
+  if (selected.includes('dry_bar') && !hasCocktail && !hasBeerWine) {
+    vibe = 'Zero-proof';
+  } else if ((selected.includes('mocktails') || hasZeroProof) && !hasCocktail && !hasBeerWine) {
+    vibe = 'Mocktail-forward';
+  } else if (hasCocktail && hasBeerWine) {
+    vibe = 'Full-service mixed bar';
+  } else if (hasCocktail) {
+    vibe = 'Cocktail-forward';
+  } else if (hasBeerWine) {
+    vibe = 'Beer & wine focused';
+  } else if (selected.length) {
+    vibe = 'Mixed bar';
+  }
+
+  return {
+    labels,
+    summary: labels.join(', '),
+    vibe: [vibe, data?.drinkDetail ? data.drinkDetail.trim() : ''].filter(Boolean).join(' · ')
+  };
+}
+
+function obBuildQuoteSnapshot(form) {
+  const source = obData || {};
+  const getVal = name => {
+    const el = form ? form.querySelector(`[name="${name}"]`) : null;
+    return (el && typeof el.value === 'string' ? el.value : '').trim();
+  };
+  const drinkMeta = obBuildDrinkMeta(source);
+  const eventTypeLabel = getVal('event_type') || obLabel(OB_EVENT_TYPE_LABELS, source.eventType) || source.eventType || '';
+  const eventTypeRaw = obReverseLabel(OB_EVENT_TYPE_LABELS, eventTypeLabel) || source.eventType || '';
+  const venueLabel = getVal('venue') || source.venueText || obLabel(OB_VENUE_LABELS, source.venue) || source.venue || '';
+  const venueRaw = obReverseLabel(OB_VENUE_LABELS, venueLabel) || source.venue || '';
+  const barLabel = getVal('has_built_in_bar') || obLabel(OB_BAR_LABELS, source.hasBuiltInBar) || source.hasBuiltInBar || '';
+  const barRaw = obReverseLabel(OB_BAR_LABELS, barLabel) || source.hasBuiltInBar || '';
+  const eventDateRaw = getVal('event_date') || source.date || '';
+  const selectedDrinks = Array.isArray(source.drinks) ? source.drinks.slice() : [];
+
+  return {
+    eventType: eventTypeLabel,
+    eventTypeValue: eventTypeRaw,
+    eventDate: obNormalizeDateValue(eventDateRaw),
+    eventStartTime: getVal('event_start_time') || source.time || '',
+    eventEndTime: getVal('event_end_time') || source.endTime || '',
+    guestCount: getVal('guest_count') || source.guestNum || '',
+    venue: venueLabel,
+    venueValue: venueRaw,
+    hasBuiltInBar: barLabel,
+    hasBuiltInBarValue: barRaw,
+    budget: getVal('budget') || source.budget || '',
+    drinks: getVal('drinks') || drinkMeta.summary,
+    drinksValue: selectedDrinks.join(', '),
+    drinkDetail: getVal('drink_detail') || source.drinkDetail || '',
+    drinkVibe: getVal('drink_vibe') || drinkMeta.vibe,
+    drinkSummary: getVal('drink_summary') || drinkMeta.summary,
+    message: getVal('message') || source.message || '',
+    quoteSummary: [
+      obLabel(OB_EVENT_TYPE_LABELS, eventTypeRaw) || eventTypeRaw,
+      venueLabel,
+      obNormalizeDateValue(eventDateRaw),
+      getVal('guest_count') || source.guestNum || ''
+    ].filter(Boolean).join(' | ')
+  };
+}
+
+function obSyncQuoteFields(form, quote) {
+  if (!form) return;
+  const setVal = (name, value) => {
+    const el = form.querySelector(`[name="${name}"]`);
+    if (el) el.value = value || '';
+  };
+
+  setVal('quote_event_type', quote.eventType);
+  setVal('quote_event_date', quote.eventDate);
+  setVal('quote_event_start_time', quote.eventStartTime);
+  setVal('quote_event_end_time', quote.eventEndTime);
+  setVal('quote_guest_count', quote.guestCount);
+  setVal('quote_venue', quote.venue);
+  setVal('quote_has_built_in_bar', quote.hasBuiltInBar);
+  setVal('quote_budget', quote.budget);
+  setVal('quote_drinks', quote.drinks);
+  setVal('quote_drink_detail', quote.drinkDetail);
+  setVal('quote_drink_vibe', quote.drinkVibe);
+  setVal('quote_drink_summary', quote.drinkSummary);
+  setVal('quote_summary', quote.quoteSummary);
 }
 
 /* ── Inline Calendar ── */
@@ -5623,6 +5837,7 @@ function obFinish() {
   if (dateEl && dateEl.value && !obData.date) obData.date = dateEl.value.trim();
   if (guestNumEl)    obData.guestNum    = guestNumEl.value.trim();
   if (endTimeEl)     obData.endTime     = endTimeEl.value.trim();
+  obData.drinkVibe = obBuildDrinkMeta(obData).vibe;
   localStorage.setItem('ls-quote-data', JSON.stringify(obData));
   trackEvent('quiz_completed', { eventType: obData.eventType || 'unknown', drinks: (obData.drinks||[]).length, hasDate: !!obData.date });
   chooseMode(obData.eventType || 'all');
@@ -5692,6 +5907,7 @@ function obSubmitQuiz() {
   if (guestNumEl) obData.guestNum = guestNumEl.value.trim();
   if (startTimeEl && startTimeEl.value) obData.time = startTimeEl.value.trim();
   if (endTimeEl) obData.endTime = endTimeEl.value.trim();
+  obData.drinkVibe = obBuildDrinkMeta(obData).vibe;
 
   // Store in localStorage
   localStorage.setItem('ls-quote-data', JSON.stringify(obData));
@@ -5729,13 +5945,14 @@ function obSubmitQuiz() {
   form.querySelector('[name="message"]').value = msgParts.join('\n');
 
   // Fill hidden fields for EmailJS
+  const quote = obBuildQuoteSnapshot(form);
   document.getElementById('form-email-hidden').value = obData.email || '';
   document.getElementById('form-event-time').value = obData.time || '';
   document.getElementById('form-event-end-time').value = obData.endTime || '';
   document.getElementById('form-has-built-in-bar').value = obData.hasBuiltInBar ? { yes: 'Yes', no: 'No', unsure: 'Unsure' }[obData.hasBuiltInBar] || '' : '';
-  document.getElementById('form-drinks').value = obData.drinks && obData.drinks.length ?
-    obData.drinks.map(k => ({ cocktails: 'Cocktails', mocktails: 'Mocktails', beer: 'Beer', wine: 'Wine', open_bar: 'Open Bar', lemonade: 'Fresh Lemonade', iced_tea: 'Iced Tea', sparkling_water: 'Sparkling Water', juice_bar: 'Juice Bar' }[k] || k)).join(', ') : '';
-  document.getElementById('form-drink-detail').value = obData.drinkDetail || '';
+  document.getElementById('form-drinks').value = quote.drinks || '';
+  document.getElementById('form-drink-detail').value = quote.drinkDetail || '';
+  obSyncQuoteFields(form, quote);
 
   // Close onboarding and scroll to form
   document.getElementById('onboarding').classList.add('hidden');
@@ -5756,8 +5973,7 @@ function prefillForm() {
   // Event type
   const evtSel = document.querySelector('select[name="event_type"]');
   if (evtSel && d.eventType) {
-    const map = { wedding: 'Wedding', corporate: 'Corporate Event', all: 'Private Celebration' };
-    const val = map[d.eventType] || '';
+    const val = OB_EVENT_TYPE_LABELS[d.eventType] || '';
     Array.from(evtSel.options).forEach(o => { if (o.text === val) o.selected = true; });
   }
 
@@ -5767,8 +5983,7 @@ function prefillForm() {
     if (d.venueText) {
       venueInput.value = d.venueText;
     } else if (d.venue) {
-      const vl = { home: 'At a Home', business: 'At a Business', venue_hall: 'At a Venue', outdoors: 'Outdoors' };
-      venueInput.value = vl[d.venue] || '';
+      venueInput.value = OB_VENUE_LABELS[d.venue] || '';
     }
   }
 
@@ -5800,23 +6015,19 @@ function prefillForm() {
   // Built-in bar
   const builtInBarSelect = document.querySelector('select[name="has_built_in_bar"]');
   if (builtInBarSelect && d.hasBuiltInBar) {
-    const barMap = { yes: 'Yes', no: 'No', unsure: 'Unsure' };
-    const barVal = barMap[d.hasBuiltInBar] || '';
+    const barVal = OB_BAR_LABELS[d.hasBuiltInBar] || '';
     Array.from(builtInBarSelect.options).forEach(o => { if (o.value === barVal) o.selected = true; });
   }
 
   const builtInBarHidden = document.getElementById('form-has-built-in-bar');
   if (builtInBarHidden && d.hasBuiltInBar) {
-    const barMap = { yes: 'Yes', no: 'No', unsure: 'Unsure' };
-    builtInBarHidden.value = barMap[d.hasBuiltInBar] || '';
+    builtInBarHidden.value = OB_BAR_LABELS[d.hasBuiltInBar] || '';
   }
 
   // Drinks
   const drinksHidden = document.getElementById('form-drinks');
   if (drinksHidden && d.drinks && d.drinks.length) {
-    const dl = { cocktails: 'Cocktails', mocktails: 'Mocktails', beer: 'Beer', wine: 'Wine', open_bar: 'Open Bar',
-                 lemonade: 'Fresh Lemonade', iced_tea: 'Iced Tea', sparkling_water: 'Sparkling Water', juice_bar: 'Juice Bar' };
-    drinksHidden.value = d.drinks.map(k => dl[k] || k).join(', ');
+    drinksHidden.value = obBuildDrinkMeta(d).summary;
   }
 
   // Drink detail
@@ -5828,14 +6039,15 @@ function prefillForm() {
   if (msgArea) {
     const parts = [];
     if (d.drinks && d.drinks.length) {
-      const dl = { cocktails: 'Cocktails', mocktails: 'Mocktails', beer: 'Beer', wine: 'Wine', open_bar: 'Open Bar',
-                   lemonade: 'Fresh Lemonade', iced_tea: 'Iced Tea', sparkling_water: 'Sparkling Water', juice_bar: 'Juice Bar' };
-      parts.push('Drinks: ' + d.drinks.map(k => dl[k] || k).join(', '));
+      parts.push('Drinks: ' + obBuildDrinkMeta(d).summary);
     }
     if (d.drinkDetail) parts.push('Specific drinks: ' + d.drinkDetail);
     if (d.date && isNaN(new Date(d.date))) parts.push('Event date: ' + d.date);
     if (parts.length) msgArea.value = parts.join('\n');
   }
+
+  const quote = obBuildQuoteSnapshot(document.getElementById('contact-form'));
+  obSyncQuoteFields(document.getElementById('contact-form'), quote);
 }
 
 /* ─── RESTART QUIZ (for returning visitors) ─── */
@@ -5849,7 +6061,24 @@ function restartQuiz() {
   if (nqBtn) nqBtn.style.display = 'none';
 
   // Reset quiz state
-  obData = { eventType: 'all', drinks: [], drinkDetail: '', venue: null, venueText: '', date: '', guestNum: '' };
+  obData = {
+    eventType: 'all',
+    drinks: [],
+    drinkDetail: '',
+    drinkVibe: '',
+    venue: null,
+    venueText: '',
+    date: '',
+    time: '',
+    endTime: '',
+    guestNum: '',
+    hasBuiltInBar: null,
+    name: '',
+    email: '',
+    phone: '',
+    budget: '',
+    message: ''
+  };
   obStep = 1;
   // Returning users hitting "New Quote" already chose bartending — skip intent step
   const intentPanel = document.getElementById('ob-intent');
@@ -6351,6 +6580,8 @@ function handleSubmit(e) {
   // Sync from_email → hidden email field (for Reply-To in template)
   const emailVal = form.querySelector('#form-email').value;
   form.querySelector('#form-email-hidden').value = emailVal;
+  const quote = obBuildQuoteSnapshot(form);
+  obSyncQuoteFields(form, quote);
 
   btn.textContent = 'Sending…';
   btn.disabled = true;
@@ -6360,17 +6591,43 @@ function handleSubmit(e) {
     name:           form.querySelector('[name="from_name"]')?.value || '',
     email:          emailVal,
     phone:          form.querySelector('[name="phone"]')?.value || '',
-    eventType:      form.querySelector('[name="event_type"]')?.value || '',
-    eventDate:      form.querySelector('[name="event_date"]')?.value || '',
-    eventStartTime: form.querySelector('[name="event_start_time"]')?.value || '',
-    eventEndTime:   form.querySelector('[name="event_end_time"]')?.value || '',
-    guestCount:     form.querySelector('[name="guest_count"]')?.value || '',
-    venue:          form.querySelector('[name="venue"]')?.value || '',
-    hasBuiltInBar:  form.querySelector('[name="has_built_in_bar"]')?.value || '',
-    drinks:         form.querySelector('[name="drinks"]')?.value || '',
-    drinkDetail:    form.querySelector('[name="drink_detail"]')?.value || '',
-    message:        form.querySelector('[name="message"]')?.value || '',
-    budget:         form.querySelector('[name="budget"]')?.value || '',
+    eventType:      quote.eventTypeValue || form.querySelector('[name="event_type"]')?.value || '',
+    eventTypeLabel: quote.eventType || '',
+    eventDate:      quote.eventDate || form.querySelector('[name="event_date"]')?.value || '',
+    eventStartTime: quote.eventStartTime || form.querySelector('[name="event_start_time"]')?.value || '',
+    eventEndTime:   quote.eventEndTime || form.querySelector('[name="event_end_time"]')?.value || '',
+    guestCount:     quote.guestCount || form.querySelector('[name="guest_count"]')?.value || '',
+    venue:          quote.venue || form.querySelector('[name="venue"]')?.value || '',
+    venueValue:     quote.venueValue || '',
+    hasBuiltInBar:  quote.hasBuiltInBarValue || form.querySelector('[name="has_built_in_bar"]')?.value || '',
+    hasBuiltInBarLabel: quote.hasBuiltInBar || '',
+    drinks:         quote.drinks || form.querySelector('[name="drinks"]')?.value || '',
+    drinkSelections: Array.isArray(obData.drinks) ? obData.drinks.slice() : [],
+    drinksValue:    quote.drinksValue || '',
+    drinkDetail:    quote.drinkDetail || form.querySelector('[name="drink_detail"]')?.value || '',
+    drinkVibe:      quote.drinkVibe || '',
+    drinkSummary:   quote.drinkSummary || '',
+    message:        quote.message || form.querySelector('[name="message"]')?.value || '',
+    budget:         quote.budget || form.querySelector('[name="budget"]')?.value || '',
+    quoteSummary:   quote.quoteSummary || '',
+    quoteData: {
+      eventType: quote.eventTypeValue || '',
+      eventTypeLabel: quote.eventType || '',
+      eventDate: quote.eventDate || '',
+      eventStartTime: quote.eventStartTime || '',
+      eventEndTime: quote.eventEndTime || '',
+      guestCount: quote.guestCount || '',
+      venue: quote.venue || '',
+      venueValue: quote.venueValue || '',
+      hasBuiltInBar: quote.hasBuiltInBarValue || '',
+      hasBuiltInBarLabel: quote.hasBuiltInBar || '',
+      budget: quote.budget || '',
+      drinks: quote.drinks || '',
+      drinkDetail: quote.drinkDetail || '',
+      drinkVibe: quote.drinkVibe || '',
+      drinkSummary: quote.drinkSummary || '',
+      quoteSummary: quote.quoteSummary || ''
+    },
     stage:          'New Lead',
     source:         (function(){
       try {

@@ -47,3 +47,7 @@ firestore-debug.log
 
 # ── Firebase hosting cache ─────────────────────
 .firebase/
+
+# Gmail API OAuth (post-expo cohort drafts script)
+scripts/.gmail-token.json
+scripts/.gmail-credentials.json

@@ -1,0 +1,72 @@
+/* Lake Salt — Comms Hub theme tokens.
+   Default "Forest" matches the live desktop admin (green-black + amber + green + teal).
+   Switch themes by setting  <html data-comms-theme="forest|dark|warm">  (Settings page).
+   These vars are consumed by the comms "Needs you" widget + lead-card thread/composer. */
+
+:root,
+:root[data-comms-theme="forest"] {
+  --c-bg:        #0c1410;   /* deep forest-green-black page */
+  --c-surface:   #121b16;   /* cards */
+  --c-surface-2: #0e1712;   /* insets / draft box */
+  --c-border:    #20302610; /* hairline */
+  --c-border-2:  #25352b;
+  --c-text:      #eef2ee;   /* primary */
+  --c-text-2:    #aab8ad;   /* body */
+  --c-muted:     #7f8d82;   /* sage labels */
+  --c-accent:    #d99a2b;   /* amber — primary actions, wordmark, active nav */
+  --c-accent-ink:#1a1205;   /* text on amber */
+  --c-good:      #44b86a;  /* green — money / positive / booked */
+  --c-info:      #3fb6a8;   /* teal — New Lead badges */
+  --c-warn:      #d99a2b;   /* amber — contacted */
+  --c-flag:      #d2705a;   /* terracotta — flagged */
+}
+
+:root[data-comms-theme="dark"] {
+  --c-bg:        #08090b;
+  --c-surface:   #0d0f13;
+  --c-surface-2: #0a0c10;
+  --c-border:    #181b21;
+  --c-border-2:  #23262e;
+  --c-text:      #eef1f4;
+  --c-text-2:    #9aa6b4;
+  --c-muted:     #5a6470;
+  --c-accent:    #4ea8de;   /* cold blue telemetry */
+  --c-accent-ink:#04121c;
+  --c-good:      #6cc8a3;
+  --c-info:      #4ea8de;
+  --c-warn:      #caa45a;
+  --c-flag:      #c2705f;
+}
+
+:root[data-comms-theme="warm"] {
+  --c-bg:        #e8e4dc;
+  --c-surface:   #faf8f4;
+  --c-surface-2: #f4efe6;
+  --c-border:    #e4ddd0;
+  --c-border-2:  #ddd5c6;
+  --c-text:      #2b2722;
+  --c-text-2:    #6b6253;
+  --c-muted:     #9a8e76;
+  --c-accent:    #2b2722;   /* espresso-black primary */
+  --c-accent-ink:#faf8f4;
+  --c-good:      #3f7d5e;
+  --c-info:      #3f7d5e;
+  --c-warn:      #a9762f;
+  --c-flag:      #b15b46;
+}
+
+/* Comms widget primitives (used by the Needs-you widget + lead-card thread).
+   Kept minimal; the dashboard's own CSS still drives layout. */
+.comms-card      { background:var(--c-surface); border:0.5px solid var(--c-border-2); border-radius:13px; padding:13px; }
+.comms-card--reply { border-left:2.5px solid var(--c-info); }
+.comms-card--quote { border-left:2.5px solid var(--c-warn); }
+.comms-card--flag  { border-left:2.5px solid var(--c-flag); }
+.comms-draft     { background:var(--c-surface-2); border:0.5px solid var(--c-border-2); border-radius:10px; padding:11px; cursor:text; }
+.comms-draft.editing { border-color:var(--c-accent); }
+.comms-btn-send  { background:var(--c-accent); color:var(--c-accent-ink); border:none; border-radius:10px; padding:11px; font-weight:500; }
+.comms-btn-ghost { background:transparent; color:var(--c-text-2); border:0.5px solid var(--c-border-2); border-radius:10px; padding:11px 13px; }
+.comms-pill      { font-size:10px; font-weight:500; padding:3px 9px; border-radius:20px; }
+.comms-pill--reply { background:rgba(63,182,168,.15); color:var(--c-info); }
+.comms-pill--quote { background:rgba(217,154,43,.15); color:var(--c-warn); }
+.comms-pill--flag  { background:rgba(210,112,90,.15); color:var(--c-flag); }
+.comms-label     { color:var(--c-muted); font-size:9px; letter-spacing:1px; text-transform:uppercase; }

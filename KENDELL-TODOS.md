@@ -141,3 +141,14 @@ In priority order. Each is its own brainstorm-able unit, none are blocking the e
 ---
 
 **When in doubt:** open [EXPO-SETUP.md](EXPO-SETUP.md). When stuck: ask Claude.
+
+---
+
+## 📋 Current — July 2026 (running list)
+
+- [ ] **Buy vintage picture frames for bar menu signs** — thrift/used frames, nice-looking, gold/vintage feel. Cheap way to elevate the bar + dress the spritz express station so it matches. (Idea from 7/10 — Chelsea/Victory Ranch prep, but useful for every event.)
+- [ ] **Shoot bar content this weekend** — bar fully set up, styled with 2–3 drinks: straight-on hero, 3/4 angle, bar-top close-up, bartender mid-pour. Needed for Chelsea proposal v2 (Wed 7/15) + website/IG forever.
+- [ ] **Order cup samples** — 1 case Visions 14oz stemless wine ($38.67/64) + 1 case Fineline Renaissance 12oz tumbler (~$64/240) from WebstaurantStore. Judge in hand, then bulk order (7 wine + 2 cocktail cases total).
+- [ ] **Add API credits** (platform.claude.com → Billing) then run `managed-agents/12_create_triage_deployment.sh` — fast-reply inbox agent + phone-push escalation.
+- [ ] **Deploy CRM push notifications**: `firebase deploy --only hosting,functions,firestore:rules`, then open LS Admin on phone → tap Enable.
+- [x] **FLIP liability insurance** — PAID 7/13, coverage active. ✓

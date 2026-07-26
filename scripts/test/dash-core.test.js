@@ -174,6 +174,20 @@ group('getSuggestion', () => {
   ok(C.getSuggestion('website', { funnel: { bookVisits: 100, formStarts: 3 }, sessions: 50, sources: {} }).includes('drop-off'), 'website detects funnel drop-off');
 });
 
+/* ── computeActionQueue ── */
+group('computeActionQueue', () => {
+  const now = new Date(2026, 6, 18);
+  const leads = [
+    { id: 'a', name: 'Alisa', stage: 'Proposal Sent', actionState: 'Waiting on Client' },
+    { id: 'b', name: 'Heather', stage: 'Contacted', actionState: 'Needs Kendell' },
+    { id: 'c', name: 'Old', stage: 'Proposal Sent', followUpDate: '2026-07-01' },
+    { id: 'd', name: 'Lost', stage: 'Lost' }
+  ];
+  const q = C.computeActionQueue(leads, now);
+  eq(q.map(x => x.lead.id), ['b', 'c', 'a'], 'priority order and closed leads excluded');
+  eq(q[1].state, 'Follow-Up Due', 'legacy due follow-up is inferred');
+});
+
 console.log(`\n${'─'.repeat(50)}`);
 console.log(`${passed} passed · ${failed} failed`);
 process.exit(failed ? 1 : 0);

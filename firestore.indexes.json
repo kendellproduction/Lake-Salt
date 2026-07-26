@@ -1,4 +1,32 @@
 {
-  "indexes": [],
+  "indexes": [
+    {
+      "comment": "Comms Hub: resolveLeadForMessage step 1 — find the lead a Gmail thread is already mapped to, newest comms first.",
+      "collectionGroup": "leads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "gmailThreadIds", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "commsLastMessageAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "comment": "Comms Hub: list leads by most-recent message for an inbox-style sort.",
+      "collectionGroup": "leads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "commsUnread", "order": "DESCENDING" },
+        { "fieldPath": "commsLastMessageAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "comment": "Comms Hub: collection-group query over every lead's messages subcollection, ordered by send time (used by future cross-lead inbox views).",
+      "collectionGroup": "messages",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "direction", "order": "ASCENDING" },
+        { "fieldPath": "sentAt", "order": "ASCENDING" }
+      ]
+    }
+  ],
   "fieldOverrides": []
 }

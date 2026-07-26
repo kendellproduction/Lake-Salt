@@ -250,6 +250,36 @@
     return leads.filter(l => !['Completed', 'Lost'].includes(l.stage)).length;
   }
 
+  /* Single source of truth for the daily sales queue. Explicit actionState
+     wins; legacy leads are inferred from stage and follow-up date. */
+  function computeActionQueue(leads, now) {
+    now = now || new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const due = l => {
+      const d = parseEventDate(l.followUpDate);
+      return d && d <= today;
+    };
+    const items = leads.filter(l => !['Lost', 'Completed', 'Booked'].includes(l.stage)).map(l => {
+      let state = String(l.actionState || '').trim();
+      if (!state) {
+        if (l.stage === 'New Lead' || l.stage === 'Expo Email Sent') state = 'Needs Reply';
+        else if (l.stage === 'Proposal Sent' && due(l)) state = 'Follow-Up Due';
+        else if (l.stage === 'Proposal Sent') state = 'Waiting on Client';
+        else if (due(l)) state = 'Follow-Up Due';
+        else state = 'Needs Reply';
+      }
+      const rank = {
+        'Needs Kendell': 0,
+        'Quote Ready - Needs Price': 1,
+        'Needs Reply': 2,
+        'Follow-Up Due': 3,
+        'Waiting on Client': 4
+      }[state];
+      return { lead: l, state, rank: rank == null ? 5 : rank };
+    });
+    return items.sort((a, b) => (a.rank - b.rank) || String(a.lead.eventDate || '').localeCompare(String(b.lead.eventDate || '')));
+  }
+
   /* ═══════════════════════════════════════════════════════════════════════
      WEBSITE ANALYTICS (page_events are plain object arrays)
      ═══════════════════════════════════════════════════════════════════════ */
@@ -407,7 +437,7 @@
     median, sum, pct, eventCategory,
     eventsInRange, expensesInRange,
     computeMoneyStats, computeCosts, computeProfitability,
-    computeUpcoming, prioritizeDeals, computeLeadFlow, openLeadsCount,
+    computeUpcoming, prioritizeDeals, computeLeadFlow, openLeadsCount, computeActionQueue,
     computeWebsite,
     detectExpenseAnomalies, detectActivityAlerts,
     getSuggestion,
