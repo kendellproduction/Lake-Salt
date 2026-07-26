@@ -2706,7 +2706,7 @@ const RUNNER_TOOLS = [
   },
 ];
 
-async function runRunnerTool(name, input, gmail) {
+async function runRunnerTool(name, input, gmail, sentGuard) {
   const now = admin.firestore.FieldValue.serverTimestamp();
   if (name === 'query_crm') return await runQueryCrm(input);
   if (name === 'update_lead') {
@@ -2757,18 +2757,25 @@ async function runRunnerTool(name, input, gmail) {
     }
     if (name === 'send_email') {
       /* Idempotency guard: never email the same address twice in 7 days,
-       * no matter what the prompt/model thinks. Catches duplicate tool
-       * calls AND overlapping campaigns (first-touch vs batch sweeps). */
+       * no matter what the prompt/model thinks. Two layers, both fail
+       * CLOSED: an in-process set (same-task duplicate tool calls) and a
+       * single-equality Firestore lookup (no composite index needed). */
+      const addr = String(input.to).toLowerCase().trim();
+      if (sentGuard) {
+        if (sentGuard.has(addr)) return `Refused: you already emailed ${input.to} in this task — do not send again.`;
+        sentGuard.add(addr);
+      }
       try {
-        const since = admin.firestore.Timestamp.fromMillis(Date.now() - 7 * 86400e3);
-        const recent = await db.collection('activity')
-          .where('type', '==', 'agent_email_sent').where('createdAt', '>=', since).limit(200).get();
-        const addr = String(input.to).toLowerCase().trim();
-        const already = recent.docs.some(d =>
-          String(d.data().to || '').toLowerCase() === addr ||
-          String(d.data().note || '').toLowerCase().includes(`emailed ${addr}:`));
-        if (already) return `Refused: ${input.to} already received an agent email in the last 7 days — do not send another. Note the skip in your summary.`;
-      } catch (e) { console.warn('send guard check failed (allowing):', e.message); }
+        const recent = await db.collection('activity').where('to', '==', addr).limit(5).get();
+        const cutoff = Date.now() - 7 * 86400e3;
+        const already = recent.docs.some(d => {
+          const c = d.data().createdAt;
+          return !c || c.toMillis() >= cutoff;
+        });
+        if (already) return `Refused: ${input.to} already received an agent email in the last 7 days — note the skip in your summary.`;
+      } catch (e) {
+        return `Send blocked: duplicate-check failed (${e.message}). Do not retry this send; note it in your summary.`;
+      }
     }
     const raw = rfc822(input.to, String(input.subject).slice(0, 200), String(input.body).slice(0, 5000));
     if (name === 'send_email') {
@@ -2797,6 +2804,7 @@ Rules:
 - If the task can't be done with these tools, complete_task with outcome=blocked and say what's needed.`;
 
   let messages = [{ role: 'user', content: `TASK: ${t.title}\n\nINSTRUCTIONS: ${t.instruction || t.detail || '(none)'}\n\nQueued by: ${t.source || 'unknown'} · agent hint: ${t.agent || 'general'}` }];
+  const sentGuard = new Set();   /* addresses emailed within THIS task */
   let result = null;
   const MAX_TURNS = 16;
   for (let turn = 0; turn < MAX_TURNS && !result; turn++) {
@@ -2813,7 +2821,7 @@ Rules:
     const outs = [];
     for (const tu of toolUses) {
       let out;
-      try { out = await runRunnerTool(tu.name, tu.input || {}, gmail); }
+      try { out = await runRunnerTool(tu.name, tu.input || {}, gmail, sentGuard); }
       catch (e) { out = `Tool ${tu.name} failed: ${e.message}`; }
       outs.push({ type: 'tool_result', tool_use_id: tu.id, content: out });
     }
