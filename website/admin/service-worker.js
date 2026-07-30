@@ -4,10 +4,13 @@
    static shell, while ALWAYS hitting the network for Firebase/Firestore data.
 
    Strategy:
-   • Static assets (html/css/js/img under /admin/) → stale-while-revalidate.
+   • Static assets (html/css/js/img under /admin/) → NETWORK-FIRST with cache
+     fallback. Mobile is the primary surface and stale-while-revalidate left
+     phones one deploy behind (users saw old UI until their second visit);
+     online loads must always run the latest code. Cache exists for offline.
    • Everything else (googleapis, gstatic, firestore, storage) → network only.
    Bump CACHE_VERSION to force-refresh the cached shell after a deploy. */
-const CACHE_VERSION = 'ls-admin-v10';
+const CACHE_VERSION = 'ls-admin-v11';
 const SHELL = [
   '/admin/',
   '/admin/index.html',
@@ -104,12 +107,16 @@ self.addEventListener('fetch', (e) => {
 
   e.respondWith(
     caches.open(CACHE_VERSION).then(async (cache) => {
-      const cached = await cache.match(req);
-      const network = fetch(req).then(res => {
+      try {
+        const res = await fetch(req);
         if (res && res.status === 200) cache.put(req, res.clone());
         return res;
-      }).catch(() => cached);
-      return cached || network;
+      } catch (_) {
+        /* Offline — serve the last cached copy. */
+        const cached = await cache.match(req);
+        if (cached) return cached;
+        throw _;
+      }
     })
   );
 });

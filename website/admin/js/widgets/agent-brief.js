@@ -141,7 +141,8 @@
       '<div class="brief-headsup-bullet">✦ ' + esc(String(s).replace(/^[✦◆•\-\s]+/, '')) + '</div>').join('');
 
     el.innerHTML =
-      '<div class="brief-quote">“' + esc(b.quote || '') + '”</div>' +
+      /* No decorative quotes added — the text usually brings its own ("…" — Author). */
+      '<div class="brief-quote">' + esc(b.quote || '') + '</div>' +
       '<div class="brief-topbar">' +
         '<span class="dash-sub-label" style="margin:0">✨ YOUR BRIEF · ' + esc(dateLabel) + '</span>' +
         '<span class="brief-topbar-right">updated ' + esc(timeAgo(b.generatedAt)) +

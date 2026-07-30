@@ -1709,7 +1709,9 @@ exports.dailyFollowupScan = onSchedule(
     }
 
     await detectRepliesNeeded();
-    await pushFollowupsDigest('morning');
+    /* No push here — the 8am scan just builds the list. Pushes go out at
+     * 10am and 2pm MT (see morningFollowupPush / afternoonFollowupSweep):
+     * early-morning pushes get ignored. */
 
     console.log(`dailyFollowupScan created ${created} follow-up reminders, flagged ${expiredCount} expired quotes`);
     return null;
@@ -1752,24 +1754,35 @@ async function detectRepliesNeeded() {
   return created;
 }
 
-/* ─── Follow-ups digest push (8am + 2pm MT) ───────────────────────────────
- * Repeats until the list is empty — items leave the list by being resolved
- * in the CRM or auto-closed when a reply goes out. One open item deep-links
- * straight to that lead's card. */
+/* ─── Follow-ups push (10am + 2pm MT) ─────────────────────────────────────
+ * Repeats until the list is empty — items leave by being resolved in the
+ * CRM or auto-closed when a reply goes out. Designed to be ACTED ON, not
+ * ignored: it leads with the single most urgent item (deep-linked to that
+ * lead's card) and only counts the rest. Unmatched-message triage items
+ * stay on the dashboard but don't clog the push. */
+const PUSHABLE_TYPES = ['quote_accepted', 'reply_needed', 'followup_due', 'quote_expired'];
 async function pushFollowupsDigest(slot) {
   try {
     const openSnap = await db.collection('kendell_followups')
       .where('status', '==', 'open').get();
-    if (openSnap.empty) return;
-    const items = openSnap.docs.map((d) => d.data());
-    const names = [...new Set(items.map((i) => i.leadName || 'a lead'))];
-    const preview = names.slice(0, 4).join(', ') + (names.length > 4 ? ` +${names.length - 4} more` : '');
-    const single = items.length === 1 && items[0].leadId;
+    const items = openSnap.docs.map((d) => d.data())
+      .filter((i) => PUSHABLE_TYPES.includes(i.type));
+    if (!items.length) return;
+    /* Priority: money first, then whoever has waited longest. */
+    items.sort((a, b) =>
+      (PUSHABLE_TYPES.indexOf(a.type) - PUSHABLE_TYPES.indexOf(b.type)) ||
+      ((a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0) -
+       (b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0)));
+    const top = items[0];
+    const restNames = [...new Set(items.slice(1).map((i) => i.leadName || 'a lead'))];
+    const rest = restNames.length
+      ? ` Also waiting: ${restNames.slice(0, 3).join(', ')}${restNames.length > 3 ? ` +${restNames.length - 3} more` : ''}.`
+      : '';
     await db.collection('notifications').add({
-      title: `⏰ ${items.length} item${items.length === 1 ? '' : 's'} still need${items.length === 1 ? 's' : ''} a response`,
-      body: preview + (slot === 'afternoon' ? ' — second reminder; these clear as soon as we reply.' : ''),
-      url: single
-        ? `https://lakesalt.us/admin/#crm/lead/${items[0].leadId}`
+      title: String(top.title || 'Follow-up needed').slice(0, 120),
+      body: `${String(top.notes || '').slice(0, 160)}${rest} These clear automatically when we reply.`,
+      url: top.leadId
+        ? `https://lakesalt.us/admin/#crm/lead/${top.leadId}`
         : 'https://lakesalt.us/admin/#crm',
       tag: `followups-${slot}`,
       audience: 'ops',
@@ -1778,8 +1791,19 @@ async function pushFollowupsDigest(slot) {
   } catch (e) { console.warn('followups digest push failed:', e.message); }
 }
 
+/* First push of the day at 10am MT — late enough to land, early enough to
+ * matter. Re-detects first so overnight replies already cleared the list. */
+exports.morningFollowupPush = onSchedule(
+  { schedule: '0 10 * * *', timeZone: 'America/Denver', timeoutSeconds: 120 },
+  async () => {
+    await detectRepliesNeeded();
+    await pushFollowupsDigest('morning');
+    return null;
+  }
+);
+
 /* Afternoon pass: re-detect anyone newly waiting on us, then re-push
- * whatever is still open. Second push of the workday (first is 8am). */
+ * whatever is still open. Second push of the workday. */
 exports.afternoonFollowupSweep = onSchedule(
   { schedule: '0 14 * * *', timeZone: 'America/Denver', timeoutSeconds: 120 },
   async () => {
