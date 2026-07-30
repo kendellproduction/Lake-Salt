@@ -1450,17 +1450,9 @@ td { padding: 11px 12px; font-size: 12.5px; }
 @media (prefers-reduced-motion: reduce) {
   .dash-widget[data-widget="agentBrief"]::before { opacity: 0.45; }
 }
-/* Mobile: the animated conic ring misrenders on iOS Safari (mask-composite
-   + border-radius fragility — the ring drew THROUGH the card content on
-   phones). Phones get a clean static gradient border instead. */
+/* Mobile: keep the animated ring (it's a feature) — just guard against
+   horizontal overflow inside the hero so content can't spill past it. */
 @media (max-width: 768px) {
-  .dash-widget[data-widget="agentBrief"]::before { content: none; }
-  .dash-widget[data-widget="agentBrief"] {
-    border: 1px solid rgba(212,175,118,0.45);
-    box-shadow: 0 0 24px rgba(212,175,118,0.12);
-    overflow: hidden;
-  }
-  /* Belt-and-suspenders against horizontal overflow inside the hero. */
   #brief-summary, #brief-chat { min-width: 0; max-width: 100%; }
   .brief-exec, .brief-headsup, .brief-task-title, .brief-task-detail { overflow-wrap: anywhere; }
 }
