@@ -1891,25 +1891,17 @@ exports.weeklyNurtureReport = onSchedule(
  * displays it. Dead tokens are pruned automatically. */
 const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 
-/* Audience routing: who a notification goes to.
- *   'ops'  → Maddie — client communication, leads, follow-ups, bookings.
- *            She runs the business day-to-day.
- *   'tech' → Kendell — code, CRM build, deploys, agent/system errors.
- *   'all'  → both (default when no audience is set).
- * Emails can be overridden without a deploy via settings/notification_routing
- * { ops: [emails], tech: [emails] }. */
-const DEFAULT_ROUTING = {
-  ops:  ['maddiejeanandrews@gmail.com'],
-  tech: ['kendellproduction@gmail.com'],
-};
-async function audienceEmails(audience) {
-  let routing = DEFAULT_ROUTING;
-  try {
-    const doc = await db.collection('settings').doc('notification_routing').get();
-    if (doc.exists) routing = { ...DEFAULT_ROUTING, ...doc.data() };
-  } catch (e) { /* fall back to defaults */ }
-  if (audience === 'ops' || audience === 'tech') return routing[audience];
-  return null; // 'all' / unset → every registered device
+/* Audience = ADDRESSING, not routing. Everyone registered gets every push
+ * (Kendell's call: full shared visibility). The audience field just says who
+ * the message is speaking to, and we prefix the title with their name:
+ *   'ops'  → "Maddie — …"  (client communication, leads, follow-ups, bookings)
+ *   'tech' → "Kendell — …" (code, CRM build, deploys, agent/system errors)
+ *   'all' / unset → no prefix (both). */
+const AUDIENCE_NAMES = { ops: 'Maddie', tech: 'Kendell' };
+function addressTitle(title, audience) {
+  const name = AUDIENCE_NAMES[audience];
+  if (!name || title.startsWith(name)) return title;
+  return `${name} — ${title}`;
 }
 
 exports.sendPushNotification = onDocumentCreated('notifications/{noteId}', async (event) => {
@@ -1918,21 +1910,17 @@ exports.sendPushNotification = onDocumentCreated('notifications/{noteId}', async
   if (!note) return null;
 
   const tokensSnap = await db.collection('push_tokens').get();
-  const targetEmails = await audienceEmails(note.audience);
-  const targetDocs = targetEmails
-    ? tokensSnap.docs.filter((d) => targetEmails.includes((d.data().email || '').toLowerCase()))
-    : tokensSnap.docs;
-  if (targetDocs.length === 0) {
-    console.warn(`sendPushNotification: no push tokens for audience "${note.audience || 'all'}"`);
-    await snap.ref.update({ sentAt: admin.firestore.FieldValue.serverTimestamp(), successCount: 0, failureCount: 0, error: 'no tokens for audience' });
+  if (tokensSnap.empty) {
+    console.warn('sendPushNotification: no push tokens registered');
+    await snap.ref.update({ sentAt: admin.firestore.FieldValue.serverTimestamp(), successCount: 0, failureCount: 0, error: 'no tokens' });
     return null;
   }
-  const tokens = targetDocs.map((d) => d.id);
+  const tokens = tokensSnap.docs.map((d) => d.id);
 
   const res = await admin.messaging().sendEachForMulticast({
     tokens,
     data: {
-      title: String(note.title || 'Lake Salt'),
+      title: addressTitle(String(note.title || 'Lake Salt'), note.audience),
       body:  String(note.body || ''),
       url:   String(note.url || 'https://lakesalt.us/admin/#crm'),
       tag:   String(note.tag || 'lake-salt')
@@ -2224,7 +2212,29 @@ const QUERYABLE_COLLECTIONS = [
   'leads', 'quotes', 'events', 'expenses', 'activity', 'unmatched_messages',
   'kendell_followups', 'agent_tasks', 'call_bookings', 'nurture_queue',
   'inventory', 'projects', 'bartenders', 'payments', 'threads',
+  'recent_messages',
 ];
+
+/* Newest email messages across ALL leads (inbox + sent), via a collection-
+ * group query over leads/{x}/threads/{y}/messages. Gives the brief and
+ * agents a live view of the freshest email activity without knowing lead
+ * ids up front. */
+async function fetchRecentMessages(limit) {
+  const snap = await db.collectionGroup('messages')
+    .orderBy('sentAt', 'desc').limit(limit).get();
+  return snap.docs.map((d) => {
+    const m = d.data();
+    return {
+      leadId: d.ref.parent.parent.parent.parent.id,
+      direction: m.direction,
+      from: m.fromDisplay || m.from || '',
+      to: (m.to || []).join(', '),
+      subject: m.subject || '',
+      snippet: (m.snippet || String(m.bodyText || '').slice(0, 160)),
+      sentAt: m.sentAt && m.sentAt.toDate ? m.sentAt.toDate().toISOString() : null,
+    };
+  });
+}
 
 function crmSerializeDoc(d, fields) {
   const raw = d.data();
@@ -2250,6 +2260,10 @@ async function runQueryCrm(input) {
     return JSON.stringify({ error: 'unknown collection', allowed: QUERYABLE_COLLECTIONS });
   }
   const limit = Math.min(Math.max(parseInt(input.limit, 10) || 15, 1), 25);
+  if (coll === 'recent_messages') {
+    try { return JSON.stringify({ count: limit, docs: await fetchRecentMessages(limit) }); }
+    catch (e) { return JSON.stringify({ error: 'recent_messages query failed: ' + e.message }); }
+  }
   let base;
   if (coll === 'threads') {
     const leadId = String(input.leadId || '');
@@ -2514,6 +2528,20 @@ const PUBLISH_BRIEF_TOOL = [{
           required: ['title', 'detail', 'status'],
         },
       },
+      pushAlerts: {
+        type: 'array', maxItems: 3,
+        description: 'Phone push notifications to fire NOW — only for things needing timely human action (client waiting on a reply for days, quote about to expire, unanswered question blocking a response). Speak directly to the person: "It\'s been 3 days on the Smith wedding — just 2 questions and we can reply." Empty array when nothing is push-worthy. Never repeat an alert already pushed recently.',
+        items: {
+          type: 'object',
+          properties: {
+            audience: { type: 'string', enum: ['ops', 'tech', 'all'], description: 'ops = Maddie (client/pipeline work), tech = Kendell (system/code), all = both' },
+            title: { type: 'string', description: 'Short push title, no name prefix — that is added automatically' },
+            body: { type: 'string', description: '1-2 sentences: what, why now, what to do' },
+            tag: { type: 'string', description: 'Stable slug for this alert topic (e.g. "smith-reply-overdue") — used to dedupe across refreshes' },
+          },
+          required: ['audience', 'title', 'body', 'tag'],
+        },
+      },
       headsUp: { type: 'string', description: 'One intro line for the heads-up section (e.g. "Quiet week ahead — no events booked.").' },
       headsUpBullets: {
         type: 'array', maxItems: 4, items: { type: 'string' },
@@ -2549,6 +2577,10 @@ async function buildExecBriefContext() {
       title: d.data().title, status: d.data().status, result: String(d.data().result || '').slice(0, 200),
     })).slice(0, 12);
   } catch (e) { ctx.recentAgentWork = []; }
+  /* Freshest email in BOTH directions — the brief must never miss a client
+   * message that arrived after the CRM snapshot was assembled. */
+  try { ctx.recentMessages = await fetchRecentMessages(15); }
+  catch (e) { ctx.recentMessages = []; console.warn('brief recentMessages failed:', e.message); }
   return ctx;
 }
 
@@ -2558,9 +2590,11 @@ async function generateAgentBriefCore(trigger) {
   const client = new Anthropic({ apiKey: anthropicApiKey.value() });
 
   const system =
-`You're Kendell's executive assistant for Lake Salt, his mobile bar (dry-hire) business in Utah. Each morning you write his brief. Voice: casual, friendly, and sharp — like a trusted ops partner texting him the real state of things. No corporate stiffness, no filler, no restating counts he can see elsewhere. Interpret: what's hot, what's stalling, what you already handled, the one thing he must do himself.
+`You're the executive assistant for Lake Salt, a mobile bar (dry-hire) business in Utah, working for Kendell (owner) and Maddie (runs day-to-day operations — client communication, follow-ups, quotes, bookings). Kendell handles code, the CRM itself, and system issues; address operational items to Maddie and system items to Kendell, by name, in the brief and in push alerts. Voice: casual, friendly, and sharp — like a trusted ops partner texting the real state of things. No corporate stiffness, no filler, no restating counts they can see elsewhere. Interpret: what's hot, what's stalling, what you already handled, the one thing a human must do.
 
-DIG BEFORE YOU WRITE. Use query_crm to pull real data first — at minimum the quotes collection (how many are out, how old, which leads they belong to) and the newest leads. Never publish numbers you didn't verify with a query. 2-4 queries is plenty; keep limits small.
+DIG BEFORE YOU WRITE. Use query_crm to pull real data first — at minimum the quotes collection (how many are out, how old, which leads they belong to) and the newest leads. The recent_messages collection gives you the newest emails in both directions across all leads — use it to catch anything a CRM summary is missing. Never publish numbers you didn't verify with a query. 2-4 queries is plenty; keep limits small.
+
+PUSH ALERTS: if something needs timely human action — a client waiting days for our reply, a quote about to expire, a question blocking a response — include it in pushAlerts, addressed to the right person, with a concrete ask ("just 2 questions before we can respond: …"). Nothing push-worthy → empty array. The brief itself is not a push; only true act-now items go in pushAlerts.
 
 KENDELL'S PRIORITIES (in order):
 1. Fresh website/form leads — speed-to-lead wins these. Newest inbound leads get first attention every day.
@@ -2578,6 +2612,7 @@ Pipeline: ${JSON.stringify(ctx.stages)}
 Open followups: ${ctx.followups.map(f => `${f.id} · ${f.type} · ${f.title}`).join(' | ') || 'none'}
 Unresolved unmatched messages (${ctx.unmatchedCount}): ${JSON.stringify(ctx.unmatchedSamples)}
 Events next 14 days: ${JSON.stringify(ctx.upcomingEvents)}
+Newest email messages, both directions (LIVE — trust these over stale CRM fields): ${JSON.stringify(ctx.recentMessages || [])}
 Agent work completed in the last 24h (report these as DONE, with outcomes): ${JSON.stringify(ctx.recentAgentWork || [])}`;
 
   const tools = [QUERY_CRM_TOOL, ...PUBLISH_BRIEF_TOOL];
@@ -2642,6 +2677,27 @@ Agent work completed in the last 24h (report these as DONE, with outcomes): ${JS
     trigger, generatedAt: now,
   };
   await db.collection('agent_brief').doc('latest').set(doc);
+
+  /* Fire the model's push alerts. Dedupe on tag: the same alert topic won't
+   * re-push within 20h no matter how often the brief refreshes. */
+  for (const a of (brief.pushAlerts || []).slice(0, 3)) {
+    try {
+      const tag = String(a.tag || '').slice(0, 60) || 'brief-alert';
+      const since = admin.firestore.Timestamp.fromMillis(Date.now() - 20 * 3600e3);
+      const dup = await db.collection('notifications')
+        .where('tag', '==', tag).where('createdAt', '>=', since).limit(1).get();
+      if (!dup.empty) continue;
+      await db.collection('notifications').add({
+        title: String(a.title || '').slice(0, 120),
+        body: String(a.body || '').slice(0, 400),
+        url: 'https://lakesalt.us/admin/#crm',
+        tag,
+        audience: ['ops', 'tech', 'all'].includes(a.audience) ? a.audience : 'all',
+        source: 'agent_brief',
+        createdAt: now,
+      });
+    } catch (e) { console.warn('brief pushAlert failed:', e.message); }
+  }
   return doc;
 }
 

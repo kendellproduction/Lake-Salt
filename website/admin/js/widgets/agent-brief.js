@@ -158,6 +158,19 @@
         (b.headsUp ? '<div class="brief-headsup">' + neonize(b.headsUp) + '</div>' : '') + bullets : '');
   }
 
+  /* Auto-refresh on app open: the brief regenerates from live CRM + the
+     newest emails (server-side recent_messages view), so what you read is
+     the state of the business NOW, not 7am. Once per page load, only when
+     the current brief is older than 30 min. */
+  let _autoRefreshed = false;
+  function maybeAutoRefresh() {
+    if (_autoRefreshed) return;
+    const gen = _brief && toDate(_brief.generatedAt);
+    if (gen && (Date.now() - gen) < 30 * 60 * 1000) return;
+    _autoRefreshed = true;
+    refreshBrief();
+  }
+
   async function refreshBrief() {
     if (_briefBusy) return;
     _briefBusy = true;
@@ -344,8 +357,11 @@
       try {
         if (_briefUnsub) _briefUnsub();
         _briefUnsub = firebase.firestore().collection('agent_brief').doc('latest')
-          .onSnapshot(doc => { _brief = doc.exists ? doc.data() : null; renderBrief(); },
-            err => console.warn('brief listen failed:', err.message));
+          .onSnapshot(doc => {
+            _brief = doc.exists ? doc.data() : null;
+            renderBrief();
+            maybeAutoRefresh();
+          }, err => console.warn('brief listen failed:', err.message));
       } catch (e) { console.warn('brief init failed:', e.message); }
     }
   }

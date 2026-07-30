@@ -118,14 +118,16 @@ Use the template at `Lake-Salt-Quote-Template.pdf` (render script produces it; f
 
 ## Push Notifications (updated July 2026)
 
-Maddie Andrews (maddiejeanandrews@gmail.com) is the **primary business operator**. Kendell handles code, CRM builds, and system issues.
+Maddie Andrews (maddiejeanandrews@gmail.com) runs Lake Salt day-to-day operations (client communication, follow-ups, quotes, bookings). Kendell owns the business and handles code, the CRM itself, and system issues.
 
 To push a phone notification, create a doc in the `notifications` Firestore collection:
 `{ title, body, url?, tag?, audience? }`
 
-**Audience routing — set it on every notification:**
-- `audience: 'ops'` → Maddie. Use for: client communication, new leads, follow-ups due, quotes needing review, booking confirmations, unanswered client emails.
-- `audience: 'tech'` → Kendell. Use for: agent errors, failed sends, deploy/system issues, anything about code or the CRM itself.
-- `audience: 'all'` (or omitted) → both. Use for: money moments (quote accepted, deposit paid), anything ambiguous or urgent.
+**Everyone receives every push.** The `audience` field is ADDRESSING, not routing — it prefixes the title with the right name so it's clear who should act:
+- `audience: 'ops'` → titled "Maddie — …". Client communication, new leads, follow-ups due, quotes needing review, bookings, unanswered client emails.
+- `audience: 'tech'` → titled "Kendell — …". Agent errors, failed sends, deploy/system issues, anything about code or the CRM itself.
+- `audience: 'all'` (or omitted) → no prefix. Money moments (quote accepted, deposit paid), ambiguous, or urgent.
 
-**Push generously.** If a human running this business would want to know, send it. Better one extra push than a lead going cold silently. Questions needing a human decision → push with a clear ask in the body.
+Set a stable `tag` (slug) per alert topic — the brief generator dedupes on it so the same alert never pushes twice within 20h.
+
+**Push generously.** If a human running this business would want to know, send it. Speak directly to the person with a concrete ask: "Maddie — it's been 3 days on the Smith wedding; just 2 questions before we can reply." Better one extra push than a lead going cold silently.
