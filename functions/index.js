@@ -5,7 +5,13 @@ const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https')
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
-const { google } = require('googleapis');
+/* googleapis is enormous — requiring it synchronously builds every Google API
+ * surface and was hanging deploy discovery (>60s) and bloating cold starts.
+ * This proxy defers the require to first actual use; require() caches after
+ * that, so subsequent property hits are free. */
+const google = new Proxy({}, {
+  get: (_, prop) => require('googleapis').google[prop],
+});
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -633,6 +639,18 @@ exports.onQuoteAccepted = onDocumentUpdated('quotes/{quoteId}', async (event) =>
       console.error('Failed to create owner followup on quote accept:', e);
     }
   }
+
+  /* Push to everyone — a signed quote is a money moment both should see. */
+  try {
+    await db.collection('notifications').add({
+      title: `🎉 ${leadName} accepted their quote — $${Math.round(total).toLocaleString('en-US')}`,
+      body: `Signed by ${sig}. Next step: send the 30% deposit invoice to lock the date.`,
+      url: 'https://lakesalt.us/admin/#crm',
+      tag: 'quote-accepted',
+      audience: 'all',
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  } catch (e) { console.warn('quote-accepted push failed:', e.message); }
 
   return null;
 });
@@ -1672,6 +1690,25 @@ exports.dailyFollowupScan = onSchedule(
       console.error('Quote-expiry scan failed:', e);
     }
 
+    /* Daily digest push: every open follow-up item, sent to ops (Maddie)
+     * every morning at 8am MT so nothing sits untouched. */
+    try {
+      const openSnap = await db.collection('kendell_followups')
+        .where('status', '==', 'open').get();
+      if (!openSnap.empty) {
+        const names = openSnap.docs.map((d) => d.data().leadName || 'a lead');
+        const preview = names.slice(0, 4).join(', ') + (names.length > 4 ? ` +${names.length - 4} more` : '');
+        await db.collection('notifications').add({
+          title: `⏰ ${names.length} follow-up${names.length === 1 ? '' : 's'} need attention today`,
+          body: preview,
+          url: 'https://lakesalt.us/admin/#crm',
+          tag: 'daily-followups',
+          audience: 'ops',
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) { console.warn('daily followup digest push failed:', e.message); }
+
     console.log(`dailyFollowupScan created ${created} follow-up reminders, flagged ${expiredCount} expired quotes`);
     return null;
   }
@@ -1853,18 +1890,44 @@ exports.weeklyNurtureReport = onSchedule(
  * /admin/js/push.js) as a DATA-ONLY web push; the admin service worker
  * displays it. Dead tokens are pruned automatically. */
 const { onDocumentCreated } = require('firebase-functions/v2/firestore');
+
+/* Audience routing: who a notification goes to.
+ *   'ops'  → Maddie — client communication, leads, follow-ups, bookings.
+ *            She runs the business day-to-day.
+ *   'tech' → Kendell — code, CRM build, deploys, agent/system errors.
+ *   'all'  → both (default when no audience is set).
+ * Emails can be overridden without a deploy via settings/notification_routing
+ * { ops: [emails], tech: [emails] }. */
+const DEFAULT_ROUTING = {
+  ops:  ['maddiejeanandrews@gmail.com'],
+  tech: ['kendellproduction@gmail.com'],
+};
+async function audienceEmails(audience) {
+  let routing = DEFAULT_ROUTING;
+  try {
+    const doc = await db.collection('settings').doc('notification_routing').get();
+    if (doc.exists) routing = { ...DEFAULT_ROUTING, ...doc.data() };
+  } catch (e) { /* fall back to defaults */ }
+  if (audience === 'ops' || audience === 'tech') return routing[audience];
+  return null; // 'all' / unset → every registered device
+}
+
 exports.sendPushNotification = onDocumentCreated('notifications/{noteId}', async (event) => {
   const snap = event.data;
   const note = snap && snap.data();
   if (!note) return null;
 
   const tokensSnap = await db.collection('push_tokens').get();
-  if (tokensSnap.empty) {
-    console.warn('sendPushNotification: no push tokens registered');
-    await snap.ref.update({ sentAt: admin.firestore.FieldValue.serverTimestamp(), successCount: 0, failureCount: 0, error: 'no tokens' });
+  const targetEmails = await audienceEmails(note.audience);
+  const targetDocs = targetEmails
+    ? tokensSnap.docs.filter((d) => targetEmails.includes((d.data().email || '').toLowerCase()))
+    : tokensSnap.docs;
+  if (targetDocs.length === 0) {
+    console.warn(`sendPushNotification: no push tokens for audience "${note.audience || 'all'}"`);
+    await snap.ref.update({ sentAt: admin.firestore.FieldValue.serverTimestamp(), successCount: 0, failureCount: 0, error: 'no tokens for audience' });
     return null;
   }
-  const tokens = tokensSnap.docs.map((d) => d.id);
+  const tokens = targetDocs.map((d) => d.id);
 
   const res = await admin.messaging().sendEachForMulticast({
     tokens,
@@ -2918,6 +2981,7 @@ exports.onLeadCreated = onDocCreatedLead(
     await db.collection('notifications').add({
       title: '🔥 New lead: ' + (lead.name || 'unknown'),
       body: `${lead.eventType || 'Event'}${lead.eventDate ? ' · ' + lead.eventDate : ''} — first-touch queued, agent replies in ~15-40 min (human-feel delay).`,
+      audience: 'ops',
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
   } catch (e) { console.warn('lead push failed:', e.message); }
