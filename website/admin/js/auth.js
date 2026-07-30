@@ -1,6 +1,6 @@
 /* ─── AUTH MODULE ─── */
 
-const OWNER_EMAIL = 'kendellproduction@gmail.com';
+const OWNER_EMAILS = ['kendellproduction@gmail.com', 'maddiejeanandrews@gmail.com'];
 let currentUser  = null;
 let currentRole  = null;
 
@@ -39,7 +39,7 @@ function initAuth() {
           applyTheme(adminDoc.data().theme);
         }
         onAuthed(user, currentRole);
-      } else if (user.email === OWNER_EMAIL) {
+      } else if (OWNER_EMAILS.includes(user.email)) {
         // Auto-provision owner on first login
         await db.collection('admins').doc(user.uid).set({
           uid:       user.uid,

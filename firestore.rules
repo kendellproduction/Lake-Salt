@@ -83,7 +83,8 @@ service cloud.firestore {
       allow write: if isAdmin() ||
                       (request.auth != null &&
                        request.auth.uid == id &&
-                       request.auth.token.email == 'kendellproduction@gmail.com');
+                       request.auth.token.email in ['kendellproduction@gmail.com',
+                                                    'maddiejeanandrews@gmail.com']);
     }
 
     // ── Per-user preferences (dashboard widget layout, theme) ──
