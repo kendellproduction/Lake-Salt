@@ -32,7 +32,12 @@ const MODULES = {
 if (typeof initTheme === 'function') initTheme();
 
 // ── Load a module ──
+// Supports deep links like "crm/lead/<id>" (used by push notifications):
+// the module is "crm", and the lead modal opens once the module renders.
 function loadModule(name) {
+  const parts = String(name || '').split('/');
+  name = parts[0];
+  const deepLink = parts.slice(1);
   const validModules = Object.keys(MODULES);
   if (!validModules.includes(name)) name = 'dashboard';
 
@@ -54,6 +59,12 @@ function loadModule(name) {
   setTimeout(() => {
     if (MODULES[name]) MODULES[name]();
     closeMobileSidebar();
+    /* Deep link: open the lead card after the CRM renders. openLeadModal
+       hydrates from Firestore itself when the lead isn't cached yet. */
+    if (name === 'crm' && deepLink[0] === 'lead' && deepLink[1] &&
+        typeof openLeadModal === 'function') {
+      setTimeout(() => openLeadModal(deepLink[1]), 400);
+    }
   }, 50);
 }
 

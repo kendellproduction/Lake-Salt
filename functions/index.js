@@ -950,6 +950,24 @@ async function writeMessageToLead(leadRef, msg) {
   batch.set(leadRef, leadUpdate, { merge: true });
 
   await batch.commit();
+
+  /* Reply detection: an OUTBOUND message on this lead means someone answered
+   * — close any open "reply needed" / "follow up due" items so the twice-a-
+   * day reminder pushes stop automatically. Works for agent sends AND manual
+   * Gmail replies, because both flow through the sync. */
+  if (msg.direction === 'out') {
+    try {
+      const open = await db.collection('kendell_followups')
+        .where('leadId', '==', leadRef.id).where('status', '==', 'open').get();
+      const closable = open.docs.filter(d => ['reply_needed', 'followup_due'].includes(d.data().type));
+      await Promise.all(closable.map(d => d.ref.update({
+        status: 'done',
+        resolvedAt: admin.firestore.FieldValue.serverTimestamp(),
+        resolvedBy: 'auto: outbound reply detected by gmail sync',
+      })));
+      if (closable.length) console.log(`auto-closed ${closable.length} followup(s) for lead ${leadRef.id} — reply detected`);
+    } catch (e) { console.warn('followup auto-close failed:', e.message); }
+  }
 }
 
 /* ─── Unmatched message → holding collection + Kendell followup ─────────────
@@ -1690,26 +1708,83 @@ exports.dailyFollowupScan = onSchedule(
       console.error('Quote-expiry scan failed:', e);
     }
 
-    /* Daily digest push: every open follow-up item, sent to ops (Maddie)
-     * every morning at 8am MT so nothing sits untouched. */
-    try {
-      const openSnap = await db.collection('kendell_followups')
-        .where('status', '==', 'open').get();
-      if (!openSnap.empty) {
-        const names = openSnap.docs.map((d) => d.data().leadName || 'a lead');
-        const preview = names.slice(0, 4).join(', ') + (names.length > 4 ? ` +${names.length - 4} more` : '');
-        await db.collection('notifications').add({
-          title: `⏰ ${names.length} follow-up${names.length === 1 ? '' : 's'} need attention today`,
-          body: preview,
-          url: 'https://lakesalt.us/admin/#crm',
-          tag: 'daily-followups',
-          audience: 'ops',
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      }
-    } catch (e) { console.warn('daily followup digest push failed:', e.message); }
+    await detectRepliesNeeded();
+    await pushFollowupsDigest('morning');
 
     console.log(`dailyFollowupScan created ${created} follow-up reminders, flagged ${expiredCount} expired quotes`);
+    return null;
+  }
+);
+
+/* ─── Reply-needed detection ──────────────────────────────────────────────
+ * A lead whose LAST message is inbound and has sat unanswered for 20+ hours
+ * gets an open reply_needed followup. It auto-closes the moment the sync
+ * sees our outbound reply (see writeMessageToLead), which also silences the
+ * twice-a-day reminder pushes for it. */
+async function detectRepliesNeeded() {
+  let created = 0;
+  try {
+    const cutoff = admin.firestore.Timestamp.fromMillis(Date.now() - 20 * 3600e3);
+    const snap = await db.collection('leads')
+      .where('commsLastDirection', '==', 'in').get();
+    for (const doc of snap.docs) {
+      const lead = doc.data();
+      if (['Completed', 'Lost', 'Closed'].includes(lead.stage)) continue;
+      const last = lead.commsLastMessageAt;
+      if (!last || last.toMillis() > cutoff.toMillis()) continue;      // still fresh
+      const existing = await db.collection('kendell_followups')
+        .where('leadId', '==', doc.id).where('status', '==', 'open').limit(10).get();
+      if (existing.docs.some(d => d.data().type === 'reply_needed')) continue;
+      const days = Math.max(1, Math.round((Date.now() - last.toMillis()) / 864e5));
+      await db.collection('kendell_followups').add({
+        type: 'reply_needed',
+        leadId: doc.id,
+        leadName: lead.name || 'a lead',
+        title: `💬 ${lead.name || 'A lead'} is waiting on our reply (${days} day${days === 1 ? '' : 's'})`,
+        notes: `Their last message came in and we haven't responded. ${lead.eventType || 'Event'}${lead.eventDate ? ' · ' + lead.eventDate : ''}.`,
+        status: 'open',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      created++;
+    }
+  } catch (e) { console.warn('detectRepliesNeeded failed:', e.message); }
+  if (created) console.log(`detectRepliesNeeded: ${created} reply_needed followup(s) created`);
+  return created;
+}
+
+/* ─── Follow-ups digest push (8am + 2pm MT) ───────────────────────────────
+ * Repeats until the list is empty — items leave the list by being resolved
+ * in the CRM or auto-closed when a reply goes out. One open item deep-links
+ * straight to that lead's card. */
+async function pushFollowupsDigest(slot) {
+  try {
+    const openSnap = await db.collection('kendell_followups')
+      .where('status', '==', 'open').get();
+    if (openSnap.empty) return;
+    const items = openSnap.docs.map((d) => d.data());
+    const names = [...new Set(items.map((i) => i.leadName || 'a lead'))];
+    const preview = names.slice(0, 4).join(', ') + (names.length > 4 ? ` +${names.length - 4} more` : '');
+    const single = items.length === 1 && items[0].leadId;
+    await db.collection('notifications').add({
+      title: `⏰ ${items.length} item${items.length === 1 ? '' : 's'} still need${items.length === 1 ? 's' : ''} a response`,
+      body: preview + (slot === 'afternoon' ? ' — second reminder; these clear as soon as we reply.' : ''),
+      url: single
+        ? `https://lakesalt.us/admin/#crm/lead/${items[0].leadId}`
+        : 'https://lakesalt.us/admin/#crm',
+      tag: `followups-${slot}`,
+      audience: 'ops',
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  } catch (e) { console.warn('followups digest push failed:', e.message); }
+}
+
+/* Afternoon pass: re-detect anyone newly waiting on us, then re-push
+ * whatever is still open. Second push of the workday (first is 8am). */
+exports.afternoonFollowupSweep = onSchedule(
+  { schedule: '0 14 * * *', timeZone: 'America/Denver', timeoutSeconds: 120 },
+  async () => {
+    await detectRepliesNeeded();
+    await pushFollowupsDigest('afternoon');
     return null;
   }
 );
