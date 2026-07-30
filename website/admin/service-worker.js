@@ -10,7 +10,7 @@
      online loads must always run the latest code. Cache exists for offline.
    • Everything else (googleapis, gstatic, firestore, storage) → network only.
    Bump CACHE_VERSION to force-refresh the cached shell after a deploy. */
-const CACHE_VERSION = 'ls-admin-v11';
+const CACHE_VERSION = 'ls-admin-v12';
 const SHELL = [
   '/admin/',
   '/admin/index.html',
@@ -19,6 +19,7 @@ const SHELL = [
   '/admin/js/auth.js',
   '/admin/js/dash-core.js',
   '/admin/js/app.js',
+  '/admin/js/decide.js',
   '/admin/js/dashboard.js',
   '/admin/js/widgets/agent-brief.js',
   '/admin/js/push.js',
@@ -49,18 +50,39 @@ self.addEventListener('push', (e) => {
     d = payload.data || payload.notification || payload || {};
   } catch (_) { /* non-JSON push */ }
   const title = d.title || 'Lake Salt';
+  /* Action buttons where the platform supports them (Android/desktop Chrome).
+     iOS ignores `actions` and shows a plain notification — tapping it opens
+     the #decide screen, which shows the same buttons in-app. */
+  let actions = [];
+  if (d.kind === 'decision' && d.followupId) {
+    actions = [
+      { action: 'yes', title: '✅ Yes' },
+      { action: 'no', title: '❌ No' }
+    ];
+  } else if (d.kind === 'task' && d.followupId) {
+    actions = [{ action: 'done', title: '✓ Mark handled' }];
+  }
   e.waitUntil(self.registration.showNotification(title, {
     body: d.body || '',
     tag: d.tag || 'lake-salt',
     icon: '/android-chrome-192x192.png',
     badge: '/android-chrome-192x192.png',
-    data: { url: d.url || '/admin/#crm' }
+    actions,
+    data: { url: d.url || '/admin/#crm', followupId: d.followupId || '', kind: d.kind || '' }
   }));
 });
 
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
-  const url = (e.notification.data && e.notification.data.url) || '/admin/#crm';
+  const nd = e.notification.data || {};
+  /* Button taps route to #act/<followupId>/<answer> — the app (already
+     authed) applies the answer immediately and confirms with a toast. The
+     service worker itself has no Firebase auth, so the one tap opens the
+     PWA and the answer is applied on arrival. */
+  let url = nd.url || '/admin/#crm';
+  if (e.action && nd.followupId) {
+    url = '/admin/#act/' + nd.followupId + '/' + e.action;
+  }
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
       for (const c of list) {

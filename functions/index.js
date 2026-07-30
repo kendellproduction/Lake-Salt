@@ -959,13 +959,21 @@ async function writeMessageToLead(leadRef, msg) {
     try {
       const open = await db.collection('kendell_followups')
         .where('leadId', '==', leadRef.id).where('status', '==', 'open').get();
-      const closable = open.docs.filter(d => ['reply_needed', 'followup_due'].includes(d.data().type));
+      const closable = open.docs.filter(d => ['reply_needed', 'followup_due', 'quote_expired'].includes(d.data().type));
       await Promise.all(closable.map(d => d.ref.update({
         status: 'done',
         resolvedAt: admin.firestore.FieldValue.serverTimestamp(),
         resolvedBy: 'auto: outbound reply detected by gmail sync',
       })));
       if (closable.length) console.log(`auto-closed ${closable.length} followup(s) for lead ${leadRef.id} — reply detected`);
+      /* Also clear a PAST-DUE followUpDate — otherwise the 8am scan recreates
+       * the same "follow up with X" reminder every morning even though the
+       * follow-up already went out. A future-dated follow-up stays. */
+      const leadSnap = await leadRef.get();
+      const fud = leadSnap.exists && leadSnap.data().followUpDate;
+      if (fud && String(fud) <= ymd(new Date())) {
+        await leadRef.update({ followUpDate: null, followUpClearedBy: 'auto: outbound reply' });
+      }
     } catch (e) { console.warn('followup auto-close failed:', e.message); }
   }
 }
@@ -1660,6 +1668,16 @@ exports.dailyFollowupScan = onSchedule(
       if (!lead.followUpDate) continue;                       // skip empty strings
       if (['Booked', 'Completed', 'Lost'].includes(lead.stage)) continue;
 
+      /* Already followed up: our last message on this lead went OUT after the
+       * follow-up date arrived. Clear the stale date instead of re-nagging —
+       * this is what made pushes say "follow up with X" after we already had. */
+      if (lead.commsLastDirection === 'out' && lead.commsLastMessageAt &&
+          lead.commsLastMessageAt.toDate &&
+          ymd(lead.commsLastMessageAt.toDate()) >= String(lead.followUpDate)) {
+        await doc.ref.update({ followUpDate: null, followUpClearedBy: 'auto: 8am scan saw outbound after due date' });
+        continue;
+      }
+
       const existing = await db.collection('kendell_followups')
         .where('leadId', '==', doc.id)
         .where('type', '==', 'followup_due')
@@ -1765,7 +1783,7 @@ async function pushFollowupsDigest(slot) {
   try {
     const openSnap = await db.collection('kendell_followups')
       .where('status', '==', 'open').get();
-    const items = openSnap.docs.map((d) => d.data())
+    const items = openSnap.docs.map((d) => ({ id: d.id, ...d.data() }))
       .filter((i) => PUSHABLE_TYPES.includes(i.type));
     if (!items.length) return;
     /* Priority: money first, then whoever has waited longest. */
@@ -1778,13 +1796,16 @@ async function pushFollowupsDigest(slot) {
     const rest = restNames.length
       ? ` Also waiting: ${restNames.slice(0, 3).join(', ')}${restNames.length > 3 ? ` +${restNames.length - 3} more` : ''}.`
       : '';
+    /* Deep link straight to the item: the #decide screen shows this exact
+     * followup with one-tap actions (Done / open the lead), so the tap lands
+     * on the task — not the CRM front door. */
     await db.collection('notifications').add({
       title: String(top.title || 'Follow-up needed').slice(0, 120),
       body: `${String(top.notes || '').slice(0, 160)}${rest} These clear automatically when we reply.`,
-      url: top.leadId
-        ? `https://lakesalt.us/admin/#crm/lead/${top.leadId}`
-        : 'https://lakesalt.us/admin/#crm',
+      url: `https://lakesalt.us/admin/#decide/${top.id}`,
       tag: `followups-${slot}`,
+      kind: 'task',
+      followupId: top.id,
       audience: 'ops',
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
@@ -2022,7 +2043,11 @@ exports.sendPushNotification = onDocumentCreated('notifications/{noteId}', async
       title: addressTitle(String(note.title || 'Lake Salt'), note.audience),
       body:  String(note.body || ''),
       url:   String(note.url || 'https://lakesalt.us/admin/#crm'),
-      tag:   String(note.tag || 'lake-salt')
+      tag:   String(note.tag || 'lake-salt'),
+      /* Actionable pushes: kind drives which buttons the service worker shows
+       * (decision → Yes/No, task → Done); followupId is what the buttons act on. */
+      kind:  String(note.kind || ''),
+      followupId: String(note.followupId || '')
     },
     webpush: { headers: { Urgency: 'high', TTL: '86400' } }
   });
@@ -3046,11 +3071,44 @@ Rules:
     messages.push({ role: 'user', content: outs });
   }
   const now = admin.firestore.FieldValue.serverTimestamp();
+  const blocked = !(result && result.outcome === 'done');
   await taskDoc.ref.update({
-    status: result && result.outcome === 'done' ? 'done' : 'blocked',
+    status: blocked ? 'blocked' : 'done',
     result: String((result && result.summary) || 'runner gave no summary').slice(0, 1000),
     completedAt: now,
   });
+
+  /* A blocked task is a QUESTION for a human. Surface it as a decision
+   * followup + an actionable push: tapping the push opens #decide/<id> —
+   * a screen with the question and Yes/No buttons. Answering queues a
+   * follow-on task so the agent acts on the decision (no Claude app needed). */
+  if (blocked) {
+    try {
+      const t = taskDoc.data();
+      const question = String((result && result.summary) || t.title || 'Agent needs a decision').slice(0, 500);
+      const fuRef = await db.collection('kendell_followups').add({
+        type: 'decision',
+        leadId: t.leadId || null,
+        leadName: t.leadName || null,
+        title: `🤔 ${String(t.title || 'Agent question').slice(0, 110)}`,
+        notes: question,
+        sourceTaskId: taskDoc.id,
+        sourceAgent: t.agent || 'general',
+        status: 'open',
+        createdAt: now,
+      });
+      await db.collection('notifications').add({
+        title: `🤔 Decision needed: ${String(t.title || 'agent question').slice(0, 90)}`,
+        body: question.slice(0, 240),
+        url: `https://lakesalt.us/admin/#decide/${fuRef.id}`,
+        tag: `decision-${taskDoc.id}`,
+        kind: 'decision',
+        followupId: fuRef.id,
+        audience: 'ops',
+        createdAt: now,
+      });
+    } catch (e) { console.warn('blocked-task decision surface failed:', e.message); }
+  }
   return result;
 }
 

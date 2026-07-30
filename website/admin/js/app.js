@@ -38,6 +38,17 @@ function loadModule(name) {
   const parts = String(name || '').split('/');
   name = parts[0];
   const deepLink = parts.slice(1);
+
+  /* Push-notification action routes (see decide.js):
+       #decide/<followupId>          → decision screen with Yes/No/Done buttons
+       #act/<followupId>/<answer>    → apply the answer immediately (button tap) */
+  if ((name === 'decide' || name === 'act') && deepLink[0] &&
+      typeof renderDecideScreen === 'function') {
+    cleanupListeners();
+    renderDecideScreen(deepLink[0], name === 'act' ? deepLink[1] : null);
+    return;
+  }
+
   const validModules = Object.keys(MODULES);
   if (!validModules.includes(name)) name = 'dashboard';
 

@@ -1622,3 +1622,20 @@ td { padding: 11px 12px; font-size: 12.5px; }
 .brief-agents-idle { background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.5); }
 .brief-agents-idle strong { color: inherit; }
 .brief-allclear { color: #4be3a4; font-weight: 600; }
+
+/* ── Decide screen (push-notification landing) ── */
+.decide-wrap { max-width: 560px; margin: 24px auto 0; padding: 24px 20px;
+  background: var(--card, rgba(255,255,255,0.03)); border: 1px solid var(--border);
+  border-radius: 16px; }
+.decide-title { font-size: 20px; font-weight: 700; line-height: 1.35; margin-bottom: 10px; }
+.decide-notes { font-size: 14.5px; line-height: 1.6; color: rgba(255,255,255,0.75); margin-bottom: 16px; }
+.decide-note { width: 100%; background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  border-radius: 10px; color: var(--text); font: inherit; font-size: 14px;
+  padding: 10px 12px; margin-bottom: 14px; resize: vertical; }
+.decide-btns { display: flex; flex-wrap: wrap; gap: 10px; }
+.decide-btn { flex: 1; min-width: 140px; min-height: 52px; border-radius: 12px;
+  font-size: 15.5px; font-weight: 700; cursor: pointer; border: 1px solid var(--border);
+  background: rgba(255,255,255,0.05); color: var(--text); }
+.decide-yes { background: rgba(75,227,164,0.14); border-color: rgba(75,227,164,0.4); color: #4be3a4; }
+.decide-no  { background: rgba(224,82,82,0.12); border-color: rgba(224,82,82,0.4); color: #ff8a8a; }
+.decide-ghost { background: none; color: rgba(255,255,255,0.6); font-weight: 500; flex: 0 1 auto; min-height: 40px; }
