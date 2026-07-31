@@ -1639,3 +1639,5 @@ td { padding: 11px 12px; font-size: 12.5px; }
 .decide-yes { background: rgba(75,227,164,0.14); border-color: rgba(75,227,164,0.4); color: #4be3a4; }
 .decide-no  { background: rgba(224,82,82,0.12); border-color: rgba(224,82,82,0.4); color: #ff8a8a; }
 .decide-ghost { background: none; color: rgba(255,255,255,0.6); font-weight: 500; flex: 0 1 auto; min-height: 40px; }
+.decide-private { font-size: 10px; letter-spacing: 0.04em; color: #4be3a4; text-transform: none; margin-left: 6px; }
+.decide-hint { font-size: 12px; line-height: 1.55; color: rgba(255,255,255,0.45); margin-top: 10px; }

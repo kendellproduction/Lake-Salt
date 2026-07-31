@@ -25,7 +25,7 @@ function resolveDecideAnswer(fu, answer, note) {
   const key = String(answer || '').replace(/^opt:/, '');
   const opt = (fu.options || []).find(o => o.key === key);
   if (opt) return { decision: 'option:' + opt.key, label: opt.label, emoji: '👉', acts: true };
-  if (answer === 'custom' && note) return { decision: 'custom', label: note.slice(0, 60), emoji: '💬', acts: true };
+  if (answer === 'custom' && note) return { decision: 'custom', label: 'Guidance sent', emoji: '🧭', acts: true };
   return { ...DECIDE_ANSWERS.done, acts: false };
 }
 
@@ -81,13 +81,15 @@ async function renderDecideScreen(fuId, preAnswer) {
       <div class="decide-title">${escapeHtmlSafe(fu.title || 'Follow-up')}</div>
       <div class="decide-notes">${escapeHtmlSafe(fu.notes || '')}</div>
       <div class="decide-btns">${btns}</div>
-      <textarea id="decide-note" class="decide-note" rows="2" style="margin-top:14px"
-        placeholder="Or type your own answer / add context for the agent…"
+      <div class="dash-sub-label" style="margin:16px 0 6px">🧭 GUIDANCE FOR YOUR AGENT <span class="decide-private">private — never sent to the client</span></div>
+      <textarea id="decide-note" class="decide-note" rows="3"
+        placeholder="Coach the agent in your own words — e.g. 'Yes, but only if they cover travel' or 'Decline politely and refer them to someone in Vegas'. It writes its own client message from this."
         oninput="document.getElementById('decide-custom-send').style.display = this.value.trim() ? '' : 'none'"></textarea>
       <div class="decide-btns">
         <button type="button" id="decide-custom-send" class="decide-btn" style="display:none"
-          onclick="submitDecide('${escapeHtmlSafe(fu.id)}','custom')">📤 Send that as my answer</button>
+          onclick="submitDecide('${escapeHtmlSafe(fu.id)}','custom')">🧭 Send guidance to agent</button>
       </div>
+      <div class="decide-hint">Tap a button above to answer directly — anything typed here rides along as private instructions. Or send guidance alone and let the agent run with it.</div>
       <div class="decide-btns" style="margin-top:10px">${decideBackBtns(fu.leadId)}</div>
     </div>`;
   window._decideCurrent = fu;
@@ -141,8 +143,8 @@ async function applyDecideAnswer(fu, answer, note) {
        yes/no, agent-supplied options, and free-text custom answers alike. */
     if (fu.type === 'decision' && a.acts) {
       const answerLine = a.decision === 'custom'
-        ? `Kendell answered in his own words: "${note}".`
-        : `Kendell chose: "${a.label}"${note ? ` — with this note: "${note}"` : ''}.`;
+        ? `Kendell didn't pick a button — instead he sent you this guidance: "${note}".`
+        : `Kendell chose: "${a.label}".${note ? ` He also sent you this guidance: "${note}".` : ''}`;
       await db.collection('agent_tasks').add({
         agent: fu.sourceAgent || 'comms',
         kind: 'decision_followthrough',
@@ -151,6 +153,8 @@ async function applyDecideAnswer(fu, answer, note) {
         instruction:
           `You previously asked: "${fu.notes || fu.title}". ` +
           answerLine + ' ' +
+          `IMPORTANT: any guidance quoted above is PRIVATE coaching from Kendell to you — never forward ` +
+          `or paste it to a client; follow its intent and write your own client-facing words. ` +
           `Act on this answer now (query the lead + threads first for context). ` +
           `If it means telling a client no, decline warmly and professionally, and where it fits, ` +
           `point them somewhere useful. Update the lead stage/notes to reflect the outcome.`,
