@@ -1,0 +1,104 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper: is the requester a provisioned admin? ──
+    function isAdmin() {
+      return request.auth != null &&
+             exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // ── leads — public create (website form + /expo raffle), admin everything else ──
+    match /leads/{id} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+
+      // Communications Hub — message threads mirrored from Gmail.
+      // Written by syncGmail via the admin SDK (bypasses rules); the admin
+      // dashboard reads them live. Admin-only, no public access. The /** glob
+      // covers both threads/{threadId} and its messages/{messageId} subdocs.
+      match /threads/{document=**} {
+        allow read, write: if isAdmin();
+      }
+    }
+
+    // ── Communications Hub: unmatched messages (no confident lead match) ──
+    // Created by syncGmail (admin SDK); admins read + attach them to a lead.
+    match /unmatched_messages/{id} { allow read, write: if isAdmin(); }
+
+    // ── Communications Hub: raw Zapier inbound queue (fallback auth path) ──
+    // The Zap writes here when OAuth isn't configured; syncGmail drains it.
+    match /gmail_inbound_raw/{id} { allow read, write: if isAdmin(); }
+
+    // ── admins — own-doc access for first-login + role checks ──
+    match /admins/{id} {
+      allow read:  if request.auth != null &&
+                      (request.auth.uid == id || isAdmin());
+      allow write: if isAdmin() ||
+                      (request.auth != null &&
+                       request.auth.uid == id &&
+                       request.auth.token.email == 'kendellproduction@gmail.com');
+    }
+
+    // ── Core business collections — admin only ──
+    match /projects/{id}   { allow read, write: if isAdmin(); }
+    match /tasks/{id}      { allow read, write: if isAdmin(); }
+    match /bartenders/{id} { allow read, write: if isAdmin(); }
+    match /payments/{id}   { allow read, write: if isAdmin(); }
+    match /events/{id}     { allow read, write: if isAdmin(); }
+    match /expenses/{id}   { allow read, write: if isAdmin(); }
+    match /inventory/{id}  { allow read, write: if isAdmin(); }
+
+    // ── Activity log — admin write + read ──
+    match /activity/{id}   { allow read, write: if isAdmin(); }
+
+    // ── Closer-mode supporting collections ──
+    // call_bookings: created by Cloud Function (admin SDK bypasses rules); admins read/write.
+    match /call_bookings/{id}    { allow read, write: if isAdmin(); }
+    // kendell_followups: manual Chase-invoice tasks; created by Cloud Function; admin only.
+    match /kendell_followups/{id} { allow read, write: if isAdmin(); }
+
+    // ── Analytics: anonymous page_view / wizard_step events. Public CREATE
+    //    only (never read/update/delete from the client). Admins can read.
+    match /page_events/{id} {
+      allow create: if true;
+      allow read:   if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // ── Expos: per-expo notes, learnings, prep checklists. Admin-only.
+    match /expos/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // ── Quote builder ──
+    // settings/{id} — admin config docs (quote_defaults, etc.). Admin-only.
+    match /settings/{id} { allow read, write: if isAdmin(); }
+
+    // quotes/{id} — admins do anything. Clients who hold the quote URL get
+    // a single-doc GET (so the public proposal page works), but NOT list/
+    // query access — preventing anyone from enumerating every quote in the
+    // database via `db.collection('quotes').get()`. Their UPDATE is tightly
+    // scoped to the acceptance fields and only allowed when the quote
+    // isn't already accepted. They can't touch line items, totals, or any
+    // other quote.
+    match /quotes/{id} {
+      allow get:    if true;                                   // single doc by ID — public
+      allow list:   if isAdmin();                              // no enumeration
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() ||
+        (
+          /* Only when no one has accepted yet */
+          resource.data.clientAcceptedAt == null &&
+          /* The update may ONLY touch these fields */
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['clientAcceptedAt','clientAcceptedSignature','clientViewedAt','status']) &&
+          /* If status is set, it must be the literal 'accepted' string */
+          (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status']) ||
+            request.resource.data.status == 'accepted'
+          )
+        );
+    }
+  }
+}

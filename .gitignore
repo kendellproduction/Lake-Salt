@@ -51,3 +51,20 @@ firestore-debug.log
 # Gmail API OAuth (post-expo cohort drafts script)
 scripts/.gmail-token.json
 scripts/.gmail-credentials.json
+
+# ── Agent runtime files (live in this folder, not in git) ──
+.lake-salt-comms-state.json
+lake-salt-comms-state.json
+comms-check-state-*.json
+.scheduled-state/
+managed-agents/
+lake-salt-autonomous-agent/
+comms-agent-upgrade/
+comms-hub-build/
+output/
+*.plugin
+.writetest
+**/.writetest
+AGENT-RUNBOOK-*.md
+START-HERE-comms-hub.md
+DEPLOY-COMMS-HUB.sh
