@@ -17,6 +17,18 @@ const DECIDE_ANSWERS = {
   done: { decision: 'done',     label: 'Handled', emoji: '✓' }
 };
 
+/* Resolve any answer key — fixed (yes/no/done), an agent-supplied option
+   ('opt:<key>' from a notification button, or the key itself from an in-app
+   button), or 'custom' (free-text note is the whole answer). */
+function resolveDecideAnswer(fu, answer, note) {
+  if (DECIDE_ANSWERS[answer]) return { ...DECIDE_ANSWERS[answer], acts: answer !== 'done' };
+  const key = String(answer || '').replace(/^opt:/, '');
+  const opt = (fu.options || []).find(o => o.key === key);
+  if (opt) return { decision: 'option:' + opt.key, label: opt.label, emoji: '👉', acts: true };
+  if (answer === 'custom' && note) return { decision: 'custom', label: note.slice(0, 60), emoji: '💬', acts: true };
+  return { ...DECIDE_ANSWERS.done, acts: false };
+}
+
 async function renderDecideScreen(fuId, preAnswer) {
   const c = document.getElementById('module-container');
   document.querySelectorAll('.nav-item').forEach(a => a.classList.remove('active'));
@@ -44,26 +56,38 @@ async function renderDecideScreen(fuId, preAnswer) {
     return;
   }
 
-  /* Button tap on the notification itself → apply without asking again. */
-  if (preAnswer && DECIDE_ANSWERS[preAnswer]) {
+  /* Button tap on the notification itself → apply without asking again.
+     Handles yes/no/done AND agent-supplied 'opt:<key>' actions. */
+  if (preAnswer && (DECIDE_ANSWERS[preAnswer] ||
+      (fu.options || []).some(o => 'opt:' + o.key === preAnswer || o.key === preAnswer))) {
     await applyDecideAnswer(fu, preAnswer, '');
     return;
   }
 
   const isDecision = fu.type === 'decision';
-  const btns = isDecision
-    ? `<button type="button" class="decide-btn decide-yes" onclick="submitDecide('${escapeHtmlSafe(fu.id)}','yes')">✅ Yes — go ahead</button>
-       <button type="button" class="decide-btn decide-no" onclick="submitDecide('${escapeHtmlSafe(fu.id)}','no')">❌ No — don't</button>`
-    : `<button type="button" class="decide-btn decide-yes" onclick="submitDecide('${escapeHtmlSafe(fu.id)}','done')">✓ Mark handled</button>`;
+  const hasOpts = Array.isArray(fu.options) && fu.options.length > 0;
+  /* Buttons: agent-supplied choices win; else Yes/No for decisions, Done for tasks. */
+  const btns = hasOpts
+    ? fu.options.map((o, i) =>
+        `<button type="button" class="decide-btn ${i === 0 ? 'decide-yes' : ''}" onclick="submitDecide('${escapeHtmlSafe(fu.id)}','${escapeHtmlSafe(o.key)}')">${escapeHtmlSafe(o.label)}</button>`).join('')
+    : isDecision
+      ? `<button type="button" class="decide-btn decide-yes" onclick="submitDecide('${escapeHtmlSafe(fu.id)}','yes')">✅ Yes — go ahead</button>
+         <button type="button" class="decide-btn decide-no" onclick="submitDecide('${escapeHtmlSafe(fu.id)}','no')">❌ No — don't</button>`
+      : `<button type="button" class="decide-btn decide-yes" onclick="submitDecide('${escapeHtmlSafe(fu.id)}','done')">✓ Mark handled</button>`;
 
   c.innerHTML = `
     <div class="decide-wrap">
       <div class="dash-sub-label" style="margin-bottom:8px">${isDecision ? '🤔 AGENT NEEDS YOUR CALL' : '⏰ NEEDS ATTENTION'}</div>
       <div class="decide-title">${escapeHtmlSafe(fu.title || 'Follow-up')}</div>
       <div class="decide-notes">${escapeHtmlSafe(fu.notes || '')}</div>
-      <textarea id="decide-note" class="decide-note" rows="2"
-        placeholder="Optional note — context or instructions for the agent…"></textarea>
       <div class="decide-btns">${btns}</div>
+      <textarea id="decide-note" class="decide-note" rows="2" style="margin-top:14px"
+        placeholder="Or type your own answer / add context for the agent…"
+        oninput="document.getElementById('decide-custom-send').style.display = this.value.trim() ? '' : 'none'"></textarea>
+      <div class="decide-btns">
+        <button type="button" id="decide-custom-send" class="decide-btn" style="display:none"
+          onclick="submitDecide('${escapeHtmlSafe(fu.id)}','custom')">📤 Send that as my answer</button>
+      </div>
       <div class="decide-btns" style="margin-top:10px">${decideBackBtns(fu.leadId)}</div>
     </div>`;
   window._decideCurrent = fu;
@@ -88,28 +112,37 @@ function decideBackBtns(leadId) {
 async function submitDecide(fuId, answer) {
   const fu = (window._decideCurrent && window._decideCurrent.id === fuId)
     ? window._decideCurrent : null;
-  const note = (document.getElementById('decide-note') || {}).value || '';
+  const note = ((document.getElementById('decide-note') || {}).value || '').trim();
+  if (answer === 'custom' && !note) {
+    if (typeof showToast === 'function') showToast('Type your answer first', 'warning');
+    return;
+  }
   if (!fu) { renderDecideScreen(fuId, answer); return; }
-  await applyDecideAnswer(fu, answer, note.trim());
+  await applyDecideAnswer(fu, answer, note);
 }
 window.submitDecide = submitDecide;
 
 async function applyDecideAnswer(fu, answer, note) {
-  const a = DECIDE_ANSWERS[answer] || DECIDE_ANSWERS.done;
+  const a = resolveDecideAnswer(fu, answer, note);
   const c = document.getElementById('module-container');
   try {
     await db.collection('kendell_followups').doc(fu.id).update({
       status: a.decision === 'done' ? 'done' : 'answered',
       completed: true,
       decision: a.decision,
+      decisionLabel: a.label,
       decisionNote: note || '',
       answeredVia: 'push_action',
       answeredAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
 
     /* Decisions feed straight back to the agent: queue the follow-on task so
-       the comms agent acts on the answer without another human step. */
-    if (fu.type === 'decision' && (a.decision === 'approved' || a.decision === 'denied')) {
+       the comms agent acts on the answer without another human step. Runs for
+       yes/no, agent-supplied options, and free-text custom answers alike. */
+    if (fu.type === 'decision' && a.acts) {
+      const answerLine = a.decision === 'custom'
+        ? `Kendell answered in his own words: "${note}".`
+        : `Kendell chose: "${a.label}"${note ? ` — with this note: "${note}"` : ''}.`;
       await db.collection('agent_tasks').add({
         agent: fu.sourceAgent || 'comms',
         kind: 'decision_followthrough',
@@ -117,8 +150,8 @@ async function applyDecideAnswer(fu, answer, note) {
         title: `Act on decision: ${String(fu.title || '').replace(/^🤔\s*/, '').slice(0, 100)}`,
         instruction:
           `You previously asked: "${fu.notes || fu.title}". ` +
-          `Kendell answered: ${a.label.toUpperCase()}${note ? ` — "${note}"` : ''}. ` +
-          `Act on this decision now (query the lead + threads first for context). ` +
+          answerLine + ' ' +
+          `Act on this answer now (query the lead + threads first for context). ` +
           `If it means telling a client no, decline warmly and professionally, and where it fits, ` +
           `point them somewhere useful. Update the lead stage/notes to reflect the outcome.`,
         status: 'queued', source: 'push_decision',
@@ -139,7 +172,7 @@ async function applyDecideAnswer(fu, answer, note) {
       } catch (e) { /* non-fatal */ }
     }
 
-    const acted = fu.type === 'decision' && a.decision !== 'done'
+    const acted = fu.type === 'decision' && a.acts
       ? 'The agent has been queued to act on it — it\'ll handle the client reply within ~30 minutes.'
       : 'It won\'t nag you again.';
     c.innerHTML = decideShell(a.emoji, `${a.label} — got it`,

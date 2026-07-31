@@ -10,7 +10,7 @@
      online loads must always run the latest code. Cache exists for offline.
    • Everything else (googleapis, gstatic, firestore, storage) → network only.
    Bump CACHE_VERSION to force-refresh the cached shell after a deploy. */
-const CACHE_VERSION = 'ls-admin-v12';
+const CACHE_VERSION = 'ls-admin-v13';
 const SHELL = [
   '/admin/',
   '/admin/index.html',
@@ -54,7 +54,13 @@ self.addEventListener('push', (e) => {
      iOS ignores `actions` and shows a plain notification — tapping it opens
      the #decide screen, which shows the same buttons in-app. */
   let actions = [];
-  if (d.kind === 'decision' && d.followupId) {
+  /* Agent-supplied answer choices win (max 3 — platform limit is 2 on most
+     Android surfaces, extras collapse into the notification drawer). */
+  let opts = [];
+  try { opts = d.options ? JSON.parse(d.options) : []; } catch (_) { /* bad JSON */ }
+  if (Array.isArray(opts) && opts.length && d.followupId) {
+    actions = opts.slice(0, 3).map(o => ({ action: 'opt:' + o.key, title: o.label }));
+  } else if (d.kind === 'decision' && d.followupId) {
     actions = [
       { action: 'yes', title: '✅ Yes' },
       { action: 'no', title: '❌ No' }

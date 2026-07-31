@@ -2045,9 +2045,12 @@ exports.sendPushNotification = onDocumentCreated('notifications/{noteId}', async
       url:   String(note.url || 'https://lakesalt.us/admin/#crm'),
       tag:   String(note.tag || 'lake-salt'),
       /* Actionable pushes: kind drives which buttons the service worker shows
-       * (decision → Yes/No, task → Done); followupId is what the buttons act on. */
+       * (decision → Yes/No, task → Done); followupId is what the buttons act on.
+       * options (JSON [{key,label}]) override the default buttons — FCM data
+       * values must be strings, hence the encode. */
       kind:  String(note.kind || ''),
-      followupId: String(note.followupId || '')
+      followupId: String(note.followupId || ''),
+      options: Array.isArray(note.options) && note.options.length ? JSON.stringify(note.options.slice(0, 3)) : ''
     },
     webpush: { headers: { Urgency: 'high', TTL: '86400' } }
   });
@@ -2943,6 +2946,11 @@ const RUNNER_TOOLS = [
       properties: {
         outcome: { type: 'string', enum: ['done', 'blocked'] },
         summary: { type: 'string', description: '1-3 sentences: what you did / why blocked. Shown to Kendell.' },
+        question: { type: 'string', description: 'When blocked on a human decision: the ONE question, phrased so it can be answered with a tap. E.g. "The client wants us in Las Vegas Oct 12 — take the event?"' },
+        options: {
+          type: 'array', items: { type: 'string' }, maxItems: 4,
+          description: 'When blocked: 2-4 SHORT answer choices (2-3 words each) that become one-tap buttons on Kendell\'s phone, e.g. ["Take it", "Decline", "Ask for budget"]. Omit for a plain yes/no question.',
+        },
       },
       required: ['outcome', 'summary'],
     },
@@ -3044,7 +3052,8 @@ Rules:
 - Routine follow-up/check-in emails — INCLUDING follow-ups on an already-sent quote/proposal: send them (send_email). Warm, casual-professional, short, signed "Kendell — Lake Salt". Never pushy. Don't restate dollar figures in follow-ups.
 - Emails that state or change money (figures, discounts, contracts, payment terms): create_draft only.
 - MOVING ON RULE: if a lead's event is within ~2 weeks and they never responded, don't email them — mark them Lost with a note instead.
-- If the task can't be done with these tools, complete_task with outcome=blocked and say what's needed.`;
+- If the task can't be done with these tools, complete_task with outcome=blocked and say what's needed.
+- When blocked on a HUMAN DECISION, also fill complete_task's question (one tappable question) and options (2-4 short answer choices). They become one-tap buttons on Kendell's phone — the better your options, the faster you get unblocked. Example: question "Vegas wedding Oct 12 — outside our area. Take it?", options ["Take it", "Decline", "Only if travel paid"].`;
 
   let messages = [{ role: 'user', content: `TASK: ${t.title}\n\nINSTRUCTIONS: ${t.instruction || t.detail || '(none)'}\n\nQueued by: ${t.source || 'unknown'} · agent hint: ${t.agent || 'general'}` }];
   const sentGuard = new Set();   /* addresses emailed within THIS task */
@@ -3085,13 +3094,25 @@ Rules:
   if (blocked) {
     try {
       const t = taskDoc.data();
-      const question = String((result && result.summary) || t.title || 'Agent needs a decision').slice(0, 500);
+      const question = String((result && result.question) || (result && result.summary) || t.title || 'Agent needs a decision').slice(0, 500);
+      /* Custom answer choices from the agent become one-tap buttons.
+       * Keys are slugs of the labels; the decide screen + notification
+       * buttons both render from this list. No options → Yes/No fallback. */
+      const options = (Array.isArray(result && result.options) ? result.options : [])
+        .slice(0, 4)
+        .map(o => String(o).slice(0, 40))
+        .filter(Boolean)
+        .map(label => ({
+          key: label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'opt',
+          label,
+        }));
       const fuRef = await db.collection('kendell_followups').add({
         type: 'decision',
         leadId: t.leadId || null,
         leadName: t.leadName || null,
         title: `🤔 ${String(t.title || 'Agent question').slice(0, 110)}`,
         notes: question,
+        options,
         sourceTaskId: taskDoc.id,
         sourceAgent: t.agent || 'general',
         status: 'open',
@@ -3104,6 +3125,7 @@ Rules:
         tag: `decision-${taskDoc.id}`,
         kind: 'decision',
         followupId: fuRef.id,
+        options,
         audience: 'ops',
         createdAt: now,
       });
