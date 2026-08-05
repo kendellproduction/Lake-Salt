@@ -1,0 +1,271 @@
+[
+  {
+    "lens": "Conversion / Lead-Capture (CRO)",
+    "site_observations": "Live fetch note: both https://lakesalt.us and https://lake-salt.web.app returned HTTP 403 through this environment's proxy (WebFetch and curl), so I audited the deployed source in the repo at /home/user/Lake-Salt/website/ (index.html 6,718 lines, plus quote.html, book.html, weddings.html \u2014 synced today, and this is the folder Firebase Hosting serves per README.md). Web search confirms the site is live and indexed (\"Lake Salt Bartending | Utah's Premier Mobile Bar Service\" at www.lakesalt.us). What's there is strong for a side business: a full-screen intake \"quiz\" that greets visitors before the site (\"How can we help you? \u2026 Just looking around? Take me to the site \u2192\"), hero \"Your Event, Perfectly Poured\" with \"Book Your Event\" / \"Explore Services\" CTAs, trust marquee (The Knot Preferred Vendor, 5.0 Google, TIPS Certified, Adobe Lehi Partner, Licensed & Insured), unusually transparent pricing (\"Starts around $650\u2026 Most couples invest $600\u2013$2,000\" plus a full add-on price list), a dry-hire explainer, a huge service-area section (100+ Utah cities listed \u2014 great local SEO), FAQ, gallery with real photos, live Google reviews widget, a 24h/4h response-time promise, and a long contact form ending in \"Send My Inquiry\" (EmailJS + Firestore). Competitors surfacing for \"mobile bartending Salt Lake City\": With A Twist, BARMASTERS, Copa Bar Service, Deluxe Bartending, The Bartending Co., plus The Knot marketplace \u2014 most lead with phone numbers and package pages. Gaps are mostly finish-line details, not structure.",
+    "findings": [
+      {
+        "issue": "No phone number or tel:/sms: link anywhere on the homepage or weddings page \u2014 grep found zero tel: links; the only phone mention, 'text Kendell at (385) 743-7771', lives on quote.html which only quote recipients ever see. Every competitor page checked (With A Twist, BARMASTERS, Copa) leads with a callable number.",
+        "severity": "high",
+        "recommendation": "Add a click-to-call and 'Text us' (sms:) link in the header, footer, contact section, and a sticky mobile bar: 'Call/Text (385) 743-7771'. Brides and planners comparison-shopping on phones frequently prefer a 30-second text over a 14-field form.",
+        "expected_impact": "Captures the segment that will never fill a form \u2014 plausibly +20-40% more total inquiries, and faster ones."
+      },
+      {
+        "issue": "A full-screen intake quiz/modal gates the first impression: cold visitors see 'How can we help you?' with four service cards before any hero, photos, pricing, or trust content. The escape hatch is small ('Just looking around? Take me to the site \u2192'). Wedding traffic from The Knot/Google typically wants to vet you (photos, reviews, price) before answering 8 steps of questions.",
+        "severity": "high",
+        "recommendation": "Show the hero first and trigger the quiz on CTA click ('Book Your Event') or after scroll/intent, not on landing. At minimum A/B test modal-first vs site-first and watch bounce rate in analytics.js data.",
+        "expected_impact": "Lower bounce from cold/SEO traffic; more visitors reach the trust and pricing content that actually persuades them to inquire."
+      },
+      {
+        "issue": "Social proof renders as zeros until JS succeeds: stat counters are hardcoded '0.0\u2605 Google Rating', '0+ Events Served', '0+ Utah Counties', and the reviews section shows 'Loading reviews from Google\u2026' \u2014 if the Google reviews fetch fails, is slow, or is rate-limited, the page displays a 0.0-star bar service with no testimonials.",
+        "severity": "high",
+        "recommendation": "Bake 3-4 real review quotes (name, event type, date) into the HTML as fallback/initial content and set counters to real static numbers, letting the live widget enhance rather than carry the section.",
+        "expected_impact": "Protects the single most persuasive section for brides; removes a failure mode that actively kills trust."
+      },
+      {
+        "issue": "The main contact form is very long (~14 fields: name, email, phone, event type, date, start time, end time, guest count, venue, built-in bar, budget, message...), and rentals inquiries funnel through the same path. Long single-page forms underperform for cold leads even when the multi-step quiz version is friendlier.",
+        "severity": "medium",
+        "recommendation": "Cut the fallback form to 5-6 fields (name, phone/email, event date, guest count, message) \u2014 everything else can be gathered in the reply or the quiz. Mark which fields are truly required; capture email/phone at step 1 of multi-step flows so partial completions are still leads.",
+        "expected_impact": "Higher form completion rate, especially mobile; partial-lead capture recovers abandoners."
+      },
+      {
+        "issue": "Rentals and custom-bar service cards display 'Photos Coming Soon' placeholders (4 occurrences) even though /website/images contains 20+ real photos, and the $150/day bar rental \u2014 a low-friction entry offer \u2014 has no picture of the actual bar next to its CTA.",
+        "severity": "medium",
+        "recommendation": "Replace every 'Photos Coming Soon' with a real photo of the wood mobile bar and the tables/chairs; the bar itself is the product for rentals.",
+        "expected_impact": "Rental inquiries convert on the visual; placeholders read as 'not a real offering yet'."
+      },
+      {
+        "issue": "book.html still carries stale wedding-expo content: 'Utah Bar & Mocktail Service \u00b7 Wedding Expo', 'Raffle Closed\u2026 Winners were drawn Sunday May 10' \u2014 three months out of date as of 2026-08-05. Anyone hitting /book (a natural guessable URL and likely linked from expo materials) sees an expired campaign page.",
+        "severity": "medium",
+        "recommendation": "Repurpose book.html as the evergreen booking page (it has an excellent 10-step flow with 15-min call scheduling) \u2014 strip the expo/raffle framing, or 301 it to the homepage quiz.",
+        "expected_impact": "Recovers a strong booking flow with built-in call scheduling ('We'll hold your date until then' is great urgency copy) for all traffic, and removes a dated-looking dead end."
+      },
+      {
+        "issue": "No lead magnet or email-capture fallback for not-ready-yet brides. The dry-hire model's best asset \u2014 'we send a precise shopping list' \u2014 is mentioned but never offered as a hook; visitors 6-12 months out have nothing to take except a full inquiry.",
+        "severity": "medium",
+        "recommendation": "Offer a free download for an email: 'Utah Wedding Bar Shopping List & Budget Calculator \u2014 how much alcohol for X guests'. Wire it to the existing EmailJS/Firestore stack and follow up with the drafted email sequences (EMAIL-DRAFTS-IN-KENDELLS-VOICE.md already exists).",
+        "expected_impact": "Converts early-stage researchers (the majority of wedding traffic) into a nurture list instead of losing them."
+      },
+      {
+        "issue": "Insurance/certification claims are text-only \u2014 'Fully Insured', 'TIPS Certified', 'The Knot Preferred Vendor' appear as plain badges/emoji with no linked proof: no Knot profile link with reviews, no COI-on-request page, no certificate imagery.",
+        "severity": "low",
+        "recommendation": "Link the Knot badge to the actual Knot storefront, link '5.0 Google' to the Google Business profile, and add a line 'COI provided to your venue within 24 hours' near the venue FAQ (planners specifically look for this).",
+        "expected_impact": "Small but real credibility lift with planners and venues, who verify these claims before shortlisting."
+      },
+      {
+        "issue": "Strong 24h/4h response promise exists ('Most weddings get a quote back within 24 hours. Corporate events typically within 4 hours.') but only appears once, deep in the pricing section, not at the form or quiz submit button where anxiety about 'will anyone reply?' peaks.",
+        "severity": "low",
+        "recommendation": "Repeat the response-time promise directly under 'Send My Inquiry \u2192' and on the quiz final step; add post-submit confirmation copy stating exactly what happens next and when.",
+        "expected_impact": "Reduces last-moment abandonment at the submit button; sets expectations that reduce double-inquiries to competitors."
+      }
+    ],
+    "top_priority": "Put a callable, textable phone number on the site: header + footer + a sticky mobile 'Call/Text (385) 743-7771' bar. The site currently has zero tel:/sms: links on public pages while every ranking competitor leads with a phone number \u2014 this is the single cheapest change with the largest expected lead lift, followed closely by hardcoding real review quotes/stats so the social-proof section can never render as '0.0\u2605'."
+  },
+  {
+    "findings": [
+      {
+        "issue": "Placeholder phone number in LocalBusiness schema: index.html JSON-LD contains \"telephone\": \"+1-801-555-0100\" \u2014 a fake 555 number published in structured data (and only there). Google and AI assistants may surface this number; anyone calling it is a lost lead, and inconsistent NAP undermines local-pack trust.",
+        "severity": "high",
+        "recommendation": "Replace with the real business phone everywhere (schema, footer, llms.txt), or remove the telephone field entirely if you don't take calls. Ensure it exactly matches the Google Business Profile number.",
+        "expected_impact": "Prevents lost calls from Maps/AI answers and fixes NAP consistency, a direct local-ranking and conversion factor."
+      },
+      {
+        "issue": "No Google Business Profile signals found and site ranks nowhere for core queries. Searching \"mobile bar service Utah wedding bartender Salt Lake City\" surfaces Twist Bartending, BARMASTERS (with per-city, per-intent pages like /wedding-bartending-services-in-salt-lake-city-ut/), Copa Bar Service, Deluxe \u2014 Lake Salt appears only on branded searches. Competitors win with dedicated location/service landing pages; Lake Salt has one homepage plus weddings/rentals/sales.",
+        "severity": "high",
+        "recommendation": "(1) Claim/optimize a Google Business Profile for 'Lake Salt Bartending' (Saratoga Springs service-area business, categories: Bartending service / Wedding service) and push The Knot 5.0 reviews to Google. (2) Build a small set of city/intent landing pages mirroring BARMASTERS: 'Wedding Bartender Salt Lake City', 'Mobile Bar Rental Provo/Lehi', 'Corporate Bartending Lehi (Adobe partner)', each with unique copy, local venues, FAQs, and Service schema.",
+        "expected_impact": "Local pack + city-query rankings are where nearly all mobile-bar leads originate; this is the single biggest lead-volume lever."
+      },
+      {
+        "issue": "URL/canonical inconsistency will split indexing signals: firebase.json sets cleanUrls:true (pages serve at /weddings), but sitemap.xml lists /weddings.html, canonicals point to https://lakesalt.us/weddings.html, internal links mix 'weddings.html' and absolute 'https://lakesalt.us/weddings.html' \u2014 and recipes.html's canonical uses a different host, https://www.lakesalt.us/recipes, while every other page canonicalizes to non-www. Google currently indexes the www version (branded SERP shows www.lakesalt.us).",
+        "severity": "high",
+        "recommendation": "Pick one canonical form (recommend https://lakesalt.us/weddings extension-less to match cleanUrls) and align canonicals, sitemap URLs, internal links, and a www\u2192non-www (or reverse) 301 in Firebase hosting.",
+        "expected_impact": "Consolidates duplicate-URL signals so the pages you do have rank at full strength."
+      },
+      {
+        "issue": "weddings.html \u2014 the highest-value page \u2014 contains zero <img> tags (grep '<img' count = 0), and its H1 is the poetic \"Where every sip tells your story\" with no keyword. Rentals ('Rent the bar. Or just the chairs.') and sales ('Custom built. For your space.') H1s are likewise keyword-free. Titles are good, but H1s and thin visual content weaken relevance for 'wedding bartender utah' style queries.",
+        "severity": "medium",
+        "recommendation": "Keep the poetic line as a subhead and make the H1 (or an early H2) keyword-bearing, e.g. 'Utah Wedding Bartending & Mobile Bar Service'. Add real event photos with descriptive alt text ('mobile bar at Provo wedding reception') to weddings, rentals, and sales pages.",
+        "expected_impact": "Better on-page relevance for money queries; photos also materially raise wedding-lead conversion."
+      },
+      {
+        "issue": "Missing schema types for rich results: only LocalBusiness on index (with aggregateRating 5.0/11 that has no crawlable reviews on-site \u2014 risking a Google unsupported-review-markup issue). No Service schema on weddings/rentals/sales, no FAQPage schema, no Review markup, no schema at all on quote.html; recipe pages exist (30+ in sitemap) but Recipe schema unverified.",
+        "severity": "medium",
+        "recommendation": "Add Service + FAQPage JSON-LD to weddings, rentals, and sales; publish actual review text on-site (pull The Knot quotes) to support the aggregateRating; add Recipe schema to recipe pages if absent.",
+        "expected_impact": "Rich snippets (stars, FAQs) lift CTR from existing rankings without new content."
+      },
+      {
+        "issue": "AI/GEO readiness is unusually strong but has one accuracy risk: robots.txt explicitly allows GPTBot/PerplexityBot/ClaudeBot, llms.txt and llms-full.txt are thorough (prices, service area, women-owned, mocktail/LDS-wedding angle \u2014 excellent differentiators). However, the live site returned 403 Forbidden to two different non-browser fetchers in this audit \u2014 if hosting/WAF blocks bots in practice, all that llms.txt work is unreachable to the crawlers it targets.",
+        "severity": "medium",
+        "recommendation": "Verify with real crawler UAs (Google Search Console URL inspection, curl as GPTBot) that lakesalt.us serves 200s to bots; check any Firebase/Cloudflare bot-protection settings. Keep llms.txt in sync with real phone number once fixed.",
+        "expected_impact": "Ensures the site's best-in-class LLM-search assets actually get crawled; 'best mocktail bar Utah / LDS wedding' AI answers are a low-competition lead source."
+      },
+      {
+        "issue": "Internal linking is shallow: nav links only the six top pages; recipe pages (30+ URLs, many with local names like park-city-paloma, provo-garden-party) presumably don't cross-link back to service pages with descriptive anchors, and there are no links from the homepage to individual recipes or to future city pages. Also /quote.html is indexable ('Your Quote \u2014 Lake Salt Bartending', dynamic client proposals) with no noindex.",
+        "severity": "low",
+        "recommendation": "Add contextual links from recipe pages to weddings/booking with anchors like 'hire a Utah wedding bartender'; add a footer service-area block linking city pages when built. Add <meta name=\"robots\" content=\"noindex\"> to quote.html (client-specific proposals shouldn't be in search).",
+        "expected_impact": "Distributes authority to money pages and keeps private proposal pages out of Google."
+      }
+    ],
+    "lens": "On-page SEO, local/GEO visibility, and AI-search readiness audit of lakesalt.us (Lake Salt Mobile Bar)",
+    "site_observations": "The live site returned HTTP 403 to non-browser fetchers (WebFetch and curl), so the audit was performed against the deployed source in /home/user/Lake-Salt/website (Firebase hosting root per firebase.json), cross-checked with live web searches. Fundamentals are far above average for a small local business: keyword-rich titles/descriptions on all pages (e.g. \\\"Wedding Bartending & Mobile Bar \u2014 Salt Lake City | Lake Salt\\\"), a detailed LocalBusiness JSON-LD with ~80-city areaServed, OfferCatalog with real prices ($650 full bar / $500 dry hire), sitemap.xml with 30+ recipe URLs, AI-crawler-friendly robots.txt, and excellent llms.txt/llms-full.txt (women-owned, TIPS-certified, mocktail/LDS-wedding positioning, Adobe Lehi partnership, full price list). All 24 homepage images have alt text. Gaps: a fake 555 phone number in schema, www/non-www and .html/cleanUrls canonical inconsistencies, no city/intent landing pages (competitors BARMASTERS, Twist, Copa win these), keyword-free H1s and zero images on weddings/rentals/sales, no Service/FAQ/Review schema, and the site only surfaces on branded searches today. Sources checked: theknot.com SLC bar services, barmastersmobilebartending.com, twistbartendingservice.com, copabarservice.com.",
+    "top_priority": "Fix the fake +1-801-555-0100 phone in the LocalBusiness schema, claim/optimize a Google Business Profile with matching NAP, then build 3-5 city/intent landing pages (Wedding Bartender Salt Lake City, Mobile Bar Lehi/Provo, Corporate Bartending Lehi) \u2014 that combination is what puts Lake Salt into the local pack and city-query results where competitors currently take all the leads."
+  },
+  {
+    "lens": "Local SEO / GEO visibility (mobile bar, Utah Wasatch Front)",
+    "site_observations": "Direct fetch of https://lakesalt.us was blocked by this environment's proxy (403 CONNECT), but the site's full source lives in the local repo (/home/user/Lake-Salt/website), so the audit was done against the deployed source plus live web searches. The site is strong on GEO fundamentals: index.html has LocalBusiness, FAQPage, OfferCatalog and Offer schema with an areaServed list of ~85 named Utah cities (\"Saratoga Springs, UT\" through \"Wasatch Front\"), a visible \"Serving the Wasatch Front\" service-area section (id=service-area), llms.txt/llms-full.txt, AI-crawler-friendly robots.txt, and a sitemap with 30+ geo-flavored recipe URLs (park-city-paloma, salt-lake-sunset). Web search shows the site ranks #1-2 for its brand name (\"Lake Salt Bartending | Utah's Premier Mobile Bar Service\") and has a live The Knot listing (\"Lake Salt LLC... Saratoga Springs, UT... starting at $600\") plus WeddingWire/WeddingPro accounts (per lake-salt-weddingpro-links.md, review links exist for both). However: the LocalBusiness schema on index.html contains a fake phone (\"telephone\": \"+1-801-555-0100\") and addressLocality \"Salt Lake City\", while about.html and weddings.html schema say \"Saratoga Springs\" \u2014 inconsistent NAP in the site's own markup. The homepage \"Google Reviews \u2014 Live from our Google Business profile\" section is wired to Places API but GOOGLE_PLACE_ID = 'YOUR_PLACE_ID_HERE' (index.html:5175), so it permanently shows \"Loading reviews from Google\u2026\". A hardcoded aggregateRating (5.0, 11 reviews) is in schema with no visible on-page reviews backing it. Searches for the business on Thumbtack, Yelp, GigSalad, and The Bash returned competitor listings but no Lake Salt profile. No GBP knowledge panel surfaced in brand searches. There are no city-specific landing pages (weddings.html is the only geo-titled page: \"Wedding Bartending & Mobile Bar \u2014 Salt Lake City\").",
+    "findings": [
+      {
+        "issue": "Fake/placeholder NAP in the homepage LocalBusiness schema: telephone is \"+1-801-555-0100\" (a 555 number) and addressLocality is \"Salt Lake City\", while about.html and weddings.html schema both say \"Saratoga Springs\" and The Knot lists Saratoga Springs. Google cross-references NAP across schema, GBP, and citations; a fake phone and conflicting city actively suppress local trust.",
+        "severity": "high",
+        "recommendation": "In website/index.html (~line 45-49), replace the 555 number with the real business phone (or remove telephone entirely if the business is form-only), set addressLocality to Saratoga Springs on every page's schema, and standardize one email (schema says hello@lakesalt.us, WeddingPro uses contact@lakesalt.us). Then use that exact NAP everywhere: footer, GBP, The Knot, WeddingWire.",
+        "expected_impact": "Restores schema credibility and NAP consistency \u2014 foundational for map-pack ranking; prevents Google from discounting all the otherwise excellent structured data."
+      },
+      {
+        "issue": "Google reviews widget is dead: index.html:5175 has GOOGLE_PLACE_ID = 'YOUR_PLACE_ID_HERE', so the prominent \"Google Reviews \u2014 Live from our Google Business profile\" section shows \"Loading reviews from Google\u2026\" forever, and the \"See All Reviews on Google\" CTA stays hidden. Brand searches surface no GBP knowledge panel, so the profile may be unverified or weakly optimized.",
+        "severity": "high",
+        "recommendation": "Verify/claim the Google Business Profile as a service-area business (hide address, set service area to Utah/Salt Lake/Davis/Weber/Summit/Wasatch counties), set primary category \"Bartending service\" with secondary \"Wedding service\"/\"Event planner\", upload 20+ photos of the bar in action, add the booking link. Grab the Place ID from the Place ID Finder and paste it at index.html:5175 so live reviews render on the homepage.",
+        "expected_impact": "Highest-leverage local fix: a verified, optimized GBP is what wins \"mobile bar near me\" map-pack queries, and working on-site reviews directly lift conversion on the highest-traffic page."
+      },
+      {
+        "issue": "No review velocity engine and a risky hardcoded aggregateRating (5.0, reviewCount 11) in schema with no visible on-page reviews backing it \u2014 Google can issue structured-data manual actions for self-serving unverifiable ratings. Meanwhile lake-salt-weddingpro-links.md shows a modest goal of only \"2 reviews on each\" of The Knot/WeddingWire.",
+        "severity": "high",
+        "recommendation": "Build a post-event review flow: within 48h of every event, text the client the Google review link first (g.page shortlink once GBP is verified), then The Knot/WeddingWire links (already in lake-salt-weddingpro-links.md). Automate via the existing EmailJS/Firebase stack. Remove or dynamically populate the aggregateRating from real Google data once the Places widget works.",
+        "expected_impact": "Review count is the #2 local ranking factor after proximity/category; going from ~0 visible Google reviews to 15-25 in a quarter typically moves a niche service into the map pack and materially lifts lead conversion."
+      },
+      {
+        "issue": "Missing from the directories where event leads actually originate: searches found no Lake Salt profile on Thumbtack (\"The 10 Best Mobile Bartending Services in Salt Lake City\" lists competitors), Yelp, GigSalad, or The Bash. Only The Knot/WeddingWire presence exists. Competitors like The Bartending Co and Twist Bartending occupy these SERPs and aggregator pages (themobilebarfinder.com).",
+        "severity": "medium",
+        "recommendation": "Create profiles with identical NAP on Thumbtack (mobile bartending category \u2014 its list pages rank top-3 for the money keywords), GigSalad, The Bash, Yelp, and themobilebarfinder.com. Add core citations (Apple Maps, Bing Places, Facebook page \u2014 schema sameAs already links facebook.com/lakesaltbar). Reuse The Knot copy and photos.",
+        "expected_impact": "Directory list pages outrank individual sites for \"mobile bartending salt lake city\"; being on them is buying placement in results you can't win directly yet, plus each is an independent lead channel and citation."
+      },
+      {
+        "issue": "No geo-targeted landing pages: the only city-titled page is weddings.html (\"Wedding Bartending & Mobile Bar \u2014 Salt Lake City\"). The 85-city areaServed schema and the on-page \"Serving the Wasatch Front\" chip list are good, but there is no indexable page targeting \"mobile bar Provo\", \"wedding bartender Park City\", \"mobile bartending Lehi\" etc. \u2014 queries competitors capture via Thumbtack/Yelp city pages.",
+        "severity": "medium",
+        "recommendation": "Add 5-8 genuine city/area pages (Salt Lake City, Provo/Orem, Lehi/Silicon Slopes corporate, Park City weddings, Ogden, Heber/Midway) with unique content: local venues served, travel-fee note (site already says \"travel within 30 miles of Saratoga Springs\"), a local photo, city-specific FAQ, and Service schema with that areaServed. Link them from the existing service-area section chips. Do not template-spam all 85 cities.",
+        "expected_impact": "Captures mid-funnel \"[service] + [city]\" organic queries that the single homepage cannot rank for across five counties; Park City and Silicon Slopes pages in particular target the highest-budget clients."
+      },
+      {
+        "issue": "Homepage title and H1 carry no geo qualifier beyond \"Utah\": \"Lake Salt \u2014 Utah's Premier Bar, Mocktail & Wedding Bartending Service\". \"Utah\" is broad; the map-pack and organic queries are city-level (\"mobile bar salt lake city\", \"wedding bartender utah county\"). The buried gem \"We travel for the right event \u2014 Logan, St. George, Moab\" (index.html:4814) is invisible to search.",
+        "severity": "low",
+        "recommendation": "Tighten the homepage title toward \"Mobile Bar & Wedding Bartending \u2014 Salt Lake City & Utah County | Lake Salt\" (keep brand), and surface the extended-travel note as crawlable text with its own heading in the service-area section.",
+        "expected_impact": "Modest organic CTR/ranking gain for city-level queries and long-tail pickup for destination-wedding searches (Moab, St. George) at zero build cost."
+      }
+    ],
+    "top_priority": "Fix the Google Business Profile loop end-to-end: verify/optimize the GBP as a Saratoga Springs service-area business, replace the fake +1-801-555-0100 phone and wrong \"Salt Lake City\" locality in index.html's LocalBusiness schema with the real, consistent NAP, and paste the real Place ID at index.html:5175 so the dead \"Loading reviews from Google\u2026\" section finally renders reviews \u2014 then start texting every past client the Google review link. GBP + real reviews is the single biggest lever for both map-pack visibility and lead conversion."
+  },
+  {
+    "lens": "Brand, Copy & Content",
+    "site_observations": "Live fetch of https://lakesalt.us was blocked by the sandbox's egress proxy (403 CONNECT denial to lakesalt.us \u2014 confirmed via proxy status log), so the audit was performed on the site's full production source in the working repo (/home/user/Lake-Salt/website: index.html, weddings.html, about.html, quote.html, sitemap, images). Observed: hero \"Your Event, Perfectly Poured\" with trust badges (The Knot Preferred Vendor, 5.0 Google, Adobe Lehi Partner, TIPS Certified & Insured); a multi-step quote wizard; strong dry-hire explainer (\"you provide the alcohol and we handle everything else... By Utah law the host supplies the alcohol\"); transparent pricing ($500 dry hire / $650 full bar, itemized add-ons); wedding page with FAQ covering insurance, LDS/mocktail weddings, service area; About page with Maddie's 6+ years bartending story; real event photos in /images (IMG_*.jpeg, Oktoberfest at Adobe, SLC Bridal Expo 2026); llms.txt and sitemap present. WebSearch for \"mobile bar service Utah wedding bartending Salt Lake City\" surfaced Twist Bartending, BARMASTERS, Copa Bar Service, Deluxe Bartending, The Bartending Co., and The Knot marketplace \u2014 lakesalt.us did not appear in top organic results.",
+    "findings": [
+      {
+        "issue": "Services grid on the homepage shows literal 'Photos Coming Soon' placeholders on three of four service cards (Mobile Bar Rental, Tables & Chairs, Custom Bar) even though /website/images contains 20+ real event photos (Adobe Oktoberfest, bridal expo booth, cocktail close-ups). Placeholders read as an unfinished business to a bride comparing vendors.",
+        "severity": "high",
+        "recommendation": "Replace every 'Photos Coming Soon' placeholder with the existing real photography; shoot one clean hero of the wood bar for the rental card. Never ship a placeholder on a revenue page.",
+        "expected_impact": "Directly improves perceived legitimacy at the decision point; likely meaningful lift in quote-form starts from comparison shoppers."
+      },
+      {
+        "issue": "Social proof stats render as '0.0\u2605 Google Rating', '0+ Events Served', '0+ Utah Counties' in the HTML, animating only after JS runs, and the reviews carousel shows 'Loading reviews from Google\u2026'. Any JS failure, slow load, or crawler sees zeros \u2014 actively worse than no stats.",
+        "severity": "high",
+        "recommendation": "Server-render real numbers as the default text (e.g. '5.0\u2605', '75+ Events') and let JS enhance, not create, them. Cache Google reviews server-side or hardcode 3\u20134 best with a 'see all on Google' link.",
+        "expected_impact": "Protects the strongest conversion asset (perfect rating) from rendering as a trust-destroying zero; also lets search engines index the proof."
+      },
+      {
+        "issue": "Testimonials are thin and generic: 'Great drinks! Mocktails too!' \u2014 Oz Morris; 'Loved the Cherry Fizz!' \u2014 Kai. None mention a wedding, a venue, guest count, or the anxieties buyers have (reliability, insurance, day-of coordination). No corporate testimonial despite the Adobe partnership being a headline claim.",
+        "severity": "high",
+        "recommendation": "Collect and feature 3\u20135 substantive, segment-matched reviews: a named bride ('Lake Salt ran our 150-guest reception at [venue]...'), a corporate planner quote from Adobe if permitted, and a mocktail/LDS wedding quote. Pair each with an event photo.",
+        "expected_impact": "Segment-matched proof is one of the highest-leverage conversion levers for high-consideration event services; current quotes read like a food-truck's."
+      },
+      {
+        "issue": "Price anchoring is inconsistent across the site: weddings.html says 'Most weddings invest $600\u2013$2,000', the homepage pricing section repeats $600\u2013$2,000, but the budget dropdown in both the wizard and contact form labels '$1,500 \u2013 $2,500' as '(most weddings)'. A bride sees two different 'typical wedding' numbers on the same journey.",
+        "severity": "medium",
+        "recommendation": "Pick one anchor (e.g. 'most weddings invest $800\u2013$2,000; typical full-service wedding lands $1,500\u2013$2,500 with add-ons') and use it verbatim everywhere \u2014 meta description, pricing section, wizard, form.",
+        "expected_impact": "Removes a subtle credibility crack and reduces sticker-shock/undershoot mismatch in inquiries, improving quote-to-book rate."
+      },
+      {
+        "issue": "No dedicated corporate page and no cost/FAQ long-tail content despite goal #2 (SEO). sitemap has only weddings, rentals, recipes, sales, about \u2014 the Adobe partnership (a rare, powerful B2B credential) lives only in homepage sections, and competitors (BARMASTERS, Twist, Copa) own city/service landing pages that outrank lakesalt.us, which did not appear in top results for 'mobile bar service Utah wedding bartending Salt Lake City'.",
+        "severity": "high",
+        "recommendation": "Build: (1) /corporate \u2014 'Trusted by Adobe Lehi' as the hero, aimed at planners' anxieties (insurance COI on request, TIPS certification, dram-shop-safe dry-hire model, invoicing); (2) /pricing or a blog post targeting 'how much does a mobile bar cost in Utah' with the transparent numbers already written; (3) 2\u20133 city pages (Salt Lake City, Provo, Park City) with real event photos from those areas rather than the current footer city-name list.",
+        "expected_impact": "Opens the corporate lead channel and captures high-intent long-tail queries where the site is currently invisible; the transparent-pricing content is already written and just needs indexable pages."
+      },
+      {
+        "issue": "Tone wobbles between upscale and casual: elegant copy ('Where every sip tells your story', 'bespoke cocktail programs') sits next to emoji-labeled UI everywhere (\ud83e\udd42 Wedding, \ud83e\udeb5 Rent the Bar, \ud83d\udd28 Buy a Custom Bar, \ud83d\udca6 Sparkling Water) and 'Coming Soon' badges on half the homepage service grid, which dilutes the flagship wedding offer.",
+        "severity": "medium",
+        "recommendation": "Replace emoji with a consistent icon set (or thin line SVGs) in nav/cards; keep emoji only inside the playful wizard if desired. Move 'Coming Soon' offerings (Tables & Chairs, Custom Builds) to a low-key footer/secondary section so the homepage sells the two bookable services.",
+        "expected_impact": "Sharper upscale positioning consistent with the $1,500+ wedding buyer; less choice-dilution should raise clicks into the bartending funnel."
+      },
+      {
+        "issue": "Insurance/liability messaging is good but buried: 'full event liability insurance... proof directly to your venue on request' lives inside an FAQ accordion. Venue coordinators and corporate planners screen on this before reading anything else. Also the homepage footer says '\u00a9 2025' while weddings.html says '\u00a9 2026' \u2014 small freshness signal mismatch.",
+        "severity": "low",
+        "recommendation": "Surface a compact 'Venue-ready: TIPS certified \u00b7 Food handler certified \u00b7 Liability insured \u00b7 COI available' strip near the hero or above the contact form; sync footer copyright years (make it dynamic).",
+        "expected_impact": "Small but real reduction in pre-inquiry drop-off from planners and coordinators screening vendors for venue requirements."
+      },
+      {
+        "issue": "The dry-hire model \u2014 the site's genuine differentiator (no alcohol markup, Utah-law compliant, 'cocktails, mocktails, dirty sodas \u2014 same price') \u2014 is explained well mid-page but absent from the hero and title tag, which lead with the generic 'Utah's Premier' framing every competitor also uses.",
+        "severity": "medium",
+        "recommendation": "Work the differentiator into the first screen, e.g. subhead 'Zero alcohol markup \u2014 you buy the bottles, we do everything else' and keep 'women-owned' (currently only in the meta description) visible on-page. Consider a short 'Why dry hire saves you $X vs. package bars' comparison block.",
+        "expected_impact": "Gives visitors a concrete reason to choose Lake Salt over the five competitors ranking above it, instead of an interchangeable 'premier' claim."
+      }
+    ],
+    "top_priority": "Fix the social-proof layer on the homepage: replace all 'Photos Coming Soon' placeholders with the real event photography already in /website/images, hardcode real fallback values for the stats and Google reviews (no '0.0\u2605' pre-JS states), and swap the generic one-line testimonials for substantive, named wedding and corporate (Adobe) quotes. This is the cheapest change with the largest direct effect on lead conversion."
+  },
+  {
+    "lens": "Technical & UX (performance, mobile, accessibility, metadata, forms, analytics)",
+    "site_observations": "Live fetch of https://lakesalt.us was blocked by this sandbox's egress proxy (CONNECT 403 policy denial on lakesalt.us:443), so the audit was performed on the deployed source in /home/user/Lake-Salt/website (Firebase Hosting per firebase.json; pages: index, weddings, about, rentals, sales, recipes, quote, 404, /admin). Strengths: proper viewport meta, canonical, full favicon set, OG/Twitter tags, rich LocalBusiness + FAQ JSON-LD with ~80 areaServed cities, robots.txt with AI-crawler allowances plus llms.txt/llms-full.txt, sitemap.xml, labeled form fields, alt text on essentially every image, loading=lazy on 23 images, scripts at end of body with preconnect/dns-prefetch, Firebase Analytics + custom analytics.js event tracking. Contact form posts via EmailJS (name/email/phone/event type/date/start/end time). External web search confirms Lake Salt surfaces in aggregator copy (\"Lake Salt LLC is Saratoga Springs, Utah's premier mobile bar...\") while competitors Barmasters, With A Twist, Copa Bar Service, and The Bartending Co. rank for \"mobile bartenders Salt Lake City\" via dedicated per-city landing pages (theknot.com marketplace, twistbartendingservice.com, barmastersmobilebartending.com, copabarservice.com, thebartendingco.org).",
+    "findings": [
+      {
+        "issue": "Fake phone number in LocalBusiness structured data: index.html line 45 publishes \"telephone\": \"+1-801-555-0100\" (a 555 placeholder), schema email is hello@lakesalt.us while the visible contact block and rentals/sales pages use contact@lakesalt.us, and no tel: or mailto: link exists anywhere on the homepage.",
+        "severity": "high",
+        "recommendation": "Replace the 555 number with the real business number (or remove telephone), unify on one email address, and add clickable tel:/mailto links in the contact section and footer.",
+        "expected_impact": "Recovers mobile tap-to-call leads and fixes NAP inconsistency that suppresses local/map-pack visibility."
+      },
+      {
+        "issue": "Footer social links are dead placeholders: four emoji anchors (camera/thumbs-up/music/pin) all href=\"#\", and Privacy/Terms also link to \"#\", even though real profiles exist in JSON-LD sameAs (instagram.com/lakesaltbartending, facebook.com/lakesaltbar).",
+        "severity": "high",
+        "recommendation": "Point social icons at the real profiles with aria-labels (emoji-only links are screen-reader hostile), and create simple Privacy/Terms pages or remove those links.",
+        "expected_impact": "Couples vet vendors on Instagram before inquiring; dead links at the decision point cost trust and inquiries."
+      },
+      {
+        "issue": "OG image will crop badly when shared: og:image is images/IMG_6896.jpeg, actually a 1400x1866 portrait photo, but declared as 1200x630; link previews in iMessage/Facebook/Slack will center-crop it into landscape. weddings.html has no og:image at all.",
+        "severity": "medium",
+        "recommendation": "Create a purpose-built 1200x630 branded share card (logo + bar photo + tagline) and set per-page og:images on all subpages.",
+        "expected_impact": "Shared links in group chats (the main wedding referral channel) become clean branded cards, improving referral click-through."
+      },
+      {
+        "issue": "Heavy unoptimized images and external hero dependency: /images totals 11MB with no WebP and no srcset \u2014 hero IMG_6936_hero.jpeg is 360KB at 1400x1950, menu PNGs are 890-965KB, bar-setup-footprint.png is 1.2MB, gallery JPEGs 200-490KB. The hero background is hard-coded to an images.unsplash.com URL (index.html line 4053) then swapped by JS to the local image, so first paint depends on a third party and the true LCP image is never preloaded.",
+        "severity": "high",
+        "recommendation": "Convert to WebP with 2-3 srcset widths (hero <200KB, gallery thumbs <80KB), compress the menu/diagram PNGs, drop the Unsplash fallback, and preload the local hero image.",
+        "expected_impact": "Major mobile LCP improvement; less bounce before the CTA is seen and better Core Web Vitals ranking signal."
+      },
+      {
+        "issue": "Homepage is a 288KB monolithic HTML file (~5,400 lines, all CSS inline, served no-cache per firebase.json) and loads six external scripts on every visit: GSAP + ScrollTrigger (cdnjs), EmailJS (jsdelivr), and three Firebase compat SDKs (app, firestore, analytics) from gstatic \u2014 Firestore apparently just for reviews.",
+        "severity": "medium",
+        "recommendation": "Move CSS to a cacheable stylesheet, lazy/conditionally load Firebase (or serve reviews from a cached JSON), and self-host/tree-shake GSAP.",
+        "expected_impact": "Smaller cacheable payload and fewer third-party round trips, especially benefiting returning visitors coming back to submit the form."
+      },
+      {
+        "issue": "Internal links fight the hosting config: firebase.json sets cleanUrls:true, but nav, footer, canonicals, og:urls, and sitemap.xml all use .html URLs (weddings.html, about.html, etc.), so Firebase 301-redirects nearly every internal click and the sitemap advertises redirecting URLs.",
+        "severity": "medium",
+        "recommendation": "Switch all internal hrefs, canonicals, og:url values, and sitemap entries to extensionless URLs (/weddings, /about, /rentals, /sales, /recipes).",
+        "expected_impact": "Removes a redirect hop from every internal navigation and consolidates one canonical URL per page for crawlers."
+      },
+      {
+        "issue": "quote.html (personalized customer proposals, title 'Your Quote \u2014 Lake Salt Bartending') has no noindex, and /quote is a public rewrite target, so private pricing proposals are crawlable and indexable.",
+        "severity": "medium",
+        "recommendation": "Add a robots noindex meta tag to quote.html and disallow /quote in robots.txt.",
+        "expected_impact": "Keeps customer pricing out of search results and crawl budget focused on converting pages."
+      },
+      {
+        "issue": "Form and interaction accessibility gaps: form labels have no for/id association with inputs (e.g. the 'Your Name' label precedes an unassociated input name=from_name), the lightbox is onclick-only with no keyboard support, and rentals/sales form failures dead-end in a JS alert() telling users to email manually.",
+        "severity": "low",
+        "recommendation": "Add id/for pairs or wrap inputs in labels, add keyboard/aria handling to the lightbox, and replace alert() with an inline error containing a clickable mailto link.",
+        "expected_impact": "Protects conversions for assistive-tech users and anyone hitting an EmailJS failure, who currently get an unactionable browser alert."
+      },
+      {
+        "issue": "Local SEO structure gap vs ranking competitors: Barmasters and With A Twist rank for 'mobile bartenders Salt Lake City' with dedicated per-city landing pages, while Lake Salt has one homepage plus an 80-city areaServed schema list; the footer 'Areas Served' links (Salt Lake City, Park City, Provo/Orem, Ogden, Lehi/Draper) all point to the same #service-area anchor.",
+        "severity": "medium",
+        "recommendation": "Build 4-6 real city landing pages with unique copy, local venue mentions, and photos, and link them from the footer Areas Served column instead of anchors.",
+        "expected_impact": "Matches the proven pattern of every ranking competitor; highest-leverage path to appearing for '[service] + [city]' queries that produce booked events."
+      }
+    ],
+    "top_priority": "Fix the trust/contact layer first: replace the fake +1-801-555-0100 phone in the LocalBusiness schema with the real number, unify hello@ vs contact@lakesalt.us, add tap-to-call tel:/mailto links, and wire the four dead emoji social links and Privacy/Terms placeholders to real destinations. These are hours of work, sit directly on the conversion path, and fake NAP data actively harms the local rankings everything else depends on. Immediately after: replace the portrait og:image with a purpose-built 1200x630 share card, and compress/preload the hero image (dropping the Unsplash dependency)."
+  }
+]
