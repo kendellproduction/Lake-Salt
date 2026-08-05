@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>Book Your Event — Lake Salt</title>
-  <meta name="description" content="Lake Salt Bartending — request a quote for your wedding or event." />
-  <meta name="robots" content="noindex, follow" />
-  <link rel="canonical" href="https://lakesalt.us/#contact" />
-  <meta http-equiv="refresh" content="0; url=/?ref=expo#contact" />
-  <script>window.location.replace('/?ref=expo#contact');</script>
+  <title>Book Your Event — Lake Salt Bartending</title>
+  <meta name="description" content="Book Lake Salt Bartending for your Utah wedding, corporate event, or private party. Answer a few quick questions and schedule a free 15-minute call — we'll hold your date." />
+  <link rel="canonical" href="https://lakesalt.us/book" />
+  <meta property="og:title" content="Book Your Event — Lake Salt Bartending" />
+  <meta property="og:description" content="Book Lake Salt Bartending for your Utah wedding, corporate event, or private party. Answer a few quick questions and schedule a free 15-minute call — we'll hold your date." />
+  <meta property="og:url" content="https://lakesalt.us/book" />
+  <meta property="og:type" content="website" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -594,14 +595,14 @@
 
 <div class="stage" id="stage">
 
-  <!-- ═══ STEP 0 — Welcome (two paths: raffle quick, or full call booking) ═══ -->
+  <!-- ═══ STEP 0 — Welcome (two paths: book a call, or quote-only) ═══ -->
   <section class="step active welcome-step" data-step="0">
     <div class="step-inner">
       <div class="brand-mark">Lake <em>Salt</em></div>
-      <div class="brand-tag">Utah Bar &amp; Mocktail Service · Wedding Expo</div>
+      <div class="brand-tag">Utah Bar &amp; Mocktail Service</div>
 
-      <h1 class="welcome-h">Let's plan your <em>perfect</em> wedding bar.</h1>
-      <p class="welcome-sub">Pick whichever fits — start anywhere.</p>
+      <h1 class="welcome-h">Book your <em>event</em>.</h1>
+      <p class="welcome-sub">Weddings, corporate events, private parties — tell us about yours and we'll build the perfect bar.</p>
 
       <div style="display:flex;flex-direction:column;gap:12px;max-width:340px;margin:0 auto">
         <button class="btn-next" id="path-call" style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:14px;line-height:1.2">
@@ -612,12 +613,8 @@
           <span style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;opacity:0.7">~90 seconds · no call</span>
           <span style="font-size:14px;font-weight:500">Just send me a quote — no call</span>
         </button>
-        <button id="path-raffle" disabled aria-disabled="true" title="Raffle closed — winners notified May 10" style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px;line-height:1.2;width:100%;min-height:54px;background:transparent;border:1px dashed var(--border);border-radius:14px;color:var(--muted);font-family:inherit;cursor:not-allowed;opacity:0.55">
-          <span style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;opacity:0.7">Closed</span>
-          <span style="font-size:14px;font-weight:500"><s>$50 Amazon raffle</s> — winners notified May 10</span>
-        </button>
         <p style="font-size:12px;color:var(--muted);text-align:center;margin-top:6px;line-height:1.55">
-          Mix and match — finish one and the others suggest themselves.
+          Prefer to talk first? Call or text <a href="sms:+18016923585" style="color:var(--champagne-lt);text-decoration:none">(801) 692-3585</a> or email <a href="mailto:contact@lakesalt.us" style="color:var(--champagne-lt);text-decoration:none">contact@lakesalt.us</a>.
         </p>
         <a href="/" style="display:block;text-align:center;margin-top:18px;color:var(--muted);font-size:13px;text-decoration:none">
           ← Back to lakesalt.us
@@ -626,13 +623,17 @@
     </div>
   </section>
 
-  <!-- ═══ STEP 11 — Raffle (CLOSED) ═══ -->
-  <section class="step" data-step="11">
+  <!-- ═══ STEP 1 — Event Type ═══ -->
+  <section class="step" data-step="1">
     <div class="step-inner">
-      <span class="eyebrow">Raffle Closed</span>
-      <h1 class="q">The raffle is <em>closed</em>.</h1>
-      <p class="sub">Winners were drawn Sunday May 10 and notified by email. Thanks to everyone who entered!</p>
-      <button type="button" class="btn-next" onclick="goTo(0)" style="margin-top:18px">← Back to start</button>
+      <span class="eyebrow">Step 1 · The occasion</span>
+      <h1 class="q">What are we <em>celebrating</em>?</h1>
+      <p class="sub">Every event gets the same care — this just helps us tailor the questions and the quote.</p>
+
+      <button class="choice" data-pick="eventType" data-val="Wedding"><span class="label-main">Wedding</span><span class="arrow">→</span></button>
+      <button class="choice" data-pick="eventType" data-val="Corporate event"><span class="label-main">Corporate event</span><span class="arrow">→</span></button>
+      <button class="choice" data-pick="eventType" data-val="Private party"><span class="label-main">Private party<span class="label-sub">Birthdays, showers, holidays, backyard bashes</span></span><span class="arrow">→</span></button>
+      <button class="choice" data-pick="eventType" data-val="Other"><span class="label-main">Something else</span><span class="arrow">→</span></button>
     </div>
   </section>
 
@@ -934,16 +935,13 @@
     if (typeof window.lsTrack !== 'function') return;
     const merged = Object.assign({}, props || {}, {
       infoOnly: !!(typeof state !== 'undefined' && state.infoOnly),
-      fromExpo: !!(typeof state !== 'undefined' && state.fromExpo),
     });
     window.lsTrack(event, merged);
   }
 
   /* ─── State ─── */
   const state = {
-    /* Wedding-only context for the expo. Hardcoded since event type picker
-     * is removed for the May-9 wedding expo flow. */
-    eventType: 'Wedding',
+    eventType: '',
     eventDate: '',
     guestCount: '',
     venue: '',
@@ -959,16 +957,13 @@
     phone: '',
     selectedSlotMs: null,
     selectedSlotISO: '',
-    instagramFollowed: false,
-    raffleEntered: false,
     capturedByEmail: '',
     capturedByName: '',
-    /* From URL query string (from /expo) */
-    fromExpo: false,
   };
 
   function getQuoteIntakeStatus() {
     return {
+      eventType: !!state.eventType,
       eventDate: !!state.eventDate,
       guestCount: !!state.guestCount,
       venue: !!state.venue,
@@ -986,24 +981,15 @@
     return Object.values(getQuoteIntakeStatus()).every(Boolean);
   }
 
-  /* ─── URL pre-fill from /expo ─── */
+  /* ─── URL pre-fill (optional query params) ─── */
   const url = new URL(window.location.href);
   state.infoOnly = url.searchParams.get('info') === '1';
   function prefillFromUrl() {
-    const map = { name:'name', email:'email', phone:'phone', date:'eventDate', ig:'instagramFollowed', raffle:'raffleEntered' };
-    let any = false;
+    const map = { name:'name', email:'email', phone:'phone', date:'eventDate' };
     for (const [param, key] of Object.entries(map)) {
       const v = url.searchParams.get(param);
-      if (v) {
-        if (key === 'instagramFollowed' || key === 'raffleEntered') {
-          state[key] = v === '1' || v === 'true';
-        } else {
-          state[key] = decodeURIComponent(v);
-        }
-        any = true;
-      }
+      if (v) state[key] = decodeURIComponent(v);
     }
-    if (any) state.fromExpo = true;
   }
   prefillFromUrl();
 
@@ -1021,20 +1007,19 @@
 
   /* ─── Step navigation ───────────────────────────────────────────────────
    * Steps:
-   *   0  = welcome (two CTAs: raffle vs book-a-call)
-   *   1  = (removed — event type, hardcoded to Wedding)
-   *   2..7 = call-booking wizard questions (date, guests, venue, drinks, budget, notes)
+   *   0  = welcome (two CTAs: book-a-call vs quote-only)
+   *   1  = event type
+   *   2..7 = wizard questions (date, guests, venue, drinks, budget, notes)
    *   8  = contact info
    *   9  = slot picker (or info-only review when state.infoOnly)
    *   10 = confirmation
-   *   11 = raffle quick-form (single screen, parallel to wizard)
-   * Progress counter excludes welcome/raffle/confirm — only shows during wizard.
+   * Progress counter excludes welcome/confirm — only shows during wizard.
    * ────────────────────────────────────────────────────────────────────── */
-  const TOTAL_STEPS = 11;
-  /* Numeric ID of the lowest "wizard question" step (since step 1 is removed). */
-  const FIRST_QUESTION_STEP = 2;
+  const TOTAL_STEPS = 10;
+  /* Numeric ID of the lowest "wizard question" step. */
+  const FIRST_QUESTION_STEP = 1;
   /* Inclusive range of "wizard question" steps used for progress + back nav. */
-  const WIZARD_STEPS = [2, 3, 4, 5, 6, 7, 8, 9];
+  const WIZARD_STEPS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
   let currentStep = 0;
   let visitedSteps = [0];
 
@@ -1092,27 +1077,23 @@
     topBar.style.display = isLanding ? 'none' : 'flex';
     stickyCta.style.display = isLanding ? 'none' : 'flex';
 
-    /* Progress applies to wizard steps only (2..9 = 8 question screens).
-     * Raffle (step 11) shows a back arrow + 1/1-style indicator. */
+    /* Progress applies to wizard steps only (1..9 = 9 question screens). */
     const idx = WIZARD_STEPS.indexOf(currentStep);
     if (idx >= 0) {
       const pct = ((idx + 1) / WIZARD_STEPS.length) * 100;
       progressFill.style.width = pct + '%';
       stepCounter.textContent = `${idx + 1} / ${WIZARD_STEPS.length}`;
-    } else if (currentStep === 11) {
-      progressFill.style.width = '100%';
-      stepCounter.textContent = 'Raffle';
     }
 
-    /* Back arrow: enabled on any step past welcome, disabled on first wizard step. */
-    backBtn.disabled = currentStep <= FIRST_QUESTION_STEP && currentStep !== 11;
+    /* Back arrow: enabled on any step past the first wizard step. */
+    backBtn.disabled = currentStep <= FIRST_QUESTION_STEP;
 
     refreshNextButton();
 
     /* Skip button text varies by mode (set in renderInfoOnlyReview when info=1). */
     if (currentStep === 9) {
       btnSkip.style.display = 'block';
-      if (!state.infoOnly) btnSkip.textContent = 'Just send me wedding info instead';
+      if (!state.infoOnly) btnSkip.textContent = 'Just send me info instead';
     } else {
       btnSkip.style.display = 'none';
     }
@@ -1122,7 +1103,7 @@
     let ok = false;
     let label = 'Continue →';
     switch (currentStep) {
-      /* No more event-type step (1) — flow starts at 2. */
+      case 1: ok = !!state.eventType; break;
       case 2: ok = state.infoOnly ? !!state.eventDate : true; break;
       case 3: ok = !!state.guestCount; break;
       case 4: ok = state.infoOnly ? !!state.venue && !!state.hasBuiltInBar : true; break;
@@ -1131,18 +1112,9 @@
       case 7: ok = true; break;
       case 8: ok = !!state.name && !!state.email && !!state.phone; break;
       case 9:
-        if (state.infoOnly) { ok = isQuoteIntakeComplete(); label = 'Send me wedding info →'; }
+        if (state.infoOnly) { ok = isQuoteIntakeComplete(); label = 'Send me my info →'; }
         else { ok = !!state.selectedSlotMs; label = 'Book this 15-min call →'; }
         break;
-      case 11: { /* Raffle quick-form */
-        const n = (document.getElementById('r-name') || {}).value || '';
-        const e = (document.getElementById('r-email') || {}).value || '';
-        const p = (document.getElementById('r-phone') || {}).value || '';
-        const ig = !!(document.getElementById('r-ig') && document.getElementById('r-ig').checked);
-        ok = !!(n.trim() && e.trim() && p.trim() && ig);
-        label = ig ? 'Enter the raffle 🎉 →' : 'Follow @lakesaltbartending to enter';
-        break;
-      }
       default: ok = true;
     }
     btnNext.disabled = !ok;
@@ -1151,10 +1123,10 @@
 
   /* ─── Event handlers ─── */
 
-  /* Welcome → full call-booking wizard. (Raffle path retired May 10, 2026.) */
+  /* Welcome → full call-booking wizard. */
   document.getElementById('path-call').addEventListener('click', () => {
     state.infoOnly = false;
-    goTo(FIRST_QUESTION_STEP); /* skips removed event-type step, starts at date */
+    goTo(FIRST_QUESTION_STEP);
   });
 
   document.getElementById('path-quote').addEventListener('click', () => {
@@ -1266,9 +1238,8 @@
     });
   });
 
-  /* Back button — handles wizard (decrement), raffle→welcome, and step 2→welcome (since step 1 was removed). */
+  /* Back button — handles wizard (decrement) and first step → welcome. */
   backBtn.addEventListener('click', () => {
-    if (currentStep === 11) return goTo(0);
     if (currentStep === FIRST_QUESTION_STEP) return goTo(0);
     if (currentStep > FIRST_QUESTION_STEP) return goTo(currentStep - 1);
   });
@@ -1279,54 +1250,8 @@
     if (currentStep === 9) {
       return state.infoOnly ? submitInfoOnly() : submitBooking();
     }
-    if (currentStep === 11) return submitRaffle();
     goTo(currentStep + 1);
   });
-
-  /* ─── Submit raffle ─── */
-  async function submitRaffle() {
-    const name = document.getElementById('r-name').value.trim();
-    const email = document.getElementById('r-email').value.trim();
-    const phone = document.getElementById('r-phone').value.trim();
-    const eventDate = document.getElementById('r-date').value;
-    const ig = document.getElementById('r-ig').checked;
-    if (!name || !email || !phone) { showToast('Need name, email, and phone.'); return; }
-    if (!ig) { showToast('Please follow @lakesaltbartending to enter.'); return; }
-
-    btnNext.disabled = true;
-    btnNext.innerHTML = '<span class="spinner"></span>Entering…';
-
-    try {
-      const payload = {
-        name, email, phone,
-        eventType: 'Wedding',
-        eventDate,
-        guestCount: '', venue: '', drinks: [], drinkDetail: '', budget: '', hasBuiltInBar: '',
-        notes: 'Wedding Expo · raffle quick-entry',
-        instagramFollowed: true,
-        raffleEntered: true,
-        campaign: 'WeddingExpo2026-05-09',
-        source: 'Expo Raffle (quick)',
-        capturedByEmail: state.capturedByEmail,
-        capturedByName: state.capturedByName,
-      };
-      const { data } = await savePublicLeadFn(payload);
-      if (!data || !data.success) throw new Error('Save failed');
-
-      /* Update state so the confirmation screen renders nicely */
-      state.name = name; state.email = email; state.phone = phone;
-      state.eventDate = eventDate; state.instagramFollowed = true; state.raffleEntered = true;
-
-      sendConfirmEmail({ kind: 'raffle' });
-      track('raffle_submitted', { leadId: data.leadId });
-      goTo(10);
-    } catch (err) {
-      console.error(err);
-      showToast(err.message || 'Couldn\'t save. Try again.');
-      btnNext.disabled = false;
-      refreshNextButton();
-    }
-  }
 
   /* Skip button — dual-purpose:
    * - In info-only mode: switch back to call-booking mode (reload slot grid)
@@ -1356,7 +1281,7 @@
         `;
         loadSlots();
       }
-      btnSkip.textContent = 'Just send me wedding info instead';
+      btnSkip.textContent = 'Just send me info instead';
       refreshNextButton();
       return;
     }
@@ -1374,7 +1299,7 @@
     } catch (err) {
       showToast(err.message || 'Couldn\'t save. Try again.');
       btnSkip.disabled = false;
-      btnSkip.textContent = 'Just send me wedding info instead';
+      btnSkip.textContent = 'Just send me info instead';
     }
   });
 
@@ -1478,7 +1403,7 @@
       </div>
 
       <p style="font-size:12px;color:var(--muted);margin-top:14px;line-height:1.55">
-        Want a faster turnaround? Tap "Just send me wedding info" below to switch to "Book a 15-min call" instead — quicker quote, same flow.
+        Want a faster turnaround? Switch to "Book a 15-min call" below — quicker quote, same flow.
       </p>
     `;
     /* Show a one-tap "switch to book a call" escape on info-only mode. */
@@ -1533,14 +1458,11 @@
       budget: state.budget,
       hasBuiltInBar: state.hasBuiltInBar,
       notes: state.notes,
-      instagramFollowed: state.instagramFollowed,
-      raffleEntered: state.raffleEntered,
       intakePath: state.infoOnly ? 'instant-quote' : 'call-booking',
       quoteResultEnabled: false,
       quoteVisibility: 'private',
       quoteIntakeComplete,
-      campaign: 'WeddingExpo2026-05-09',
-      source: state.capturedByEmail ? 'Booth /book (staff-assisted)' : (state.fromExpo ? 'Expo /book (from raffle)' : 'Public /book'),
+      source: state.capturedByEmail ? '/book (staff-assisted)' : 'Public /book',
       capturedByEmail: state.capturedByEmail,
       capturedByName: state.capturedByName,
       slotStartMs: state.selectedSlotMs,
@@ -1611,17 +1533,11 @@
       ? new Date(state.selectedSlotISO).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Denver' })
       : '';
 
-    /* Three confirmation modes:
-     *   - Raffle entry only: came from step 11
+    /* Two confirmation modes:
      *   - Call booked: came from step 9 with a chosen slot
      *   - Info-only: came from step 9 in info-only mode
      */
-    const cameFromRaffle = state.raffleEntered && !slotText && !state.callBookingId;
-
-    if (cameFromRaffle) {
-      headline.innerHTML = `You're <em>entered!</em> 🎉`;
-      sub.textContent = 'Winners drawn Sunday May 10. We\'ll email all winners that night.';
-    } else if (slotText) {
+    if (slotText) {
       headline.innerHTML = `Your call is <em>booked</em>.`;
       sub.textContent = 'Confirmation on its way to your inbox.';
     } else {
@@ -1633,49 +1549,18 @@
     if (state.name)        rows.push(['Your name', state.name]);
     if (state.email)       rows.push(['Email', state.email]);
     if (state.phone)       rows.push(['Phone', state.phone]);
-    if (!cameFromRaffle && state.eventType)   rows.push(['Event', state.eventType]);
-    if (state.eventDate)   rows.push(['Wedding date', state.eventDate]);
-    if (!cameFromRaffle && state.guestCount)  rows.push(['Guests', state.guestCount]);
-    if (!cameFromRaffle && state.venue)       rows.push(['Venue', state.venue + (state.venueName ? ' · ' + state.venueName : '')]);
-    if (!cameFromRaffle && state.budget)      rows.push(['Budget', state.budget]);
+    if (state.eventType)   rows.push(['Event', state.eventType]);
+    if (state.eventDate)   rows.push(['Event date', state.eventDate]);
+    if (state.guestCount)  rows.push(['Guests', state.guestCount]);
+    if (state.venue)       rows.push(['Venue', state.venue + (state.venueName ? ' · ' + state.venueName : '')]);
+    if (state.budget)      rows.push(['Budget', state.budget]);
     if (slotText)          rows.push(['Call time', slotText + ' MT']);
-    if (cameFromRaffle)    rows.push(['Instagram', '@lakesaltbartending followed']);
     card.innerHTML = rows.map(([l,v]) =>
       `<div class="summary-row"><span class="lbl">${l}</span><span class="val">${escapeHtml(v)}</span></div>`
     ).join('');
 
-    /* Cross-promote the other path. */
     const xPromoEl = document.getElementById('cross-promo');
-    if (xPromoEl) {
-      if (cameFromRaffle) {
-        xPromoEl.innerHTML = `
-          <div style="margin-top:24px;padding:18px;background:rgba(34,197,94,0.1);border:1.5px solid rgba(34,197,94,0.3);border-radius:14px;text-align:left">
-            <div style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#86efac;font-weight:600;margin-bottom:6px">Next step</div>
-            <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500;color:var(--ivory);margin-bottom:6px">Want to lock your wedding date?</div>
-            <p style="font-size:13px;color:var(--muted-strong);margin-bottom:12px;line-height:1.5">Take ~90 sec to tell us about your event and book a free 15-min call. We'll send a custom quote within the week.</p>
-            <button id="now-book-call" class="btn-next" style="width:100%;min-height:52px;font-size:14px">
-              Book a 15-min call →
-            </button>
-          </div>`;
-        document.getElementById('now-book-call').addEventListener('click', () => {
-          /* Pre-fill the wizard with raffle data so they don't re-type */
-          state.raffleEntered = true; /* stays true */
-          goTo(FIRST_QUESTION_STEP);
-        });
-      } else if (slotText) {
-        xPromoEl.innerHTML = `
-          <div style="margin-top:24px;padding:14px 18px;background:rgba(201,169,110,0.08);border:1px solid rgba(201,169,110,0.3);border-radius:12px;text-align:center">
-            <div style="font-size:13px;color:var(--muted-strong)">
-              ${state.raffleEntered ? '✓ Already entered in the $50 raffle.' : 'Want to also enter our $50 Amazon raffle?'}
-            </div>
-            ${state.raffleEntered ? '' : '<button id="now-enter-raffle" style="margin-top:10px;background:transparent;border:1px solid var(--champagne);border-radius:999px;color:var(--champagne-lt);font-family:inherit;font-size:13px;padding:8px 18px;cursor:pointer">Enter the raffle 🎉</button>'}
-          </div>`;
-        const r = document.getElementById('now-enter-raffle');
-        if (r) r.addEventListener('click', () => goTo(11));
-      } else {
-        xPromoEl.innerHTML = '';
-      }
-    }
+    if (xPromoEl) xPromoEl.innerHTML = '';
   }
 
   /* ─── Utilities ─── */
@@ -1706,7 +1591,7 @@
 
   /* ─── Analytics ─────────────────────────────────────────────────────────
    * page_view is fired automatically by /analytics.js. /book adds wizard-
-   * specific events on top: wizard_step_view, wizard_submitted, raffle_submitted,
+   * specific events on top: wizard_step_view, wizard_submitted,
    * wizard_abandoned. Each piggybacks on lsTrack via the local track() shim. */
   let _abandonTracked = false;
   document.addEventListener('visibilitychange', () => {
