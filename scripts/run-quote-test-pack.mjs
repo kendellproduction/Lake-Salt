@@ -15,7 +15,7 @@ const scenarios = [
     acceptedLegacy: true,
     expectedTotal: 792,
     lead: { name:'Alisa Hartline', email:'alisa@example.com', eventType:'Wedding', eventDate:'2027-08-07', eventStartTime:'5:00 PM', eventEndTime:'9:00 PM', venue:'Mill Pond Farms, Spanish Fork', guestCount:95, hasBuiltInBar:'yes', drinks:['Cocktails','Beer & wine','Champagne / bubbly'], drinkVibes:['Spirit-forward','Refreshing & sparkling'], drinkDetail:'Old Fashioned and champagne cocktail.', champagneGlassware:'Venue flutes' },
-    quote: { bartenders:2, bartenderPay:200, supplies:150, travel:0, marginPct:40, pricingKind:'wedding', applyProfitCap:true, applyCorpFloor:false, guestCount:95, serviceHours:4, totalOverride:792, depositPct:10, leadName:'Alisa Hartline', eventType:'Wedding', eventDate:'2027-08-07', venue:'Mill Pond Farms, Spanish Fork' }
+    quote: { bartenders:1, bartenderPay:200, supplies:150, travel:0, marginPct:40, pricingKind:'wedding', applyProfitCap:true, applyCorpFloor:false, guestCount:95, serviceHours:4, totalOverride:792, depositPct:10, leadName:'Alisa Hartline', eventType:'Wedding', eventDate:'2027-08-07', venue:'Mill Pond Farms, Spanish Fork' }
   },
   {
     id: '02-private-full-scope',

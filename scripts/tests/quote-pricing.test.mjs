@@ -32,7 +32,7 @@ assert.ok(missing.missingScope.includes('beverageGuestCount'));
 assert.ok(missing.missingScope.includes('mocktailService'));
 assert.ok(missing.missingScope.includes('waterStation'));
 
-const legacyAlisa = calcQuote({ bartenders:2, bartenderPay:200, supplies:150, travel:0, marginPct:40, pricingKind:'wedding', applyProfitCap:true, applyCorpFloor:false, totalOverride:792, depositPct:10 });
+const legacyAlisa = calcQuote({ bartenders:1, bartenderPay:200, supplies:150, travel:0, marginPct:40, pricingKind:'wedding', applyProfitCap:true, applyCorpFloor:false, totalOverride:792, depositPct:10 });
 assert.equal(legacyAlisa.total, 792);
 assert.equal(legacyAlisa.deposit, 79.2);
 
@@ -106,7 +106,7 @@ assert.deepEqual(calls, ['locked']);
 await assert.rejects(() => persistCurrentQuoteBeforeSend(async () => null), /could not be saved/i);
 
 // Alisa fixture remains legacy and accepted history, not silently migrated.
-const alisaSaved = { status:'accepted', total:792, deposit:79.2, lineItems:{ bartenders:2, bartenderPay:200, supplies:150, travel:0 }, totalOverride:792 };
+const alisaSaved = { status:'accepted', total:792, deposit:79.2, lineItems:{ bartenders:1, bartenderPay:200, supplies:150, travel:0 }, totalOverride:792 };
 const hydratedAlisa = hydrateQuotePricing({ pricingModelVersion:DETERMINISTIC_PRICING_VERSION }, alisaSaved);
 assert.notEqual(hydratedAlisa.pricingModelVersion, DETERMINISTIC_PRICING_VERSION);
 assert.equal(alisaSaved.total, 792);
