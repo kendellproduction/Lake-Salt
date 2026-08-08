@@ -42,11 +42,11 @@
       { "@type": "PropertyValue", "name": "tipsCertified", "value": "true" }
     ],
     "url": "https://lakesalt.us",
-    "telephone": "+1-801-555-0100",
-    "email": "hello@lakesalt.us",
+    "telephone": "+1-801-692-3585",
+    "email": "contact@lakesalt.us",
     "address": {
       "@type": "PostalAddress",
-      "addressLocality": "Salt Lake City",
+      "addressLocality": "Saratoga Springs",
       "addressRegion": "UT",
       "addressCountry": "US"
     },
@@ -97,14 +97,6 @@
           "priceCurrency": "USD",
           "price": "500",
           "priceSpecification": { "@type": "PriceSpecification", "minPrice": "500", "priceCurrency": "USD", "valueAddedTaxIncluded": false }
-        },
-        {
-          "@type": "Offer",
-          "name": "Mobile Bar Rental (No Bartender)",
-          "description": "Rent Lake Salt's modern wood mobile bar — no bartender, just the bar. Pickup or local delivery available.",
-          "priceCurrency": "USD",
-          "price": "150",
-          "priceSpecification": { "@type": "PriceSpecification", "minPrice": "150", "priceCurrency": "USD", "valueAddedTaxIncluded": false }
         }
       ]
     }
@@ -171,14 +163,6 @@
         "acceptedAnswer": {
           "@type": "Answer",
           "text": "Yes — mocktail and zero-proof events are one of Lake Salt's specialties. We craft elaborate non-alcoholic drinks that are just as impressive as their boozy counterparts. This makes Lake Salt ideal for LDS weddings, dry events, daytime corporate events, and family-friendly celebrations across Utah."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Can I rent just the Lake Salt mobile bar?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Yes — bar-only rental is available starting at $150/day. You get our modern wood mobile bar with no bartender. Pickup or local delivery. Folding tables ($9/table/day, up to 5), white folding chairs ($2.50/chair/day, up to 30), and black tablecloths ($8/cloth/day) are also available — priced at the Wasatch Front market average. Inquiry-based quote either way."
         }
       },
       {
@@ -3653,18 +3637,18 @@
       <button class="mn-mode-btn" id="mn-mb-all" onclick="switchMode('all'); closeMobileNav()">✨ All</button>
     </div>
   </div>
-  <a href="weddings.html" id="mn-weddings">Weddings</a>
+  <a href="/weddings" id="mn-weddings">Weddings</a>
   <a href="#pricing-packages" onclick="closeMobileNav()">Pricing</a>
-  <a href="rentals.html">Rentals</a>
-  <a href="recipes.html">Recipes</a>
-  <a href="about.html">About</a>
+  <a href="/recipes">Recipes</a>
+  <a href="/about">About</a>
+  <a href="tel:+18016923585">Call/Text (801) 692-3585</a>
   <a href="#contact" class="mn-cta" onclick="closeMobileNav()">Book Now</a>
 </nav>
 
 <!-- ═══════════════════════════════════════════
      ONBOARDING MODAL
 ═══════════════════════════════════════════ -->
-<div id="onboarding">
+<div id="onboarding" class="hidden">
   <canvas id="onboarding-canvas"></canvas>
   <button class="ob-close" onclick="obSkipAll()" aria-label="Close and view the site">×</button>
   <div class="onboarding-inner">
@@ -3703,21 +3687,11 @@
       <h2 class="onboarding-q ob-intent-q">How can we<br/><em>help you?</em></h2>
       <p class="onboarding-sub ob-intent-sub">Pick what fits — we'll only ask the questions you'd actually want to answer.</p>
 
-      <div class="onboarding-cards onboarding-cards-4 ob-intent-cards">
+      <div class="onboarding-cards ob-intent-cards">
         <button class="onboarding-card" onclick="obPickIntent('bartending')">
           <span class="card-emoji">🍸</span>
           <div class="card-title">Bartending Service</div>
           <div class="card-desc">Wedding, corporate,<br/>or private event bar</div>
-        </button>
-        <button class="onboarding-card" onclick="obPickIntent('rent-bar')">
-          <span class="card-emoji">🪵</span>
-          <div class="card-title">Rent the Bar</div>
-          <div class="card-desc">Our wood mobile bar,<br/>$150/day · pickup or delivery</div>
-        </button>
-        <button class="onboarding-card" onclick="obPickIntent('rent-tables')">
-          <span class="card-emoji">🪑</span>
-          <div class="card-title">Tables &amp; Chairs</div>
-          <div class="card-desc">6&apos; folding tables &amp;<br/>white folding chairs</div>
         </button>
         <button class="onboarding-card" onclick="obPickIntent('buy-bar')">
           <span class="card-emoji">🔨</span>
@@ -3975,8 +3949,8 @@
       <select class="ob-input" id="ob-budget">
         <option value="">Still figuring it out</option>
         <option value="Under $1,000">Under $1,000</option>
-        <option value="$1,000–$1,500">$1,000 – $1,500</option>
-        <option value="$1,500–$2,500">$1,500 – $2,500 (most weddings)</option>
+        <option value="$1,000–$1,500">$1,000 – $1,500 (most weddings)</option>
+        <option value="$1,500–$2,500">$1,500 – $2,500</option>
         <option value="$2,500–$4,000">$2,500 – $4,000</option>
         <option value="$4,000+">$4,000+</option>
       </select>
@@ -4004,6 +3978,7 @@
           <button class="ob-next-btn ob-finish" id="ob-cta-btn" onclick="obCheckAndSubmit()">Send My Inquiry →</button>
         </div>
       </div>
+      <p style="margin:0.7rem 0 0;text-align:center;font-size:0.82rem;opacity:0.7;">Most weddings get a quote back within 24 hours. Corporate events within 4 hours.</p>
       <button class="ob-goto-site-sm" onclick="obSkipAll()">Go to Site &rarr;</button>
     </div><!-- /ob-p7 -->
 
@@ -4023,11 +3998,11 @@
 <nav class="navbar" id="navbar">
   <a href="/" class="nav-logo" title="Back to start">Lake <span>Salt</span></a>
   <ul class="nav-links">
-    <li><a href="weddings.html" class="accent" id="nav-weddings">Weddings</a></li>
+    <li><a href="/weddings" class="accent" id="nav-weddings">Weddings</a></li>
     <li><a href="#pricing-packages">Pricing</a></li>
-    <li><a href="rentals.html">Rentals</a></li>
-    <li><a href="recipes.html">Recipes</a></li>
-    <li><a href="about.html">About</a></li>
+    <li><a href="/recipes">Recipes</a></li>
+    <li><a href="/about">About</a></li>
+    <li><a href="tel:+18016923585">Call/Text (801) 692-3585</a></li>
   </ul>
   <div style="display:flex;align-items:center;gap:0.85rem;">
     <div class="nav-mode-switch" id="nav-mode-switch">
@@ -4064,7 +4039,7 @@
       from wedding receptions to corporate events across the Wasatch Front.
     </p>
     <div class="hero-actions" id="hero-actions">
-      <a href="#contact" class="btn-primary" id="hero-cta" onclick="trackEvent('hero_cta_clicked', { cta: 'book_your_event' })">Book Your Event</a>
+      <a href="#contact" class="btn-primary" id="hero-cta" onclick="trackEvent('hero_cta_clicked', { cta: 'book_your_event' }); openBartendingFlow(); return false;">Book Your Event</a>
       <a href="#services" class="btn-secondary" onclick="trackEvent('hero_cta_clicked', { cta: 'explore_services' })">Explore Services</a>
     </div>
   </div>
@@ -4073,6 +4048,11 @@
     <span>Scroll</span>
   </div>
 </section>
+
+<!-- VENUE-READY TRUST STRIP -->
+<div class="venue-trust-strip" style="background:var(--navy);color:var(--ivory);text-align:center;padding:0.85rem 1.5rem;font-size:0.85rem;letter-spacing:0.04em;border-bottom:1px solid var(--champagne);">
+  <strong style="color:var(--champagne);">Venue-ready:</strong> TIPS Certified · Liability Insured · COI to your venue within 24 hours
+</div>
 
 <!-- MARQUEE STRIP -->
 <div class="marquee-strip">
@@ -4118,7 +4098,7 @@
     <div class="ii-what-we-do">
       <span class="ii-wwd-eyebrow">What We Do</span>
       <h3 class="ii-wwd-title">Utah's full-service mobile bar — <em>and a lot more.</em></h3>
-      <p class="ii-wwd-lead">We started as a wedding bartending team, but couples and event planners kept asking for more. Today we offer four ways to work with us.</p>
+      <p class="ii-wwd-lead">We started as a wedding bartending team, but couples and event planners kept asking for more. Today we offer two ways to work with us.</p>
       <ul class="ii-wwd-grid">
         <li>
           <div class="ii-wwd-icon-wrap">
@@ -4134,31 +4114,9 @@
         <li>
           <div class="ii-wwd-icon-wrap">
             <span class="ii-wwd-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="11" rx="1.5"/><path d="M3 10h18"/><path d="M6 17v3"/><path d="M18 17v3"/><path d="M9 13.5h.01M12 13.5h.01M15 13.5h.01"/></svg>
-            </span>
-            <span class="ii-wwd-num">02</span>
-          </div>
-          <strong>Mobile Bar Rental</strong>
-          <span class="ii-wwd-desc">Just need the bar? Rent our modern wood mobile bar for DIY events or venues with their own staff.</span>
-          <span class="ii-wwd-tag">From $150 / day</span>
-        </li>
-        <li>
-          <div class="ii-wwd-icon-wrap">
-            <span class="ii-wwd-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v8h12V4"/><path d="M4 12h16"/><path d="M7 12v8"/><path d="M17 12v8"/><path d="M7 17h10"/></svg>
-            </span>
-            <span class="ii-wwd-num">03</span>
-          </div>
-          <strong>Tables &amp; Chairs</strong>
-          <span class="ii-wwd-desc">Six-foot white folding tables and matching folding chairs. Pickup or local Wasatch Front delivery.</span>
-          <span class="ii-wwd-tag">Coming Soon</span>
-        </li>
-        <li>
-          <div class="ii-wwd-icon-wrap">
-            <span class="ii-wwd-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 5.5l4 4-2 2-4-4z"/><path d="M12.5 7.5L4 16v4h4l8.5-8.5"/><path d="M14 14l3 3"/></svg>
             </span>
-            <span class="ii-wwd-num">04</span>
+            <span class="ii-wwd-num">02</span>
           </div>
           <strong>Custom Bar Builds</strong>
           <span class="ii-wwd-desc">Designed and built to your spec — for venues, planners, and vendors who want their own modern bar.</span>
@@ -4185,32 +4143,10 @@
       </div>
     </button>
 
-    <!-- Secondary: 3 cards in a row, each with a photo placeholder + clear pricing -->
+    <!-- Secondary: custom bar build card -->
     <div class="ii-secondary-row">
-      <button class="ii-secondary" onclick="openRentalFlow('bar')">
-        <div class="ii-secondary-img ii-photo-soon ii-photo-bar"><span>Photos<br/>Coming Soon</span></div>
-        <div class="ii-secondary-body">
-          <span class="ii-secondary-tag">Rentals</span>
-          <h4 class="ii-secondary-title">Rent the Mobile Bar</h4>
-          <div class="ii-price"><span class="ii-price-num">$150</span><span class="ii-price-unit">/day</span></div>
-          <p class="ii-secondary-desc">Our wood mobile bar. Bring your own bartenders or DIY. Pickup or local delivery.</p>
-          <span class="ii-secondary-cta">Request a rental →</span>
-        </div>
-      </button>
-
-      <button class="ii-secondary" onclick="openRentalFlow('tables')">
-        <div class="ii-secondary-img ii-photo-soon ii-photo-tables"><span>Photos<br/>Coming Soon</span></div>
-        <div class="ii-secondary-body">
-          <span class="ii-secondary-tag">Rentals</span>
-          <h4 class="ii-secondary-title">Tables &amp; Chairs</h4>
-          <div class="ii-price"><span class="ii-price-num" style="font-size:1.3rem;">Reach out</span><span class="ii-price-unit">for pricing</span></div>
-          <p class="ii-secondary-desc">6&apos; white folding tables (up to 10) and matching white folding chairs.</p>
-          <span class="ii-secondary-cta">Request a rental →</span>
-        </div>
-      </button>
-
       <button class="ii-secondary" onclick="openSaleFlow()">
-        <div class="ii-secondary-img ii-photo-soon ii-photo-build"><span>Photos<br/>Coming Soon</span></div>
+        <div class="ii-secondary-img" style="background-image:url('images/IMG_6903.jpeg');background-size:cover;background-position:center;"></div>
         <div class="ii-secondary-body">
           <span class="ii-secondary-tag">Coming Soon</span>
           <h4 class="ii-secondary-title">Buy a Custom Bar</h4>
@@ -4433,7 +4369,7 @@
         <div class="sc-body">
           <div class="sc-name">Themed Experiences</div>
           <p class="sc-desc">Immersive bar concepts built around your theme — garden parties, seasonal menus, speakeasy nights, and everything creatively in between.</p>
-          <a href="recipes.html" class="sc-link">Browse our cocktails →</a>
+          <a href="/recipes" class="sc-link">Browse our cocktails →</a>
         </div>
       </div>
     </div>
@@ -4499,14 +4435,9 @@
       <p style="font-size:0.78rem;color:var(--navy-light);text-align:center;margin-top:1.25rem;line-height:1.5;">By Utah law, Lake Salt does not supply alcohol. Clients provide it — we provide the personalized shopping list and pour it perfectly.</p>
     </div>
 
-    <!-- Rentals + Sales callout -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;">
-      <a href="rentals.html" style="background:var(--navy);color:var(--ivory);border-radius:14px;padding:1.5rem 1.5rem;text-decoration:none;display:flex;flex-direction:column;gap:0.4rem;border:1px solid var(--champagne);">
-        <span style="font-size:0.72rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--champagne);">Equipment Rentals</span>
-        <span style="font-family:'Cormorant Garamond',serif;font-size:1.35rem;">Rent the Bar · Tables · Chairs</span>
-        <span style="font-size:0.85rem;opacity:0.85;">Mobile bar from <strong>$150/day</strong> · folding tables &amp; chairs available. Inquiry-based.</span>
-      </a>
-      <a href="sales.html" style="background:var(--navy);color:var(--ivory);border-radius:14px;padding:1.5rem 1.5rem;text-decoration:none;display:flex;flex-direction:column;gap:0.4rem;border:1px solid var(--champagne);">
+    <!-- Sales callout -->
+    <div style="display:grid;grid-template-columns:1fr;gap:1rem;">
+      <a href="/sales" style="background:var(--navy);color:var(--ivory);border-radius:14px;padding:1.5rem 1.5rem;text-decoration:none;display:flex;flex-direction:column;gap:0.4rem;border:1px solid var(--champagne);">
         <span style="font-size:0.72rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--champagne);">Custom Builds — Coming Soon</span>
         <span style="font-family:'Cormorant Garamond',serif;font-size:1.35rem;">Buy a Custom Mobile Bar</span>
         <span style="font-size:0.85rem;opacity:0.85;">Custom-built to your spec. Join the waitlist for our launch.</span>
@@ -4700,7 +4631,14 @@
     <div class="t-carousel">
       <button class="t-arrow t-prev" type="button" aria-label="Previous reviews" onclick="scrollReviews(-1)">‹</button>
       <div class="t-grid" id="google-reviews-grid">
-        <div class="t-reviews-loading">Loading reviews from Google…</div>
+        <div class="t-reviews-fallback" style="text-align:center;padding:2.5rem 1.5rem;max-width:560px;margin:0 auto;">
+          <p style="font-family:'Cormorant Garamond',serif;font-size:1.5rem;margin-bottom:0.5rem;">Rated <strong>5.0 ★</strong> by our clients</p>
+          <p style="opacity:0.85;margin-bottom:1.2rem;">Couples and planners rate Lake Salt 5.0 on Google and The Knot.</p>
+          <p style="display:flex;gap:1.5rem;justify-content:center;flex-wrap:wrap;">
+            <a href="https://www.google.com/search?q=Lake+Salt+Bartending+reviews" target="_blank" rel="noopener" style="color:var(--champagne);text-decoration:underline;">Read our reviews on Google</a>
+            <a href="https://www.theknot.com/marketplace/redirect-2104739" target="_blank" rel="noopener" style="color:var(--champagne);text-decoration:underline;">The Knot</a>
+          </p>
+        </div>
       </div>
       <button class="t-arrow t-next" type="button" aria-label="Next reviews" onclick="scrollReviews(1)">›</button>
     </div>
@@ -4721,17 +4659,17 @@
   <div class="section-inner">
     <div class="stats-grid">
       <div class="stat-item">
-        <div class="stat-num"><span class="count" data-target="5">0</span><span class="accent">.0★</span></div>
+        <div class="stat-num"><span class="count" data-target="5">5</span><span class="accent">.0★</span></div>
         <div class="stat-label">Google Rating</div>
         <div class="stat-desc">Perfect score across every review</div>
       </div>
       <div class="stat-item">
-        <div class="stat-num"><span class="count" data-target="15">0</span><span class="accent">+</span></div>
+        <div class="stat-num"><span class="count" data-target="15">15</span><span class="accent">+</span></div>
         <div class="stat-label">Events Served</div>
         <div class="stat-desc">Weddings, corporate &amp; private celebrations</div>
       </div>
       <div class="stat-item">
-        <div class="stat-num"><span class="count" data-target="6">0</span><span class="accent">+</span></div>
+        <div class="stat-num"><span class="count" data-target="6">6</span><span class="accent">+</span></div>
         <div class="stat-label">Utah Counties</div>
         <div class="stat-desc">Across the entire Wasatch Front</div>
       </div>
@@ -4930,6 +4868,13 @@
           </div>
         </div>
         <div class="contact-info-item">
+          <div class="ci-icon">📞</div>
+          <div>
+            <div class="ci-label">Phone</div>
+            <div class="ci-val"><a href="tel:+18016923585" style="color:inherit;text-decoration:none;">Call/Text (801) 692-3585</a></div>
+          </div>
+        </div>
+        <div class="contact-info-item">
           <div class="ci-icon">📍</div>
           <div>
             <div class="ci-label">Service Area</div>
@@ -5020,8 +4965,8 @@
           <select name="budget" class="form-input">
             <option value="">Still figuring it out</option>
             <option value="Under $1,000">Under $1,000</option>
-            <option value="$1,000–$1,500">$1,000 – $1,500</option>
-            <option value="$1,500–$2,500">$1,500 – $2,500 (most weddings)</option>
+            <option value="$1,000–$1,500">$1,000 – $1,500 (most weddings)</option>
+            <option value="$1,500–$2,500">$1,500 – $2,500</option>
             <option value="$2,500–$4,000">$2,500 – $4,000</option>
             <option value="$4,000+">$4,000+</option>
           </select>
@@ -5051,6 +4996,7 @@
         <input type="hidden" name="quote_drink_summary" id="form-quote-drink-summary" />
         <input type="hidden" name="quote_summary" id="form-quote-summary" />
         <button type="submit" class="form-submit">Send My Inquiry →</button>
+        <p style="margin:0.75rem 0 0;text-align:center;font-size:0.82rem;color:rgba(250,248,244,0.65);">Most weddings get a quote back within 24 hours. Corporate events within 4 hours.</p>
       </form>
       </div><!-- /.form-glow-wrap -->
     </div>
@@ -5066,11 +5012,13 @@
       <div class="f-logo">Lake <span>Salt</span></div>
       <p class="f-desc">Utah's premier dry hire mobile bar service. TIPS-certified bartenders, craft cocktails, and flawless execution for weddings and events across the Wasatch Front.</p>
       <div class="f-social">
-        <a href="#">📸</a>
-        <a href="#">👍</a>
-        <a href="#">🎵</a>
-        <a href="#">📌</a>
+        <a href="https://www.instagram.com/lakesaltbartending" target="_blank" rel="noopener" aria-label="Instagram">📸</a>
+        <a href="https://facebook.com/lakesaltbar" target="_blank" rel="noopener" aria-label="Facebook">👍</a>
       </div>
+      <p style="margin-top:0.9rem;font-size:0.9rem;">
+        <a href="tel:+18016923585" style="color:var(--champagne);text-decoration:none;">Call/Text (801) 692-3585</a><br/>
+        <a href="mailto:contact@lakesalt.us" style="color:var(--champagne);text-decoration:none;">contact@lakesalt.us</a>
+      </p>
     </div>
     <div>
       <div class="f-col-title">Services</div>
@@ -5078,9 +5026,8 @@
         <li><a href="#weddings">Wedding Bartending</a></li>
         <li><a href="#services">Corporate Events</a></li>
         <li><a href="#services">Private Celebrations</a></li>
-        <li><a href="weddings.html">Wedding Bar Service</a></li>
-        <li><a href="rentals.html">Bar &amp; Equipment Rentals</a></li>
-        <li><a href="sales.html">Buy a Custom Bar</a></li>
+        <li><a href="/weddings">Wedding Bar Service</a></li>
+        <li><a href="/sales">Buy a Custom Bar</a></li>
         <li><a href="#dryhire">Dry Hire Info</a></li>
         <li><a href="#pricing-packages">Pricing</a></li>
       </ul>
@@ -5088,10 +5035,10 @@
     <div>
       <div class="f-col-title">Company</div>
       <ul class="f-links">
-        <li><a href="about.html">About Us</a></li>
+        <li><a href="/about">About Us</a></li>
         <li><a href="#gallery">Gallery</a></li>
         <li><a href="#reviews">Reviews</a></li>
-        <li><a href="recipes.html">Recipes &amp; Tips</a></li>
+        <li><a href="/recipes">Recipes &amp; Tips</a></li>
         <li><a href="#faq">FAQ</a></li>
         <li><a href="#contact">Contact</a></li>
       </ul>
@@ -5109,13 +5056,43 @@
     </div>
   </div>
   <div class="footer-bottom">
-    <p class="f-copy">© 2025 Lake Salt Bartending · All Rights Reserved · Dry Hire · Mocktail Specialists · TIPS Certified</p>
-    <ul class="f-legal">
-      <li><a href="#">Privacy</a></li>
-      <li><a href="#">Terms</a></li>
-    </ul>
+    <p class="f-copy">© 2026 Lake Salt Bartending · All Rights Reserved · Dry Hire · Mocktail Specialists · TIPS Certified</p>
   </div>
 </footer>
+
+<!-- STICKY MOBILE CALL/TEXT BAR -->
+<style>
+  .mobile-contact-bar {
+    display: none;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 900; /* below modals (#onboarding is 9999) */
+    background: var(--navy);
+    border-top: 1px solid var(--champagne);
+    padding: 0.6rem 0.75rem calc(0.6rem + env(safe-area-inset-bottom, 0px));
+    gap: 0.6rem;
+  }
+  .mobile-contact-bar a {
+    flex: 1;
+    text-align: center;
+    padding: 0.7rem 0;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-decoration: none;
+  }
+  .mobile-contact-bar .mcb-call { background: var(--champagne); color: var(--navy); }
+  .mobile-contact-bar .mcb-text { background: transparent; color: var(--ivory); border: 1px solid var(--champagne); }
+  @media (max-width: 768px) {
+    .mobile-contact-bar { display: flex; }
+    body { padding-bottom: 4.2rem; } /* keep the bar from covering the footer */
+  }
+</style>
+<div class="mobile-contact-bar" id="mobile-contact-bar">
+  <a class="mcb-call" href="tel:+18016923585">📞 Call</a>
+  <a class="mcb-text" href="sms:+18016923585">💬 Text</a>
+</div>
 
 <!-- LIGHTBOX -->
 <div id="lightbox" onclick="closeLb()">
@@ -5297,7 +5274,7 @@ function renderFallbackReviews() {
 function loadGoogleReviews() {
   if (!GOOGLE_API_KEY || GOOGLE_API_KEY === 'YOUR_API_KEY_HERE' ||
       !GOOGLE_PLACE_ID || GOOGLE_PLACE_ID === 'YOUR_PLACE_ID_HERE') {
-    renderFallbackReviews();
+    // Place ID not configured — keep the static no-JS fallback block in the HTML.
     return;
   }
   // Expose callback globally so Maps API can call it
@@ -5422,7 +5399,7 @@ function applyMode(mode, animate) {
       navWeddings.href = '#dryhire';
     } else {
       navWeddings.textContent = 'Weddings';
-      navWeddings.href = 'weddings.html';   // dedicated wedding landing page
+      navWeddings.href = '/weddings';   // dedicated wedding landing page
     }
   }
   const mnWeddings = document.getElementById('mn-weddings');
@@ -5432,7 +5409,7 @@ function applyMode(mode, animate) {
       mnWeddings.href = '#dryhire';
     } else {
       mnWeddings.textContent = 'Weddings';
-      mnWeddings.href = 'weddings.html';
+      mnWeddings.href = '/weddings';
     }
   }
 }
@@ -5818,9 +5795,7 @@ function obPickIntent(intent) {
     obGoTo(1);
     return;
   }
-  if (intent === 'rent-bar')    { window.location.href = 'rentals.html#bar';    return; }
-  if (intent === 'rent-tables') { window.location.href = 'rentals.html#tables'; return; }
-  if (intent === 'buy-bar')     { window.location.href = 'sales.html';          return; }
+  if (intent === 'buy-bar')     { window.location.href = '/sales';              return; }
 }
 
 function obFinish() {
@@ -6139,18 +6114,10 @@ window.addEventListener('DOMContentLoaded', () => {
   trackEvent('page_view_landing', { mode: savedMode, returning: hasSubmitted || hasQuizData });
 });
 
-/* ─── OPEN RENTAL FLOW (stub — routes to dedicated rentals page until multi-step questionnaire is built) ─── */
-function openRentalFlow(type) {
-  // type: 'bar' | 'tables' | 'chairs'
-  trackEvent('intent_rental_clicked', { rentalType: type });
-  const hash = type === 'bar' ? '#bar' : '#tables';
-  window.location.href = 'rentals.html' + hash;
-}
-
 /* ─── OPEN CUSTOM-BAR SALE FLOW (stub — routes to dedicated sales page until multi-step questionnaire is built) ─── */
 function openSaleFlow() {
   trackEvent('intent_sale_clicked', {});
-  window.location.href = 'sales.html';
+  window.location.href = '/sales';
 }
 
 /* ─── OPEN BARTENDING QUOTE FLOW from the inline intent section ─── */

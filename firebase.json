@@ -4,10 +4,10 @@
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "cleanUrls": true,
     "redirects": [
-      { "source": "/book", "destination": "/?ref=expo#contact", "type": 301 },
-      { "source": "/book.html", "destination": "/?ref=expo#contact", "type": 301 },
-      { "source": "/expo", "destination": "/?ref=expo#contact", "type": 301 },
-      { "source": "/expo.html", "destination": "/?ref=expo#contact", "type": 301 }
+      { "source": "/expo", "destination": "/#contact", "type": 301 },
+      { "source": "/expo.html", "destination": "/#contact", "type": 301 },
+      { "source": "/rentals", "destination": "/", "type": 301 },
+      { "source": "/rentals.html", "destination": "/", "type": 301 }
     ],
     "rewrites": [
       { "source": "/recipes", "destination": "/recipes.html" },
