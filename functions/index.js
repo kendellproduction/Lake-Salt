@@ -926,24 +926,16 @@ function parseLeadDetailsFromBody(text) {
  * Returns { leadId, leadRef, matchedBy } or { leadId:null } when no confident
  * match. NEVER throws — resolution failure must not stop the rest of the run. */
 async function resolveLeadForMessage(msg) {
-  /* STEP 1 — thread already mapped to a lead. */
-  try {
-    if (msg.gmailThreadId) {
-      const snap = await db.collection('leads')
-        .where('gmailThreadIds', 'array-contains', msg.gmailThreadId).limit(1).get();
-      if (!snap.empty) {
-        return { leadId: snap.docs[0].id, leadRef: snap.docs[0].ref, matchedBy: 'thread' };
-      }
-    }
-  } catch (e) { console.warn('resolveLeadForMessage step1 failed:', e.message); }
-
   /* The addresses that might identify the human. For inbound that's `from`;
    * for outbound (SENT) it's every To/Cc recipient (minus our own mailbox). */
   const candidates = msg.direction === 'out'
     ? outboundCandidates(msg, [BUSINESS_EMAIL])
     : [String(msg.from || '').toLowerCase().trim()].filter(Boolean);
 
-  /* STEP 2 — direct email match (primary email or a known alias). */
+  /* STEP 1 — direct address match. Address identity outranks a cached thread
+   * mapping: one historical corruption attached the same Gmail thread id to
+   * several leads, causing Sent replies for Samantha/Vanna to update Alisa.
+   * An exact proxy/recipient address is the stronger, self-healing signal. */
   for (const norm of candidates) {
     try {
       const byEmail = await db.collection('leads').where('email', '==', norm).limit(1).get();
@@ -954,8 +946,20 @@ async function resolveLeadForMessage(msg) {
       if (!byAlias.empty) {
         return { leadId: byAlias.docs[0].id, leadRef: byAlias.docs[0].ref, matchedBy: 'alias' };
       }
-    } catch (e) { console.warn('resolveLeadForMessage step2 failed:', e.message); }
+    } catch (e) { console.warn('resolveLeadForMessage step1 failed:', e.message); }
   }
+
+  /* STEP 2 — thread mapping fallback, only after address identity fails. */
+  try {
+    if (msg.gmailThreadId) {
+      const snap = await db.collection('leads')
+        .where('gmailThreadIds', 'array-contains', msg.gmailThreadId).limit(2).get();
+      if (snap.size === 1) {
+        return { leadId: snap.docs[0].id, leadRef: snap.docs[0].ref, matchedBy: 'thread' };
+      }
+      if (snap.size > 1) console.warn(`resolveLeadForMessage: ambiguous thread ${msg.gmailThreadId}; refusing thread-only match`);
+    }
+  } catch (e) { console.warn('resolveLeadForMessage step2 failed:', e.message); }
 
   /* STEP 3 — Knot/WeddingPro proxy: parse the body for real identity, then
    * match by phone (strong) or name+date (weaker). */
@@ -1002,6 +1006,7 @@ async function writeMessageToLead(leadRef, msg) {
     ? admin.firestore.Timestamp.fromMillis(msg.internalDateMs)
     : now;
 
+  const [currentLead, currentThread] = await Promise.all([leadRef.get(), threadRef.get()]);
   const batch = db.batch();
 
   /* Message doc — id = Gmail message id, merge so re-sync never duplicates. */
@@ -1029,12 +1034,17 @@ async function writeMessageToLead(leadRef, msg) {
   const participantList = [msg.from, ...(msg.to || [])].filter(Boolean);
   const threadUpdate = {
     gmailThreadId: msg.gmailThreadId,
-    subject:       msg.subject || '',
     channel:       msg.sourceChannel || 'gmail',
-    lastMessageAt: sentAtTs,
     messageCount:  admin.firestore.FieldValue.increment(1),
     updatedAt:     now,
   };
+  const currentThreadMs = currentThread.exists && currentThread.data().lastMessageAt?.toMillis
+    ? currentThread.data().lastMessageAt.toMillis() : 0;
+  const incomingMs = msg.internalDateMs || Date.now();
+  if (incomingMs >= currentThreadMs) {
+    threadUpdate.subject = msg.subject || '';
+    threadUpdate.lastMessageAt = sentAtTs;
+  }
   /* arrayUnion() throws with zero args — only set it when we actually have
    * participants (a malformed message with no From/To would otherwise crash
    * the whole sync run). */
@@ -1046,11 +1056,15 @@ async function writeMessageToLead(leadRef, msg) {
   /* Lead summary fields. Unread only bumps on inbound. Track the alias +
    * thread so future messages auto-route (step 1/2). */
   const leadUpdate = {
-    commsLastMessageAt: sentAtTs,
-    commsLastDirection: msg.direction,
     gmailThreadIds:     admin.firestore.FieldValue.arrayUnion(msg.gmailThreadId),
     updatedAt:          now,
   };
+  const currentLeadMs = currentLead.exists && currentLead.data().commsLastMessageAt?.toMillis
+    ? currentLead.data().commsLastMessageAt.toMillis() : 0;
+  if (incomingMs >= currentLeadMs) {
+    leadUpdate.commsLastMessageAt = sentAtTs;
+    leadUpdate.commsLastDirection = msg.direction;
+  }
   if (msg.direction === 'in') {
     leadUpdate.commsUnread = admin.firestore.FieldValue.increment(1);
     /* Record the sender (proxy-aware) so replies + future routing know it. */
@@ -1835,10 +1849,9 @@ exports.dailyFollowupScan = onSchedule(
       console.error('Quote-expiry scan failed:', e);
     }
 
-    await detectRepliesNeeded();
-    /* No push here — the 8am scan just builds the list. Pushes go out at
-     * 10am and 2pm MT (see morningFollowupPush / afternoonFollowupSweep):
-     * early-morning pushes get ignored. */
+    /* Reply-needed work is intentionally NOT inferred here from cached CRM
+     * direction. The verified Gmail sweeps below read complete threads,
+     * including Sent, before creating or retaining a task. */
 
     console.log(`dailyFollowupScan created ${created} follow-up reminders, flagged ${expiredCount} expired quotes`);
     return null;
@@ -1850,7 +1863,73 @@ exports.dailyFollowupScan = onSchedule(
  * gets an open reply_needed followup. It auto-closes the moment the sync
  * sees our outbound reply (see writeMessageToLead), which also silences the
  * twice-a-day reminder pushes for it. */
-async function detectRepliesNeeded() {
+function elapsedForNotification(ms) {
+  const totalHours = Math.max(1, Math.floor(ms / 3600e3));
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+  if (!days) return `${totalHours} hour${totalHours === 1 ? '' : 's'}`;
+  return `${days} day${days === 1 ? '' : 's'}${hours ? ` ${hours} hour${hours === 1 ? '' : 's'}` : ''}`;
+}
+
+function validMailboxAddress(value) {
+  const email = String(value || '').trim().toLowerCase();
+  return /^[^\s@{}()"']+@[^\s@{}()"']+$/.test(email) ? email : '';
+}
+
+/* Gmail is the source of truth for reply state. Search the lead's known
+ * addresses, then read the COMPLETE newest thread (Inbox + Sent) and select
+ * its newest substantive message. Never infer reply state from INBOX/UNREAD. */
+async function latestGmailMessageForLead(gmail, lead) {
+  const addresses = [...new Set([lead.email, ...(lead.emailAliases || [])]
+    .map(validMailboxAddress).filter(Boolean))].slice(0, 8);
+  if (!gmail || !addresses.length) return null;
+  const addressQuery = addresses.flatMap(a => [`from:${a}`, `to:${a}`]).join(' OR ');
+  const listed = await gmail.users.messages.list({
+    userId: 'me', q: `in:anywhere newer_than:2y {${addressQuery}}`, maxResults: 50,
+  });
+  if (!(listed.data.messages || []).length) return null;
+
+  const candidates = [];
+  for (const item of listed.data.messages || []) {
+    const meta = (await gmail.users.messages.get({
+      userId: 'me', id: item.id, format: 'metadata',
+      metadataHeaders: ['From', 'To', 'Subject'],
+    })).data;
+    candidates.push(meta);
+  }
+  candidates.sort((a, b) => Number(b.internalDate || 0) - Number(a.internalDate || 0));
+  const newest = candidates[0];
+  const thread = (await gmail.users.threads.get({
+    userId: 'me', id: newest.threadId, format: 'metadata',
+    metadataHeaders: ['From', 'To', 'Subject'],
+  })).data;
+  const messages = (thread.messages || []).sort((a, b) => Number(a.internalDate || 0) - Number(b.internalDate || 0));
+  const last = messages[messages.length - 1];
+  if (!last) return null;
+  const headers = headerMap(last.payload?.headers || []);
+  return {
+    gmailMessageId: last.id,
+    gmailThreadId: last.threadId,
+    direction: (last.labelIds || []).includes('SENT') || parseAddress(headers.from).email === BUSINESS_EMAIL ? 'out' : 'in',
+    subject: String(headers.subject || '(no subject)').trim(),
+    snippet: String(last.snippet || '').replace(/\s+/g, ' ').trim().slice(0, 180),
+    sentAtMs: Number(last.internalDate || 0),
+  };
+}
+
+async function closeReplyNeededForLead(leadRef, reason) {
+  const open = await db.collection('kendell_followups')
+    .where('leadId', '==', leadRef.id).where('status', '==', 'open').get();
+  const stale = open.docs.filter(d => d.data().type === 'reply_needed');
+  await Promise.all(stale.map(d => d.ref.update({
+    status: 'done', completed: true,
+    resolvedAt: admin.firestore.FieldValue.serverTimestamp(),
+    resolvedBy: reason,
+  })));
+  return stale.length;
+}
+
+async function detectRepliesNeeded(gmail) {
   let created = 0;
   try {
     const cutoff = admin.firestore.Timestamp.fromMillis(Date.now() - 20 * 3600e3);
@@ -1859,19 +1938,48 @@ async function detectRepliesNeeded() {
     for (const doc of snap.docs) {
       const lead = doc.data();
       if (['Completed', 'Lost', 'Closed'].includes(lead.stage)) continue;
-      const last = lead.commsLastMessageAt;
-      if (!last || last.toMillis() > cutoff.toMillis()) continue;      // still fresh
+      let latest;
+      try { latest = await latestGmailMessageForLead(gmail, lead); }
+      catch (e) { console.warn(`Gmail reply verification failed for lead ${doc.id}:`, e.message); continue; }
+      /* Fail closed: no complete Gmail evidence means no task/no push. */
+      if (!latest || !latest.sentAtMs) continue;
+
+      const latestTs = admin.firestore.Timestamp.fromMillis(latest.sentAtMs);
+      await doc.ref.update({
+        commsLastMessageAt: latestTs,
+        commsLastDirection: latest.direction,
+        gmailThreadIds: admin.firestore.FieldValue.arrayUnion(latest.gmailThreadId),
+        replyStateVerifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+        replyStateVerifiedBy: 'gmail-complete-thread',
+      });
+      if (latest.direction === 'out') {
+        const closed = await closeReplyNeededForLead(doc.ref, 'auto: complete Gmail thread ends in Sent');
+        if (closed) console.log(`detectRepliesNeeded: cleared ${closed} stale task(s) for ${lead.name || doc.id}`);
+        continue;
+      }
+      if (latest.sentAtMs > cutoff.toMillis()) continue; // genuinely unanswered, but still fresh
       const existing = await db.collection('kendell_followups')
         .where('leadId', '==', doc.id).where('status', '==', 'open').limit(10).get();
       if (existing.docs.some(d => d.data().type === 'reply_needed')) continue;
-      const days = Math.max(1, Math.round((Date.now() - last.toMillis()) / 864e5));
-      await db.collection('kendell_followups').add({
+      const elapsed = elapsedForNotification(Date.now() - latest.sentAtMs);
+      const fuRef = await db.collection('kendell_followups').add({
         type: 'reply_needed',
         leadId: doc.id,
         leadName: lead.name || 'a lead',
-        title: `💬 ${lead.name || 'A lead'} is waiting on our reply (${days} day${days === 1 ? '' : 's'})`,
-        notes: `Their last message came in and we haven't responded. ${lead.eventType || 'Event'}${lead.eventDate ? ' · ' + lead.eventDate : ''}.`,
+        title: `💬 ${lead.name || 'A lead'} has waited ${elapsed}`,
+        notes: `Newest Gmail message is inbound and no Sent reply follows it. Subject: “${latest.subject.slice(0, 100)}”. ${latest.snippet || 'Open the thread for details.'}`,
+        gmailThreadId: latest.gmailThreadId,
+        gmailMessageId: latest.gmailMessageId,
+        inboundAt: latestTs,
         status: 'open',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      await db.collection('notifications').add({
+        title: `${lead.name || 'A client'} has waited ${elapsed}`,
+        body: `Unanswered: “${latest.subject.slice(0, 90)}”. ${latest.snippet || `${lead.eventType || 'Event'}${lead.eventDate ? ` on ${lead.eventDate}` : ''}.`}`.slice(0, 360),
+        url: `https://lakesalt.us/admin/#decide/${fuRef.id}`,
+        tag: `reply-needed-${doc.id}-${latest.gmailMessageId}`,
+        kind: 'task', followupId: fuRef.id, audience: 'ops',
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
       created++;
@@ -1881,52 +1989,24 @@ async function detectRepliesNeeded() {
   return created;
 }
 
-/* ─── Follow-ups push (10am + 2pm MT) ─────────────────────────────────────
- * Repeats until the list is empty — items leave by being resolved in the
- * CRM or auto-closed when a reply goes out. Designed to be ACTED ON, not
- * ignored: it leads with the single most urgent item (deep-linked to that
- * lead's card) and only counts the rest. Unmatched-message triage items
- * stay on the dashboard but don't clog the push. */
-const PUSHABLE_TYPES = ['quote_accepted', 'reply_needed', 'followup_due', 'quote_expired'];
-async function pushFollowupsDigest(slot) {
-  try {
-    const openSnap = await db.collection('kendell_followups')
-      .where('status', '==', 'open').get();
-    const items = openSnap.docs.map((d) => ({ id: d.id, ...d.data() }))
-      .filter((i) => PUSHABLE_TYPES.includes(i.type));
-    if (!items.length) return;
-    /* Priority: money first, then whoever has waited longest. */
-    items.sort((a, b) =>
-      (PUSHABLE_TYPES.indexOf(a.type) - PUSHABLE_TYPES.indexOf(b.type)) ||
-      ((a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0) -
-       (b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0)));
-    const top = items[0];
-    const restNames = [...new Set(items.slice(1).map((i) => i.leadName || 'a lead'))];
-    const rest = restNames.length
-      ? ` Also waiting: ${restNames.slice(0, 3).join(', ')}${restNames.length > 3 ? ` +${restNames.length - 3} more` : ''}.`
-      : '';
-    /* Deep link straight to the item: the #decide screen shows this exact
-     * followup with one-tap actions (Done / open the lead), so the tap lands
-     * on the task — not the CRM front door. */
-    await db.collection('notifications').add({
-      title: String(top.title || 'Follow-up needed').slice(0, 120),
-      body: `${String(top.notes || '').slice(0, 160)}${rest} These clear automatically when we reply.`,
-      url: `https://lakesalt.us/admin/#decide/${top.id}`,
-      tag: `followups-${slot}`,
-      kind: 'task',
-      followupId: top.id,
-      audience: 'ops',
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-  } catch (e) { console.warn('followups digest push failed:', e.message); }
+async function runVerifiedReplySweep() {
+  const { gmail, mode } = buildGmailClient();
+  if (mode !== 'oauth' || !gmail) {
+    console.warn('Verified reply sweep skipped: Gmail OAuth unavailable (fail closed).');
+    return 0;
+  }
+  return await detectRepliesNeeded(gmail);
 }
 
 /* Quiet reliability sweeps may detect missed/aging work, but they do not push
  * merely because a clock fired. Event-driven attention items own notifying. */
 exports.morningFollowupPush = onSchedule(
-  { schedule: '0 10 * * 1-6', timeZone: 'America/Denver', timeoutSeconds: 120 },
+  {
+    schedule: '0 10 * * 1-6', timeZone: 'America/Denver', timeoutSeconds: 300,
+    secrets: [GMAIL_OAUTH_CLIENT_ID, GMAIL_OAUTH_CLIENT_SECRET, GMAIL_OAUTH_REFRESH_TOKEN],
+  },
   async () => {
-    await detectRepliesNeeded();
+    await runVerifiedReplySweep();
     return null;
   }
 );
@@ -1934,9 +2014,12 @@ exports.morningFollowupPush = onSchedule(
 /* Afternoon pass: re-detect anyone newly waiting on us, then re-push
  * whatever is still open. Second push of the workday. */
 exports.afternoonFollowupSweep = onSchedule(
-  { schedule: '0 14 * * 1-6', timeZone: 'America/Denver', timeoutSeconds: 120 },
+  {
+    schedule: '0 14 * * 1-6', timeZone: 'America/Denver', timeoutSeconds: 300,
+    secrets: [GMAIL_OAUTH_CLIENT_ID, GMAIL_OAUTH_CLIENT_SECRET, GMAIL_OAUTH_REFRESH_TOKEN],
+  },
   async () => {
-    await detectRepliesNeeded();
+    await runVerifiedReplySweep();
     return null;
   }
 );
