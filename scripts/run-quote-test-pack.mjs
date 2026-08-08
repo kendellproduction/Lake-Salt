@@ -2,30 +2,82 @@ import fs from 'node:fs/promises';
 import vm from 'node:vm';
 
 const source = await fs.readFile('website/admin/js/quotes.js', 'utf8');
-const safeSource = source.slice(0, source.indexOf('function renderQuoteBuilder')) + `\nthis.__exports = { calcQuote, buildDrinkRecommendations, buildQuoteReadiness, generateProposalText, makeInitialQuote, QUOTE_DEFAULTS, DEFAULT_QUOTE_DEFAULTS };`;
-const context = { console, Date, Math, Number, String, Array, Object, JSON, Intl, parseInt, parseFloat, isNaN, setTimeout, clearTimeout, window: {} };
+const safeSource = source.slice(0, source.indexOf('function renderQuoteBuilder')) + `\nthis.__exports = { calcQuote, buildDeterministicPricing, buildQuoteReadiness, DETERMINISTIC_PRICING_VERSION, DEFAULT_QUOTE_DEFAULTS };`;
+const context = { console, Date, Math, Number, String, Array, Object, JSON, Intl, RegExp, parseInt, parseFloat, isNaN, setTimeout, clearTimeout, window: {} };
 vm.createContext(context);
 vm.runInContext(safeSource, context, { filename: 'website/admin/js/quotes.js' });
-const { calcQuote, buildDrinkRecommendations, buildQuoteReadiness, generateProposalText, makeInitialQuote, DEFAULT_QUOTE_DEFAULTS } = context.__exports;
+const { calcQuote, buildDeterministicPricing, buildQuoteReadiness, DETERMINISTIC_PRICING_VERSION, DEFAULT_QUOTE_DEFAULTS } = context.__exports;
 
 const scenarios = [
-  { id:'01-alisa-benchmark', name:'Alisa benchmark wedding', lead:{name:'Alisa Hartline',email:'alisa@example.com',phone:'801-555-0101',eventType:'Wedding',eventDate:'2027-08-07',eventStartTime:'5:00 PM',eventEndTime:'9:00 PM',venue:'Mill Pond Farms, Spanish Fork',guestCount:95,hasBuiltInBar:'yes',drinks:['Cocktails','Beer & wine','Champagne / bubbly'],drinkVibes:['Spirit-forward','Refreshing & sparkling'],drinkDetail:'Old Fashioned for the groom; champagne cocktail for the bride; confirm flutes.',champagneGlassware:'Venue flutes',message:'No allergies; confirm final menu.'}, quote:{bartenders:2,bartenderPay:200,supplies:150,travel:0,marginPct:40,pricingKind:'wedding',applyProfitCap:true,applyCorpFloor:false,guestCount:95,serviceHours:4,totalOverride:900,depositPct:10,leadName:'Alisa Hartline',eventType:'Wedding',eventDate:'2027-08-07',venue:'Mill Pond Farms, Spanish Fork'} },
-  { id:'02-heather-winter-private', name:'Heather winter birthday', lead:{name:'Heather Leishman',email:'heather@example.com',phone:'801-555-0102',eventType:'Private Celebration',eventDate:'2026-12-05',eventStartTime:'7:00 PM',eventEndTime:'11:00 PM',venue:'Private home, Highland',guestCount:50,hasBuiltInBar:'no',drinks:['Cocktails','Mocktails','Wine','Whiskey'],drinkVibes:['Seasonal & herbal','Spirit-forward','Rich & dessert-like'],drinkDetail:'Two cocktails that also work as mocktails; wine and whiskey service.',message:'Home event; Lake Salt brings the bar.'}, quote:{bartenders:2,bartenderPay:200,supplies:150,travel:0,marginPct:40,pricingKind:'private',applyProfitCap:true,applyCorpFloor:false,guestCount:50,serviceHours:4,depositPct:10,leadName:'Heather Leishman',eventType:'Private Celebration',eventDate:'2026-12-05',venue:'Private home, Highland'} },
-  { id:'03-easy-short', name:'Easy short beer-and-wine event', lead:{name:'Jordan Lee',email:'jordan@example.com',phone:'801-555-0103',eventType:'Private Celebration',eventDate:'2026-09-18',eventStartTime:'6:00 PM',eventEndTime:'9:00 PM',venue:'The Garden Room, Draper',guestCount:30,hasBuiltInBar:'yes',drinks:['Beer & wine'],drinkVibes:['Refreshing & sparkling'],drinkDetail:'Beer and wine only; no special requests.',message:'No special requests.'}, quote:{bartenders:1,bartenderPay:150,supplies:100,travel:0,marginPct:40,pricingKind:'private',applyProfitCap:true,applyCorpFloor:false,guestCount:30,serviceHours:3,depositPct:10,leadName:'Jordan Lee',eventType:'Private Celebration',eventDate:'2026-09-18',venue:'The Garden Room, Draper'} },
-  { id:'04-large-wedding', name:'Large full-service wedding', lead:{name:'Morgan Davis',email:'morgan@example.com',phone:'801-555-0104',eventType:'Wedding',eventDate:'2026-08-22',eventStartTime:'5:00 PM',eventEndTime:'10:00 PM',venue:'Canyon Ridge, Park City',guestCount:220,hasBuiltInBar:'no',drinks:['Signature cocktails','Mocktails','Beer & wine'],drinkVibes:['Bright & citrusy','Seasonal & herbal','Spirit-forward'],drinkDetail:'Two fast-pour signature cocktails, a mocktail, beer and wine.',message:'Large outdoor wedding; Lake Salt brings the mobile bar.'}, quote:{bartenders:5,bartenderPay:300,supplies:300,travel:150,marginPct:40,pricingKind:'wedding',applyProfitCap:true,applyCorpFloor:false,guestCount:220,serviceHours:5,depositPct:10,leadName:'Morgan Davis',eventType:'Wedding',eventDate:'2026-08-22',venue:'Canyon Ridge, Park City'} },
-  { id:'05-champagne-toast', name:'Champagne toast with glassware', lead:{name:'Taylor Smith',email:'taylor@example.com',phone:'801-555-0105',eventType:'Wedding',eventDate:'2027-05-22',eventStartTime:'4:00 PM',eventEndTime:'8:00 PM',venue:'Stone House, Lehi',guestCount:120,hasBuiltInBar:'yes',drinks:['Champagne / bubbly','Beer & wine'],drinkVibes:['Refreshing & sparkling','Bright & citrusy'],drinkDetail:'Champagne toast plus beer and wine; venue provides flutes.',champagneGlassware:'Venue provides real flutes',message:'Toast logistics confirmed.'}, quote:{bartenders:3,bartenderPay:200,supplies:200,travel:0,marginPct:40,pricingKind:'wedding',applyProfitCap:true,applyCorpFloor:false,guestCount:120,serviceHours:4,depositPct:10,leadName:'Taylor Smith',eventType:'Wedding',eventDate:'2027-05-22',venue:'Stone House, Lehi'} },
-  { id:'06-missing-info', name:'Incomplete lead should be blocked', lead:{name:'Casey Unknown',email:'casey@example.com',eventType:'Wedding',eventDate:'2027-06-12',guestCount:100,venue:'Venue TBD',drinks:['Cocktails'],drinkVibes:['Surprise me']}, quote:{bartenders:2,bartenderPay:200,supplies:150,travel:0,marginPct:40,pricingKind:'wedding',applyProfitCap:true,applyCorpFloor:false,guestCount:100,serviceHours:4,depositPct:10,leadName:'Casey Unknown',eventType:'Wedding',eventDate:'2027-06-12',venue:'Venue TBD'} }
+  {
+    id: '01-alisa-accepted-legacy',
+    name: 'Alisa accepted quote (immutable history)',
+    acceptedLegacy: true,
+    expectedTotal: 792,
+    lead: { name:'Alisa Hartline', email:'alisa@example.com', eventType:'Wedding', eventDate:'2027-08-07', eventStartTime:'5:00 PM', eventEndTime:'9:00 PM', venue:'Mill Pond Farms, Spanish Fork', guestCount:95, hasBuiltInBar:'yes', drinks:['Cocktails','Beer & wine','Champagne / bubbly'], drinkVibes:['Spirit-forward','Refreshing & sparkling'], drinkDetail:'Old Fashioned and champagne cocktail.', champagneGlassware:'Venue flutes' },
+    quote: { bartenders:2, bartenderPay:200, supplies:150, travel:0, marginPct:40, pricingKind:'wedding', applyProfitCap:true, applyCorpFloor:false, guestCount:95, serviceHours:4, totalOverride:792, depositPct:10, leadName:'Alisa Hartline', eventType:'Wedding', eventDate:'2027-08-07', venue:'Mill Pond Farms, Spanish Fork' }
+  },
+  {
+    id: '02-private-full-scope',
+    name: 'Private event with alcohol, mocktails, water, and mobile bar',
+    lead: { name:'Heather Leishman', email:'heather@example.com', phone:'801-555-0102', eventType:'Private Celebration', eventDate:'2026-12-05', eventStartTime:'7:00 PM', eventEndTime:'11:00 PM', venue:'Private home, Highland', guestCount:50, beverageGuestCount:50, serviceHours:4, hasBuiltInBar:false, alcoholicService:true, mocktailService:true, waterStation:true, cocktailCount:2, cocktailComplexity:'standard', gratuityPct:0, drinks:['Cocktails','Mocktails','Wine'], drinkVibes:['Seasonal & herbal'], drinkDetail:'Two cocktails also offered zero-proof.' }
+  },
+  {
+    id: '03-beer-wine-minimum',
+    name: 'Short beer and wine event hits minimum',
+    lead: { name:'Jordan Lee', email:'jordan@example.com', phone:'801-555-0103', eventType:'Private Celebration', eventDate:'2026-09-18', eventStartTime:'6:00 PM', eventEndTime:'9:00 PM', venue:'Draper', guestCount:30, beverageGuestCount:25, serviceHours:3, hasBuiltInBar:true, alcoholicService:true, mocktailService:false, waterStation:false, cocktailCount:0, cocktailComplexity:'simple', gratuityPct:0, drinks:['Beer & wine'], drinkVibes:['Simple service'], drinkDetail:'Beer and wine only.' }
+  },
+  {
+    id: '04-large-complex-wedding',
+    name: 'Large full-service wedding',
+    lead: { name:'Morgan Davis', email:'morgan@example.com', phone:'801-555-0104', eventType:'Wedding', eventDate:'2026-08-22', eventStartTime:'5:00 PM', eventEndTime:'10:00 PM', venue:'Park City', guestCount:220, beverageGuestCount:200, serviceHours:5, hasBuiltInBar:false, alcoholicService:true, mocktailService:true, waterStation:true, cocktailCount:3, cocktailComplexity:'complex', gratuityPct:20, drinks:['Signature cocktails','Mocktails','Beer & wine'], drinkVibes:['Bright & citrusy'], drinkDetail:'Three complex cocktails and one zero-proof option.' }
+  },
+  {
+    id: '05-missing-beverage-scope',
+    name: 'Incomplete scope must be blocked',
+    lead: { name:'Casey Unknown', email:'casey@example.com', eventType:'Wedding', eventDate:'2027-06-12', eventStartTime:'5:00 PM', eventEndTime:'9:00 PM', venue:'Provo', guestCount:100, serviceHours:4, hasBuiltInBar:true, drinks:['Cocktails'], drinkVibes:['Surprise me'], drinkDetail:'Cocktails requested.' }
+  }
 ];
 
-const results = scenarios.map(s => {
-  const q = {...s.quote, proposal:{style:s.lead.eventType==='Wedding'?'wedding':'simple',eventTitle:`${s.lead.eventType} at ${s.lead.venue}`,serviceWindow:`${s.lead.eventStartTime || ''} - ${s.lead.eventEndTime || ''}`,arrivalPlan:'We arrive early enough to set the bar before guests arrive.',servicePlan:`Our team pours for ${s.lead.guestCount} guests with setup, breakdown, mixers, garnishes, ice, and service equipment included.`,menuText:'',alcoholNote:'Lake Salt is a dry-hire service - you provide the alcohol and we handle everything else.',nextSteps:'Reply to move forward and we will confirm the logistics.'}};
+const results = scenarios.map((scenario) => {
+  if (scenario.acceptedLegacy) {
+    const calc = calcQuote(scenario.quote);
+    return { ...scenario, pricingModelVersion:'legacy-accepted', canSend:true, missingScope:[], calc };
+  }
+  const priced = buildDeterministicPricing(scenario.lead);
+  const q = {
+    ...scenario.lead,
+    leadName:scenario.lead.name,
+    pricingModelVersion:DETERMINISTIC_PRICING_VERSION,
+    bartenders:priced.assumptions.bartenders,
+    bartenderPay:priced.costs.labor / priced.assumptions.bartenders,
+    supplies:priced.costs.operatingCost - priced.costs.labor - priced.costs.travel,
+    travel:priced.costs.travel,
+    marginPct:scenario.lead.eventType === 'Corporate' ? 55 : 40
+  };
   const calc = calcQuote(q);
-  const readiness = buildQuoteReadiness(q, s.lead);
-  const drinkPlan = buildDrinkRecommendations({...q,...s.lead,drinkVibes:s.lead.drinkVibes,drinks:s.lead.drinks,drinkDetail:s.lead.drinkDetail});
-  q.proposal.menuText = drinkPlan.menuText;
-  const proposal = generateProposalText(q, calc);
-  return { ...s, calc:{total:calc.total,computedTotal:calc.computedTotal,costBasis:calc.costBasis,profit:calc.profit,marginPct:calc.marginPct,capApplied:calc.capApplied,corpFloorApplied:calc.corpFloorApplied}, readiness:{readyCount:readiness.readyCount,totalCount:readiness.totalCount,canLock:readiness.canLock,canSend:readiness.canSend,sections:readiness.sections}, drinkPlan:{season:drinkPlan.season,vibe:drinkPlan.vibe.label,recommendations:drinkPlan.recs.map(r=>({label:r.label,title:r.title,examples:r.examples}))}, proposal };
+  const readiness = buildQuoteReadiness(q, scenario.lead);
+  return { ...scenario, pricingModelVersion:DETERMINISTIC_PRICING_VERSION, canSend:priced.canSend && readiness.canSend, missingScope:priced.missingScope, priced, calc, readiness:{canSend:readiness.canSend,readyCount:readiness.readyCount,totalCount:readiness.totalCount} };
 });
-await fs.mkdir('output/quote-test-pack', {recursive:true});
-await fs.writeFile('output/quote-test-pack/results.json', JSON.stringify({generatedAt:new Date().toISOString(), assumptions:{...DEFAULT_QUOTE_DEFAULTS,marginTarget:'40%',marginFloor:'35% temporary close-out floor'},results},null,2));
-console.log(JSON.stringify(results.map(r=>({id:r.id,name:r.name,total:r.calc.total,cost:r.calc.costBasis,profit:r.calc.profit,margin:r.calc.marginPct,ready:r.readiness.canLock,missing:r.readiness.sections.flatMap(s=>s.items.filter(i=>i.required!==false&&!i.ok).map(i=>i.label))})),null,2));
+
+const failures = [];
+const alisa = results.find(r => r.id === '01-alisa-accepted-legacy');
+if (alisa.calc.total !== 792) failures.push(`Alisa history changed: expected 792, got ${alisa.calc.total}`);
+const blocked = results.find(r => r.id === '05-missing-beverage-scope');
+if (blocked.canSend) failures.push('Missing-scope scenario was allowed to send');
+if (!blocked.missingScope.includes('beverageGuestCount')) failures.push('Missing beverage guest count was not reported');
+for (const result of results.filter(r => !r.acceptedLegacy && r.canSend)) {
+  if (result.priced.assumptions.disposableCupsIncluded !== true || result.priced.costs.disposableCups <= 0) failures.push(`${result.id} did not include disposable cups`);
+  if (result.calc.total !== result.priced.revenue.total) failures.push(`${result.id} calcQuote disagrees with deterministic engine`);
+  if (result.priced.revenue.deposit !== result.priced.revenue.total * 0.10) failures.push(`${result.id} deposit is inconsistent`);
+}
+
+await fs.mkdir('output/quote-test-pack', { recursive:true });
+await fs.writeFile('output/quote-test-pack/results.json', JSON.stringify({ generatedAt:new Date().toISOString(), assumptions:DEFAULT_QUOTE_DEFAULTS, results }, null, 2));
+console.log(JSON.stringify(results.map(r => ({ id:r.id, total:r.calc.total, cost:r.calc.costBasis, profit:r.calc.profit, margin:r.calc.marginPct, canSend:r.canSend, missing:r.missingScope })), null, 2));
+if (failures.length) {
+  console.error(`\n${failures.join('\n')}`);
+  process.exitCode = 1;
+} else {
+  console.log('\nQuote pricing regression pack passed.');
+}

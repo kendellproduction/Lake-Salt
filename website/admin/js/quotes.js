@@ -65,6 +65,197 @@ const DEFAULT_QUOTE_DEFAULTS = {
   quoteExpiryDays: 14
 };
 
+/* Versioned deterministic pricing. Accepted legacy quotes never flow through
+ * this table unless they explicitly opt in with pricingModelVersion. */
+const DETERMINISTIC_PRICING_VERSION = '2026.08';
+const DETERMINISTIC_PRICING = Object.freeze({
+  baseBartenderPay: 200,          // includes up to four service hours
+  extraBartenderHour: 35,
+  setupLaborPerBartender: 25,
+  cupCostPerGuest: 0.35,          // disposable cups are always included
+  baseConsumablesPerGuest: 0.70,  // ice, napkins and standard expendables
+  alcoholicServicePerGuest: 0.65, // mixers/garnishes for alcoholic service
+  mocktailServicePerGuest: 1.10,
+  waterStationPerGuest: 0.35,
+  cocktailCostPerGuest: 0.30,
+  complexCocktailCostPerGuest: 0.20,
+  mobileBarCost: 125,
+  equipmentBase: 40,
+  travelByArea: Object.freeze({
+    local: 0,
+    nearby: 35,
+    extended: 85,
+    park_city: 125
+  }),
+  minimums: Object.freeze({ private: 450, wedding: 800, corporate: 1200 }),
+  targetMargins: Object.freeze({ private: 40, wedding: 40, corporate: 55 }),
+  depositPct: 10
+});
+
+function boolValue(value) {
+  if (typeof value === 'boolean') return value;
+  const normalized = String(value == null ? '' : value).trim().toLowerCase();
+  if (['yes', 'true', 'included', '1'].includes(normalized)) return true;
+  if (['no', 'false', 'none', '0'].includes(normalized)) return false;
+  return null;
+}
+
+function deterministicTravelArea(venue, explicitArea) {
+  if (explicitArea && DETERMINISTIC_PRICING.travelByArea[explicitArea] != null) return explicitArea;
+  const text = String(venue || '').toLowerCase();
+  if (/park city|heber|midway|kamas/.test(text)) return 'park_city';
+  if (/salt lake|draper|lehi|highland|american fork|pleasant grove|orem|provo|spanish fork|springville/.test(text)) return 'local';
+  return text.trim() ? 'nearby' : null;
+}
+
+function inferServiceFlags(input = {}) {
+  const drinks = parseLeadListValue(input.drinks).join(' ').toLowerCase();
+  return {
+    alcoholicService: boolValue(input.alcoholicService) ?? (/cocktail|beer|wine|champagne|alcohol|whiskey|vodka|gin|rum|tequila/.test(drinks) ? true : null),
+    mocktailService: boolValue(input.mocktailService) ?? (/mocktail|zero-proof|nonalcoholic|non-alcoholic/.test(drinks) ? true : null),
+    waterStation: boolValue(input.waterStation)
+  };
+}
+
+function finiteNumberOrNull(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function validateDeterministicScope(input = {}) {
+  const flags = inferServiceFlags(input);
+  const values = {
+    totalGuests: finiteNumberOrNull(input.guestCount ?? input.totalGuestCount),
+    beverageGuests: finiteNumberOrNull(input.beverageGuestCount),
+    serviceHours: finiteNumberOrNull(input.serviceHours),
+    cocktailCount: finiteNumberOrNull(input.cocktailCount),
+    bartenders: finiteNumberOrNull(input.bartenders),
+    gratuityPct: finiteNumberOrNull(input.gratuityPct) ?? 0
+  };
+  const missing = [];
+  const invalid = [];
+  if (values.totalGuests == null) missing.push('totalGuestCount');
+  else if (values.totalGuests < 1 || values.totalGuests > 2000 || !Number.isInteger(values.totalGuests)) invalid.push('totalGuestCount');
+  if (values.beverageGuests == null) missing.push('beverageGuestCount');
+  else if (values.beverageGuests < 1 || values.beverageGuests > 2000 || !Number.isInteger(values.beverageGuests)) invalid.push('beverageGuestCount');
+  if (values.totalGuests != null && values.beverageGuests != null && values.beverageGuests > values.totalGuests) invalid.push('beverageGuestCountExceedsTotal');
+  if (values.serviceHours == null) missing.push('serviceHours');
+  else if (values.serviceHours < 0.5 || values.serviceHours > 24) invalid.push('serviceHours');
+  if (values.bartenders != null && (values.bartenders < 1 || values.bartenders > 30 || !Number.isInteger(values.bartenders))) invalid.push('bartenders');
+  if (values.gratuityPct < 0 || values.gratuityPct > 30) invalid.push('gratuityPct');
+  if (!String(input.eventType || '').trim()) missing.push('eventType');
+  if (!String(input.venue || '').trim()) missing.push('venueOrCity');
+  if (flags.alcoholicService == null) missing.push('alcoholicService');
+  if (flags.mocktailService == null) missing.push('mocktailService');
+  if (flags.waterStation == null) missing.push('waterStation');
+  if (flags.alcoholicService && values.cocktailCount == null) missing.push('cocktailCount');
+  if (values.cocktailCount != null && (values.cocktailCount < 0 || values.cocktailCount > 10 || !Number.isInteger(values.cocktailCount))) invalid.push('cocktailCount');
+  const complexity = String(input.cocktailComplexity || '').toLowerCase();
+  if (flags.alcoholicService && values.cocktailCount > 0 && !['simple', 'standard', 'complex'].includes(complexity)) missing.push('cocktailComplexity');
+  const hasBuiltInBar = boolValue(input.hasBuiltInBar);
+  if (hasBuiltInBar == null) missing.push('hasBuiltInBar');
+  const travelArea = deterministicTravelArea(input.venue, input.travelArea);
+  if (!travelArea) missing.push('travelArea');
+  return { flags, values, complexity, hasBuiltInBar, travelArea, missing, invalid, canSend: missing.length === 0 && invalid.length === 0 };
+}
+
+/* Pure, deterministic pricing engine. It intentionally returns missingScope
+ * instead of guessing whether every guest drinks alcohol, mocktails or water. */
+function buildDeterministicPricing(input = {}) {
+  const profile = pricingProfileForEventType(input.eventType);
+  const validation = validateDeterministicScope(input);
+  const { flags, complexity, hasBuiltInBar, travelArea } = validation;
+  const totalGuests = validation.values.totalGuests || 0;
+  const beverageGuests = validation.values.beverageGuests || 0;
+  const serviceHours = validation.values.serviceHours || 0;
+  const cocktailCount = validation.values.cocktailCount;
+  const gratuityPct = validation.values.gratuityPct;
+
+  const guestDivisor = flags.alcoholicService && cocktailCount > 0
+    ? (complexity === 'complex' || cocktailCount >= 3 ? 50 : 60)
+    : 75;
+  const suggestedBartenders = totalGuests ? Math.max(1, Math.ceil(beverageGuests / guestDivisor)) : 0;
+  const bartenders = validation.values.bartenders == null ? suggestedBartenders : validation.values.bartenders;
+  const extraHours = Math.max(0, serviceHours - 4);
+  const labor = bartenders * (DETERMINISTIC_PRICING.baseBartenderPay + DETERMINISTIC_PRICING.setupLaborPerBartender + extraHours * DETERMINISTIC_PRICING.extraBartenderHour);
+  const disposableCups = beverageGuests * DETERMINISTIC_PRICING.cupCostPerGuest;
+  const baseConsumables = beverageGuests * DETERMINISTIC_PRICING.baseConsumablesPerGuest;
+  const alcoholicService = flags.alcoholicService ? beverageGuests * DETERMINISTIC_PRICING.alcoholicServicePerGuest : 0;
+  const mocktailService = flags.mocktailService ? beverageGuests * DETERMINISTIC_PRICING.mocktailServicePerGuest : 0;
+  const waterStation = flags.waterStation ? totalGuests * DETERMINISTIC_PRICING.waterStationPerGuest : 0;
+  const cocktails = flags.alcoholicService && cocktailCount > 0 ? beverageGuests * cocktailCount * DETERMINISTIC_PRICING.cocktailCostPerGuest : 0;
+  const complexityCost = complexity === 'complex' ? beverageGuests * cocktailCount * DETERMINISTIC_PRICING.complexCocktailCostPerGuest : 0;
+  const equipment = DETERMINISTIC_PRICING.equipmentBase + (hasBuiltInBar === false ? DETERMINISTIC_PRICING.mobileBarCost : 0);
+  const travel = travelArea ? DETERMINISTIC_PRICING.travelByArea[travelArea] : 0;
+  const operatingCost = labor + disposableCups + baseConsumables + alcoholicService + mocktailService + waterStation + cocktails + complexityCost + equipment + travel;
+  const targetMarginPct = Number(input.marginPct) || DETERMINISTIC_PRICING.targetMargins[profile.kind];
+  const marginPrice = operatingCost / (1 - targetMarginPct / 100);
+  const minimum = DETERMINISTIC_PRICING.minimums[profile.kind];
+  const servicePrice = Math.ceil(Math.max(minimum, marginPrice) / 5) * 5;
+  const gratuity = servicePrice * gratuityPct / 100;
+  const total = servicePrice + gratuity;
+  const deposit = total * DETERMINISTIC_PRICING.depositPct / 100;
+  const profit = servicePrice - operatingCost;
+
+  return {
+    pricingModelVersion: DETERMINISTIC_PRICING_VERSION,
+    canSend: validation.canSend,
+    missingScope: [...validation.missing, ...validation.invalid],
+    validation,
+    assumptions: { totalGuests, beverageGuests, serviceHours, bartenders, suggestedBartenders, cocktailCount: Number.isFinite(cocktailCount) ? cocktailCount : null, cocktailComplexity: complexity || null, hasBuiltInBar, travelArea, gratuityPct, disposableCupsIncluded: true, ...flags },
+    costs: { labor, disposableCups, baseConsumables, alcoholicService, mocktailService, waterStation, cocktails, complexity: complexityCost, equipment, travel, operatingCost },
+    revenue: { minimum, marginPrice, servicePrice, gratuity, total, deposit },
+    profit: { dollars: profit, marginPct: servicePrice > 0 ? profit / servicePrice * 100 : 0 }
+  };
+}
+
+function deterministicScopeFromQuote(q = {}) {
+  return {
+    guestCount: q.guestCount,
+    beverageGuestCount: q.beverageGuestCount,
+    serviceHours: q.serviceHours,
+    venue: q.venue,
+    travelArea: q.travelArea,
+    alcoholicService: q.alcoholicService,
+    mocktailService: q.mocktailService,
+    waterStation: q.waterStation,
+    cocktailCount: q.cocktailCount,
+    cocktailComplexity: q.cocktailComplexity,
+    hasBuiltInBar: q.hasBuiltInBar,
+    bartenders: q.bartenders,
+    gratuityPct: q.gratuityPct
+  };
+}
+
+function buildPricingSnapshot(q, calc = calcQuote(q)) {
+  if (q.pricingModelVersion !== DETERMINISTIC_PRICING_VERSION) return null;
+  const priced = calc.deterministicPricing || buildDeterministicPricing(q);
+  return {
+    pricingModelVersion: DETERMINISTIC_PRICING_VERSION,
+    pricingScope: deterministicScopeFromQuote(q),
+    pricingAssumptions: priced.assumptions,
+    pricingSnapshot: { costs: priced.costs, revenue: priced.revenue, profit: priced.profit, canSend: priced.canSend, missingScope: priced.missingScope }
+  };
+}
+
+function hydrateQuotePricing(base, saved = {}) {
+  const modern = saved.pricingModelVersion === DETERMINISTIC_PRICING_VERSION;
+  if (!modern) return { ...base, pricingModelVersion: saved.pricingModelVersion || null };
+  return {
+    ...base,
+    ...saved.pricingScope,
+    pricingModelVersion: DETERMINISTIC_PRICING_VERSION,
+    deterministicPricing: saved.pricingSnapshot ? { ...saved.pricingSnapshot, assumptions:saved.pricingAssumptions } : buildDeterministicPricing({ ...base, ...saved.pricingScope })
+  };
+}
+
+async function persistCurrentQuoteBeforeSend(saveCurrent) {
+  const quoteId = await saveCurrent('locked');
+  if (!quoteId) throw new Error('Current quote state could not be saved before send');
+  return quoteId;
+}
+
 const PROPOSAL_TEMPLATE_PRESETS = {
   wedding: {
     label: 'Wedding',
@@ -435,12 +626,17 @@ function buildDrinkRecommendations(q = {}) {
 }
 
 function buildQuoteReadiness(q = {}, lead = {}) {
+  const deterministic = q.pricingModelVersion === DETERMINISTIC_PRICING_VERSION
+    ? buildDeterministicPricing({ ...lead, ...q })
+    : null;
   const drinkPlan = buildDrinkRecommendations(q);
   const contact = [lead.email, lead.phone].some(Boolean);
   const startTime = String(lead.eventStartTime || q.eventStartTime || '').trim();
   const endTime = String(lead.eventEndTime || q.eventEndTime || '').trim();
   const timeWindow = !!(startTime && endTime);
-  const barInfo = typeof lead.hasBuiltInBar === 'boolean' || ['yes', 'no', 'unsure'].includes(String(lead.hasBuiltInBar || '').trim().toLowerCase());
+  const quoteBarValue = boolValue(q.hasBuiltInBar);
+  const effectiveBarValue = quoteBarValue != null ? quoteBarValue : lead.hasBuiltInBar;
+  const barInfo = typeof effectiveBarValue === 'boolean' || ['yes', 'no', 'unsure'].includes(String(effectiveBarValue || '').trim().toLowerCase());
   const drinkInfo = parseLeadListValue(lead.drinks).length > 0;
   const specialRequests = String(lead.specialRequests || lead.drinkDetail || lead.message || q.notes || '').trim();
   const drinkText = parseLeadListValue(lead.drinks).join(' ').toLowerCase();
@@ -448,6 +644,17 @@ function buildQuoteReadiness(q = {}, lead = {}) {
   const glasswareInfo = !needsGlassware || !!String(lead.champagneGlassware || lead.glassware || '').trim();
   const pricingBand = clampMargin(q.marginPct);
   const sections = [
+    ...(deterministic ? [{
+      title: 'Confirmed pricing scope',
+      items: [
+        { label: 'Total guest count', ok: !deterministic.missingScope.includes('totalGuestCount'), detail: deterministic.assumptions.totalGuests || 'Missing', required: true },
+        { label: 'Guests receiving drinks', ok: !deterministic.missingScope.includes('beverageGuestCount'), detail: deterministic.assumptions.beverageGuests || 'Missing', required: true },
+        { label: 'Alcohol / mocktails / water', ok: !['alcoholicService','mocktailService','waterStation'].some(k => deterministic.missingScope.includes(k)), detail: `Alcohol ${deterministic.assumptions.alcoholicService ? 'yes' : 'no'} · Mocktails ${deterministic.assumptions.mocktailService ? 'yes' : 'no'} · Water ${deterministic.assumptions.waterStation ? 'yes' : 'no'}`, required: true },
+        { label: 'Cocktail count and complexity', ok: !['cocktailCount','cocktailComplexity'].some(k => deterministic.missingScope.includes(k)), detail: deterministic.assumptions.cocktailCount == null ? 'Missing' : `${deterministic.assumptions.cocktailCount} · ${deterministic.assumptions.cocktailComplexity || 'not applicable'}`, required: true },
+        { label: 'Bar and travel area', ok: !['hasBuiltInBar','travelArea'].some(k => deterministic.missingScope.includes(k)), detail: `${deterministic.assumptions.hasBuiltInBar ? 'Built-in bar' : 'Lake Salt bar'} · ${deterministic.assumptions.travelArea || 'Missing'}`, required: true },
+        { label: 'Disposable cups', ok: true, detail: 'Included by default', required: true }
+      ]
+    }] : []),
     {
       title: 'Core lead info',
       items: [
@@ -461,9 +668,9 @@ function buildQuoteReadiness(q = {}, lead = {}) {
     {
       title: 'Service logistics',
       items: [
-        { label: 'Contact info', ok: contact, detail: contact ? [lead.email, lead.phone].filter(Boolean).join(' / ') : 'Need email or phone', required: true },
-        { label: 'Service window', ok: timeWindow, detail: timeWindow ? `${startTime} - ${endTime}` : 'Missing', required: true },
-        { label: 'Built-in bar info', ok: barInfo, detail: barInfo ? String(lead.hasBuiltInBar) : 'Missing', required: true },
+        { label: 'Contact info', ok: contact, detail: contact ? [lead.email, lead.phone].filter(Boolean).join(' / ') : 'Missing — edit the lead card', required: true },
+        { label: 'Service window', ok: timeWindow, detail: timeWindow ? `${startTime} - ${endTime}` : 'Missing — edit the lead card', required: true },
+        { label: 'Built-in bar info', ok: barInfo, detail: barInfo ? (boolValue(effectiveBarValue) === true ? 'Yes' : boolValue(effectiveBarValue) === false ? 'No — Lake Salt mobile bar' : String(effectiveBarValue)) : 'Missing — set in pricing scope', required: true },
         { label: 'Champagne / glassware', ok: glasswareInfo, detail: glasswareInfo ? (needsGlassware ? (lead.champagneGlassware || lead.glassware) : 'Not needed') : 'Confirm flutes or plastic', required: true }
       ]
     },
@@ -492,7 +699,7 @@ function buildQuoteReadiness(q = {}, lead = {}) {
   const requiredItems = sections.flatMap((section) => section.items.filter((item) => item.required !== false));
   const readyCount = requiredItems.filter((item) => item.ok).length;
   const totalCount = requiredItems.length;
-  const canLock = requiredItems.every((item) => item.ok);
+  const canLock = requiredItems.every((item) => item.ok) && (!deterministic || deterministic.canSend);
   return { sections, readyCount, totalCount, canLock, canSend: canLock, drinkPlan };
 }
 
@@ -779,7 +986,7 @@ function distributeToTarget(q, targetTotal /*, ratios */) {
  * lineItems, discount, totalOverride) because the surrounding UI/history/save
  * code still references them and old saved quotes carry them. */
 function makeInitialQuote(lead) {
-  const guests = parseGuests(lead?.guestCount);
+  const guests = lead?.guestCount == null || String(lead.guestCount).trim() === '' ? 0 : parseGuests(lead.guestCount);
   const budget = parseBudget(lead?.budget);
   const profile = pricingProfileForEventType(lead?.eventType);
   const style = profile.kind === 'corporate' ? 'corporate' : (String(lead?.eventType || '').toLowerCase().includes('wedding') ? 'wedding' : 'simple');
@@ -793,6 +1000,10 @@ function makeInitialQuote(lead) {
     notes: lead?.notes || '',
     proposal: { style }
   });
+  const deterministic = buildDeterministicPricing({
+    ...lead,
+    serviceHours: lead?.serviceHours || QUOTE_DEFAULTS.hoursDefault
+  });
   return {
     leadId: lead?.id || null,
     leadName: lead?.name || '',
@@ -801,16 +1012,27 @@ function makeInitialQuote(lead) {
     venue: lead?.venue || '',
     guestCount: guests,
     serviceHours: QUOTE_DEFAULTS.hoursDefault,
+    beverageGuestCount: Number(lead?.beverageGuestCount) || 0,
+    alcoholicService: boolValue(lead?.alcoholicService),
+    mocktailService: boolValue(lead?.mocktailService),
+    waterStation: boolValue(lead?.waterStation),
+    cocktailCount: lead?.cocktailCount == null ? null : Number(lead.cocktailCount),
+    cocktailComplexity: lead?.cocktailComplexity || '',
+    hasBuiltInBar: boolValue(lead?.hasBuiltInBar),
+    travelArea: lead?.travelArea || deterministic.assumptions.travelArea,
+    gratuityPct: Number(lead?.gratuityPct) || 0,
 
     /* COST INPUTS (the real model) */
-    bartenders: Math.max(1, Math.ceil(guests / QUOTE_DEFAULTS.bartendersPerGuests)),
+    bartenders: deterministic.assumptions.suggestedBartenders || 0,
     bartenderPay: QUOTE_DEFAULTS.bartenderPayDefault,   // flat $ per bartender
     supplies: QUOTE_DEFAULTS.suppliesDefault,           // cups/ice/garnish/mixers
     travel: QUOTE_DEFAULTS.travelBase,                  // gas/out-of-area
 
     /* MARGIN: profile-driven default; user adjusts the slider */
     pricingKind: profile.kind,                          // wedding | private | corporate
-    marginPct: clampMargin(QUOTE_DEFAULTS[profile.marginKey]),
+    marginPct: profile.kind === 'corporate'
+      ? DETERMINISTIC_PRICING.targetMargins.corporate
+      : clampMargin(QUOTE_DEFAULTS[profile.marginKey]),
     applyProfitCap: profile.applyCap,                   // weddings/private
     applyCorpFloor: profile.applyCorpFloor,             // corporate
 
@@ -830,7 +1052,9 @@ function makeInitialQuote(lead) {
     budgetRaw: budget.raw,
     budgetValid: budget.valid,
     budgetTarget: budget.valid ? budget.value : 0,
-    drinkPlan
+    drinkPlan,
+    pricingModelVersion: DETERMINISTIC_PRICING_VERSION,
+    deterministicPricing: deterministic
   };
 }
 
@@ -890,6 +1114,33 @@ function parseBudget(b) {
  * hasOverride, targetAdjustment, deposit, costEstimate, profit, marginPct,
  * and a breakdown object. */
 function calcQuote(q) {
+  if (q.pricingModelVersion === DETERMINISTIC_PRICING_VERSION) {
+    const priced = buildDeterministicPricing(q);
+    const b = priced.costs;
+    return {
+      subtotal: priced.revenue.servicePrice,
+      discountAmt: 0,
+      computedTotal: priced.revenue.total,
+      total: priced.revenue.total,
+      hasOverride: false,
+      targetAdjustment: 0,
+      deposit: priced.revenue.deposit,
+      costEstimate: b.operatingCost + priced.revenue.gratuity,
+      profit: priced.profit.dollars,
+      marginPct: priced.profit.marginPct,
+      costBasis: b.operatingCost,
+      priceFromMargin: priced.revenue.marginPrice,
+      effectiveMargin: Number(q.marginPct) || DETERMINISTIC_PRICING.targetMargins[pricingProfileForEventType(q.eventType).kind],
+      capApplied: false,
+      corpFloorApplied: false,
+      peakAdj: 0,
+      beforeDiscount: priced.revenue.total,
+      canSend: priced.canSend,
+      missingScope: priced.missingScope,
+      deterministicPricing: priced,
+      breakdown: { bartenderTotal: b.labor, supplies: b.disposableCups + b.baseConsumables + b.alcoholicService + b.mocktailService + b.waterStation + b.cocktails + b.complexity + b.equipment, travel: b.travel, lineItemTotal: priced.revenue.gratuity }
+    };
+  }
   const bartenderTotal = (q.bartenders || 0) * (q.bartenderPay || 0);
   const supplies = Number(q.supplies) || 0;
   const travel = Number(q.travel) || 0;
@@ -1089,6 +1340,25 @@ function showBudgetMath(q, calc) {
 /* Inner HTML for the totals grid — extracted so repaintTotals() can refresh
  * it in place without rebuilding the whole builder DOM. */
 function totalsGridHTML(q, calc) {
+  if (q.pricingModelVersion === DETERMINISTIC_PRICING_VERSION && calc.deterministicPricing) {
+    const p = calc.deterministicPricing;
+    const rows = [
+      ['Bartender labor', p.costs.labor], ['Disposable cups', p.costs.disposableCups],
+      ['Base consumables', p.costs.baseConsumables], ['Alcohol service', p.costs.alcoholicService],
+      ['Mocktail service', p.costs.mocktailService], ['Water / NA station', p.costs.waterStation],
+      ['Cocktail count', p.costs.cocktails], ['Cocktail complexity', p.costs.complexity],
+      ['Equipment / mobile bar', p.costs.equipment], ['Travel', p.costs.travel]
+    ].filter(([, value]) => value > 0);
+    return `
+      ${rows.map(([label,value]) => `<div class="text-muted">${label}</div><div style="text-align:right">${moneyFmt(value)}</div>`).join('')}
+      <div style="font-weight:700;border-top:1px solid var(--border);padding-top:5px">Operating cost</div><div style="text-align:right;font-weight:700;border-top:1px solid var(--border);padding-top:5px">${moneyFmt(p.costs.operatingCost)}</div>
+      <div class="text-muted">Margin price / minimum</div><div style="text-align:right">${moneyFmt(p.revenue.marginPrice)} / ${moneyFmt(p.revenue.minimum)}</div>
+      <div class="text-muted">Service price</div><div style="text-align:right">${moneyFmt(p.revenue.servicePrice)}</div>
+      ${p.revenue.gratuity > 0 ? `<div class="text-muted">Staff gratuity</div><div style="text-align:right">${moneyFmt(p.revenue.gratuity)}</div>` : ''}
+      <div style="font-weight:700;color:var(--text);font-size:18px;margin-top:4px">Quoted total</div><div style="text-align:right;font-weight:700;color:var(--gold);font-size:22px">${moneyFmt(p.revenue.total)}</div>
+      <div class="text-muted" style="font-size:12px">Deposit (10%)</div><div style="text-align:right;font-size:12px">${moneyFmt(p.revenue.deposit)}</div>
+      <div class="text-muted">Operating profit</div><div style="text-align:right">${moneyFmt(p.profit.dollars)} · ${Math.round(p.profit.marginPct)}%</div>`;
+  }
   return `
     <div class="text-muted">Cost basis</div><div style="text-align:right">${moneyFmt(calc.costBasis)}</div>
     <div class="text-muted">Margin %</div><div style="text-align:right">${Math.round(calc.effectiveMargin)}%${calc.capApplied?` <span style="color:#FACC15;font-size:11px">profit capped at ${moneyFmt(QUOTE_DEFAULTS.profitCapValue)}</span>`:''}${calc.corpFloorApplied?` <span style="color:#3b82f6;font-size:11px">corp floor ${moneyFmt(QUOTE_DEFAULTS.profitFloorCorp)}</span>`:''}</div>
@@ -1099,6 +1369,54 @@ function totalsGridHTML(q, calc) {
     <div style="text-align:right;font-weight:700;color:var(--gold);font-size:22px">${moneyFmt(calc.total)}</div>
     <div class="text-muted" style="font-size:12px">Deposit (${q.depositPct}%)</div><div style="text-align:right;font-size:12px">${moneyFmt(calc.deposit)}</div>
   `;
+}
+
+function modernScopeControlsHTML(q) {
+  const yesNo = (id, value) => `<select id="${id}" class="form-select qb-scope-input"><option value="" ${value == null?'selected':''}>Confirm…</option><option value="true" ${value===true?'selected':''}>Yes</option><option value="false" ${value===false?'selected':''}>No</option></select>`;
+  return `<div style="margin-top:12px;padding:12px;border:1px solid rgba(201,168,76,.35);border-radius:10px">
+    <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--gold);margin-bottom:8px">Deterministic service scope</div>
+    <div class="qb-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px">
+      <label class="qb-field"><span>Event type</span><input id="qb-event-type" type="text" value="${escapeHtmlSafe(q.eventType || '')}" class="form-input qb-scope-input"></label>
+      <label class="qb-field"><span>Venue or city</span><input id="qb-venue" type="text" value="${escapeHtmlSafe(q.venue || '')}" class="form-input qb-scope-input"></label>
+      <label class="qb-field"><span>Total guests</span><input id="qb-total-guests" type="number" min="1" max="2000" step="1" value="${q.guestCount || ''}" class="form-input qb-scope-input"></label>
+      <label class="qb-field"><span>Guests receiving drinks</span><input id="qb-beverage-guests" type="number" min="1" max="2000" step="1" value="${q.beverageGuestCount || ''}" class="form-input qb-scope-input"></label>
+      <label class="qb-field"><span>Service hours</span><input id="qb-service-hours" type="number" min="0.5" max="24" step="0.5" value="${q.serviceHours ?? ''}" class="form-input qb-scope-input"></label>
+      <label class="qb-field"><span>Bartenders</span><input id="qb-modern-bartenders" type="number" min="1" max="30" step="1" value="${q.bartenders || ''}" class="form-input qb-scope-input"></label>
+      <label class="qb-field"><span>Alcoholic service?</span>${yesNo('qb-alcohol',q.alcoholicService)}</label>
+      <label class="qb-field"><span>Mocktails?</span>${yesNo('qb-mocktails',q.mocktailService)}</label>
+      <label class="qb-field"><span>Water / NA station?</span>${yesNo('qb-water',q.waterStation)}</label>
+      <label class="qb-field"><span>Built-in bar?</span>${yesNo('qb-built-in-bar',q.hasBuiltInBar)}</label>
+      <label class="qb-field"><span>Cocktail count</span><input id="qb-cocktail-count" type="number" min="0" max="10" step="1" value="${q.cocktailCount == null ? '' : q.cocktailCount}" class="form-input qb-scope-input"></label>
+      <label class="qb-field"><span>Cocktail complexity</span><select id="qb-cocktail-complexity" class="form-select qb-scope-input"><option value="">Confirm…</option>${['simple','standard','complex'].map(v=>`<option value="${v}" ${q.cocktailComplexity===v?'selected':''}>${v}</option>`).join('')}</select></label>
+      <label class="qb-field"><span>Travel area</span><select id="qb-travel-area" class="form-select qb-scope-input">${['local','nearby','extended','park_city'].map(v=>`<option value="${v}" ${q.travelArea===v?'selected':''}>${v.replace('_',' ')}</option>`).join('')}</select></label>
+      <label class="qb-field"><span>Included gratuity %</span><input id="qb-gratuity" type="number" min="0" max="30" step="1" value="${q.gratuityPct ?? 0}" class="form-input qb-scope-input"></label>
+    </div><div class="text-muted" style="font-size:11px;margin-top:8px">Disposable cups are included automatically. Alcohol remains client-provided.</div>
+  </div>`;
+}
+
+function savedDeterministicBreakdownHTML(q = {}) {
+  if (q.pricingModelVersion !== DETERMINISTIC_PRICING_VERSION || !q.pricingSnapshot) return '';
+  const costs = q.pricingSnapshot.costs || {};
+  const revenue = q.pricingSnapshot.revenue || {};
+  const profit = q.pricingSnapshot.profit || {};
+  const assumptions = q.pricingAssumptions || {};
+  const costRows = [
+    ['Bartender labor', costs.labor], ['Disposable cups', costs.disposableCups],
+    ['Base consumables', costs.baseConsumables], ['Alcohol service', costs.alcoholicService],
+    ['Mocktail service', costs.mocktailService], ['Water / NA station', costs.waterStation],
+    ['Cocktail count', costs.cocktails], ['Cocktail complexity', costs.complexity],
+    ['Equipment / mobile bar', costs.equipment], ['Travel', costs.travel]
+  ].filter(([, value]) => Number(value) > 0);
+  return `<div data-pricing-view="deterministic">
+    <div class="text-muted" style="font-size:11px;margin-bottom:8px">Model ${DETERMINISTIC_PRICING_VERSION} · ${assumptions.beverageGuests || 0}/${assumptions.totalGuests || 0} beverage guests · ${assumptions.serviceHours || 0} hours · ${assumptions.bartenders || 0} bartender${assumptions.bartenders===1?'':'s'}</div>
+    <div style="display:grid;grid-template-columns:1fr auto;row-gap:6px;font-size:13px">
+      ${costRows.map(([label,value]) => `<div>${label}</div><div style="text-align:right">${moneyFmt(value)}</div>`).join('')}
+      <div style="font-weight:700;border-top:1px solid var(--border);padding-top:5px">Operating cost</div><div style="text-align:right;font-weight:700;border-top:1px solid var(--border);padding-top:5px">${moneyFmt(costs.operatingCost)}</div>
+      <div>Service price</div><div style="text-align:right">${moneyFmt(revenue.servicePrice)}</div>
+      ${Number(revenue.gratuity)>0?`<div>Staff gratuity</div><div style="text-align:right">${moneyFmt(revenue.gratuity)}</div>`:''}
+      <div style="font-weight:700">Operating profit</div><div style="text-align:right;font-weight:700">${moneyFmt(profit.dollars)} · ${Math.round(Number(profit.marginPct)||0)}%</div>
+    </div>
+  </div>`;
 }
 
 function budgetBadgeHTML(q, calc) {
@@ -1136,6 +1454,7 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
        * crash, and best-effort approximate cost inputs from the legacy shape. */
       const legacyBartenderTotal = (li.serviceHours||0) * (li.bartenderRate||0) * (li.bartenders||0);
       const legacySupplies = (li.customMenuFee||0) + (li.offMenuEnabled ? (li.offMenuQty||0)*(li.offMenuPrice||0) : 0);
+      state.q = hydrateQuotePricing(state.q, saved);
       Object.assign(state.q, {
         bartenders:     li.bartenders   ?? state.q.bartenders,
         bartenderPay:   li.bartenderPay ?? (li.bartenders ? Math.round(legacyBartenderTotal / li.bartenders) : state.q.bartenderPay),
@@ -1177,12 +1496,12 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
         </div>
 
         <div id="qb-readiness-slot">${renderReadinessHTML(readiness)}</div>
-        <div id="qb-guidance-slot">${renderGuidanceHTML(guidance, readiness.drinkPlan)}</div>
+        <div id="qb-guidance-slot">${q.pricingModelVersion === DETERMINISTIC_PRICING_VERSION ? '' : renderGuidanceHTML(guidance, readiness.drinkPlan)}</div>
 
-        <div id="qb-insights-slot"></div>
+        <div id="qb-insights-slot">${q.pricingModelVersion === DETERMINISTIC_PRICING_VERSION ? '<div class="text-muted" style="font-size:11px;margin-bottom:10px">Modern pricing is driven by confirmed scope; historical target overrides are disabled.</div>' : ''}</div>
 
         <!-- COST INPUTS -->
-        <div class="qb-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px">
+        ${q.pricingModelVersion === DETERMINISTIC_PRICING_VERSION ? modernScopeControlsHTML(q) : `<div class="qb-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px">
           <label class="qb-field"><span>Bartenders</span>
             <input type="number" min="0" step="1" id="qb-bartenders" value="${q.bartenders}" class="form-input qb-input"></label>
           <label class="qb-field"><span>Flat pay per bartender ($)</span>
@@ -1191,10 +1510,10 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
             <input type="number" min="0" step="25" id="qb-supplies" value="${q.supplies}" class="form-input qb-input"></label>
           <label class="qb-field"><span>Travel ($)</span>
             <input type="number" min="0" step="25" id="qb-travel" value="${q.travel}" class="form-input qb-input"></label>
-        </div>
+        </div>`}
 
         <!-- MARGIN -->
-        <div style="margin-top:14px;padding:12px;border:1px solid var(--border);border-radius:10px">
+        ${q.pricingModelVersion === DETERMINISTIC_PRICING_VERSION ? '' : `<div style="margin-top:14px;padding:12px;border:1px solid var(--border);border-radius:10px">
           <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
             <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">Target margin</div>
             <div id="qb-margin-label" style="font-size:13px;font-weight:700;color:var(--gold)">${Math.round(calc.effectiveMargin)}% · ${moneyFmt(calc.profit)} profit</div>
@@ -1206,10 +1525,10 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
             <button type="button" class="qb-margin-preset btn btn-ghost" data-margin="40" data-kind="corporate" style="padding:2px 10px;font-size:11px">40%</button>
           </div>
           <div class="text-muted" style="font-size:11px;margin-top:6px;line-height:1.5">Keep the quote inside a 35-40% admin margin band. Corporate pricing still has its own profit floor.</div>
-        </div>
+        </div>`}
 
         <!-- USER-DEFINED LINE ITEMS -->
-        <div style="margin-top:14px;padding:12px;border:1px solid var(--border);border-radius:10px">
+        ${q.pricingModelVersion === DETERMINISTIC_PRICING_VERSION ? '' : `<div style="margin-top:14px;padding:12px;border:1px solid var(--border);border-radius:10px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
             <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">Additional items / add-ons</div>
             <button type="button" id="qb-add-line" class="btn btn-ghost btn-sm" style="padding:3px 10px;font-size:12px">+ Add line</button>
@@ -1223,7 +1542,7 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
                   <button type="button" data-li-rm="${i}" class="btn btn-ghost btn-sm" style="padding:4px;font-size:14px;color:#E05252">✕</button>
                 </div>`).join(''))
           }
-        </div>
+        </div>`}
 
         <!-- PROPOSAL GENERATOR -->
         <div style="margin-top:14px;padding:12px;border:1px solid rgba(139,155,126,0.35);border-radius:10px;background:rgba(139,155,126,0.06)">
@@ -1261,7 +1580,7 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
         </div>
 
         <!-- DISCOUNT -->
-        <div style="margin-top:14px">
+        ${q.pricingModelVersion === DETERMINISTIC_PRICING_VERSION ? '' : `<div style="margin-top:14px">
           <div style="padding:10px 12px;border:1px dashed var(--border);border-radius:8px">
             <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:6px">Discount</div>
             <div style="display:flex;gap:6px;align-items:center">
@@ -1275,20 +1594,20 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
               ${QUOTE_DEFAULTS.discountPresets.map(p => `<button type="button" class="qb-preset btn btn-ghost" data-pct="${p.pct}" style="padding:2px 8px;font-size:11px">${p.label} (${p.pct}%)</button>`).join('')}
             </div>
           </div>
-        </div>
+        </div>`}
 
         <!-- TOTALS STRIP -->
         <div style="margin-top:14px;padding:12px;background:linear-gradient(135deg,rgba(201,168,76,0.10),rgba(139,155,126,0.08));border:1px solid rgba(201,168,76,0.35);border-radius:10px">
           <div id="qb-totals-grid" style="display:grid;grid-template-columns:1fr auto;row-gap:4px;font-size:13px">${totalsGridHTML(q, calc)}</div>
 
           <!-- TOP-DOWN OVERRIDE -->
-          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+          ${q.pricingModelVersion === DETERMINISTIC_PRICING_VERSION ? '' : `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
             <label style="display:flex;align-items:center;gap:8px;font-size:12px;flex-wrap:wrap">
               <input type="checkbox" id="qb-override-on" ${calc.hasOverride?'checked':''}>
               <span>Set my own total — I know the number, fit the line items to it</span>
               ${calc.hasOverride?`<input type="number" min="0" step="50" id="qb-override-val" value="${q.totalOverride}" class="form-input" style="flex:0 0 120px;padding:4px 8px;font-size:13px">`:''}
             </label>
-          </div>
+          </div>`}
 
           <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:12px">
             <span class="text-muted">Est. profit (admin only)</span>
@@ -1318,6 +1637,10 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
      * you type). Only structural changes call render(). */
     container.querySelectorAll('.qb-input').forEach(el => {
       el.addEventListener('input', () => { readFieldsIntoState(); repaintTotals(); });
+    });
+    container.querySelectorAll('.qb-scope-input').forEach(el => {
+      el.addEventListener('input', () => { readFieldsIntoState(); repaintTotals(); });
+      el.addEventListener('change', () => { readFieldsIntoState(); repaintTotals(); });
     });
     container.querySelector('#qb-margin')?.addEventListener('input', (e) => {
       state.q.marginPct = clampMargin(parseFloat(e.target.value) || 0);
@@ -1462,6 +1785,7 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
   async function loadInsights() {
     const slot = document.getElementById('qb-insights-slot');
     if (!slot) return;
+    if (state.q.pricingModelVersion === DETERMINISTIC_PRICING_VERSION) return;
     if (state.insights === undefined) {
       slot.innerHTML = `<div class="text-muted" style="font-size:11px;padding:6px 0">Loading history…</div>`;
       try {
@@ -1525,6 +1849,39 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
     q.bartenderPay    = v('qb-pay') ?? q.bartenderPay;
     q.supplies        = v('qb-supplies') ?? q.supplies;
     q.travel          = v('qb-travel') ?? q.travel;
+    const nullableNumber = (id) => {
+      const el = document.getElementById(id);
+      if (!el) return undefined;
+      if (el.value === '') return null;
+      const number = Number(el.value);
+      return Number.isFinite(number) ? number : null;
+    };
+    const nullableBool = (id) => {
+      const el = document.getElementById(id);
+      if (!el) return undefined;
+      return el.value === '' ? null : el.value === 'true';
+    };
+    if (q.pricingModelVersion === DETERMINISTIC_PRICING_VERSION) {
+      q.eventType = document.getElementById('qb-event-type')?.value.trim() || '';
+      q.venue = document.getElementById('qb-venue')?.value.trim() || '';
+      const totalGuests = nullableNumber('qb-total-guests');
+      const beverageGuests = nullableNumber('qb-beverage-guests');
+      const serviceHours = nullableNumber('qb-service-hours');
+      const bartenders = nullableNumber('qb-modern-bartenders');
+      if (totalGuests !== undefined) q.guestCount = totalGuests;
+      if (beverageGuests !== undefined) q.beverageGuestCount = beverageGuests;
+      if (serviceHours !== undefined) q.serviceHours = serviceHours;
+      if (bartenders !== undefined) q.bartenders = bartenders;
+      q.alcoholicService = nullableBool('qb-alcohol');
+      q.mocktailService = nullableBool('qb-mocktails');
+      q.waterStation = nullableBool('qb-water');
+      q.hasBuiltInBar = nullableBool('qb-built-in-bar');
+      q.cocktailCount = nullableNumber('qb-cocktail-count');
+      q.cocktailComplexity = document.getElementById('qb-cocktail-complexity')?.value || '';
+      q.travelArea = document.getElementById('qb-travel-area')?.value || null;
+      q.gratuityPct = nullableNumber('qb-gratuity') ?? 0;
+      q.deterministicPricing = buildDeterministicPricing(q);
+    }
     const marginEl = document.getElementById('qb-margin');
     if (marginEl) q.marginPct = clampMargin(parseFloat(marginEl.value) || q.marginPct);
     const discEl = document.getElementById('qb-discval');
@@ -1593,6 +1950,7 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
    *
    * Lock does NOT change the lead stage — only Send does. */
   async function saveQuote(status, sendMeta = null) {
+    readFieldsIntoState();
     readProposalIntoState();
     const calc = calcQuote(state.q);
     if ((status === 'locked' || status === 'sent') && !state.q.leadId) {
@@ -1615,6 +1973,7 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
     const me = currentUser?.displayName || currentUser?.email || 'Admin';
 
     /* The data that always overwrites on save */
+    const modernSnapshot = buildPricingSnapshot(state.q, calc);
     const payload = {
       leadId: state.q.leadId,
       leadName: state.q.leadName,
@@ -1657,6 +2016,7 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
       updatedAt: now,
       updatedBy: me
     };
+    if (modernSnapshot) Object.assign(payload, modernSnapshot);
     if (status === 'locked') payload.lockedAt = now;
     if (status === 'sent') {
       payload.lockedAt = now;
@@ -1743,11 +2103,14 @@ function renderQuoteBuilder(containerId, lead, options = {}) {
     /* Save the quote with status='locked' so we have an ID and a frozen
      * snapshot. If the user has already saved, reuse the prior ID instead
      * of creating yet another version. */
-    let quoteId = state.priorQuoteId;
-    if (!quoteId || state.dirty) {
-      quoteId = await saveQuote('locked');
-      if (!quoteId) return;
+    let quoteId;
+    try {
+      quoteId = await persistCurrentQuoteBeforeSend(saveQuote);
+    } catch (error) {
+      console.error(error);
+      return;
     }
+    calc = calcQuote(state.q);
     const shareUrl = `https://lakesalt.us/quote?id=${quoteId}`;
     const text = quoteText(state.q, calc);
 
@@ -2434,6 +2797,8 @@ async function openQuoteViewModal(quoteId) {
     : ((li.customMenuFee||0) + (li.offMenuEnabled ? (li.offMenuQty||0)*(li.offMenuPrice||0) : 0));
   const travelTotal = (li.travel != null ? li.travel : li.travelFee) || 0;
   const customLines = Array.isArray(li.custom) ? li.custom.filter(l => (l.label||'').trim() || (l.price||0) > 0) : [];
+  const modernBreakdown = savedDeterministicBreakdownHTML(q);
+  const displayedRevenue = q.pricingSnapshot?.revenue || {};
   const status = q.clientAcceptedAt ? 'accepted' : (q.status || 'draft');
   const statusColor = status==='accepted'?'#22c55e':status==='locked'?'#FACC15':status==='sent'?'#3b82f6':status==='expired'?'#E05252':'var(--text-muted)';
   const shareUrl = `https://lakesalt.us/quote?id=${quoteId}`;
@@ -2457,7 +2822,7 @@ async function openQuoteViewModal(quoteId) {
 
     <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px">
       <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:8px">Breakdown</div>
-      <div style="display:grid;grid-template-columns:1fr auto;row-gap:6px;font-size:13px">
+      ${modernBreakdown || `<div data-pricing-view="legacy" style="display:grid;grid-template-columns:1fr auto;row-gap:6px;font-size:13px">
         <div>Bartenders <span class="text-muted" style="font-size:11px">${li.bartenders||1} × ${moneyFmt(hasNew ? li.bartenderPay : (li.bartenders ? bartenderTotal/li.bartenders : 0))}</span></div>
         <div style="text-align:right">${moneyFmt(bartenderTotal)}</div>
         <div>Supplies</div>
@@ -2465,17 +2830,17 @@ async function openQuoteViewModal(quoteId) {
         <div>Travel</div>
         <div style="text-align:right">${moneyFmt(travelTotal)}</div>
         ${customLines.map(c => `<div>${escapeHtmlSafe(c.label||'Add-on')}</div><div style="text-align:right">${moneyFmt(c.price)}</div>`).join('')}
-      </div>
+      </div>`}
     </div>
 
     <div style="background:linear-gradient(135deg,rgba(201,168,76,0.10),rgba(139,155,126,0.08));border:1px solid rgba(201,168,76,0.35);border-radius:10px;padding:12px;margin-bottom:12px">
       <div style="display:grid;grid-template-columns:1fr auto;row-gap:4px;font-size:13px">
-        <div class="text-muted">Subtotal</div><div style="text-align:right">${moneyFmt(q.subtotal)}</div>
+        <div class="text-muted">Subtotal</div><div style="text-align:right">${moneyFmt(displayedRevenue.servicePrice ?? q.subtotal)}</div>
         ${q.discountAmt>0?`<div class="text-muted">Discount</div><div style="text-align:right;color:#22c55e">−${moneyFmt(q.discountAmt)}</div>`:''}
         ${q.totalOverride!=null && q.targetAdjustment ? `<div class="text-muted">Adjustment to target</div><div style="text-align:right">${q.targetAdjustment>0?'+':''}${moneyFmt(q.targetAdjustment)}</div>`:''}
         <div style="font-weight:700;color:var(--text);font-size:16px;margin-top:4px">Total</div>
-        <div style="text-align:right;font-weight:700;color:var(--gold);font-size:20px">${moneyFmt(q.total)}</div>
-        <div class="text-muted" style="font-size:12px">Deposit (${q.depositPct||30}%)</div><div style="text-align:right;font-size:12px">${moneyFmt(q.deposit)}</div>
+        <div style="text-align:right;font-weight:700;color:var(--gold);font-size:20px">${moneyFmt(displayedRevenue.total ?? q.total)}</div>
+        <div class="text-muted" style="font-size:12px">Deposit (${q.depositPct||10}%)</div><div style="text-align:right;font-size:12px">${moneyFmt(displayedRevenue.deposit ?? q.deposit)}</div>
       </div>
     </div>
 

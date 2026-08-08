@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<!-- INTERNAL: BUSINESS DRAFT. Terms require Utah attorney review before production use. Do not expose this note in client-facing output. -->
+<meta name="lake-salt-legal-status" content="NOT-APPROVED-FOR-PRODUCTION">
+<meta name="lake-salt-template-version" content="proposal-terms-v1">
+<style>
+  @font-face { font-family:'DejaVu Serif'; src:url('fonts/DejaVuSerif.ttf') format('truetype'); font-weight:400; font-style:normal; }
+  @font-face { font-family:'DejaVu Serif'; src:url('fonts/DejaVuSerif-Bold.ttf') format('truetype'); font-weight:700; font-style:normal; }
+  @font-face { font-family:'DejaVu Sans'; src:url('fonts/DejaVuSans.ttf') format('truetype'); font-weight:400; font-style:normal; }
+  @font-face { font-family:'DejaVu Sans'; src:url('fonts/DejaVuSans-Bold.ttf') format('truetype'); font-weight:700; font-style:normal; }
+  @page { size: 612pt 792pt; margin: 0; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'DejaVu Serif', serif; color:#333; }
+  .page { width:612pt; height:792pt; position:relative; overflow:hidden; page-break-after:always; }
+  .page:last-child { page-break-after:auto; }
+  .band { background:#14293e; padding:22pt 33pt 16pt; border-bottom:3pt solid #c9a04c; }
+  .band h1 { font-size:17.3pt; color:#c9a04c; font-weight:normal; }
+  .band .sub { font-family:'DejaVu Sans'; font-size:5.8pt; letter-spacing:2.2pt; color:#cfd8e0; margin-top:5pt; text-transform:uppercase; }
+  .content { padding:0 33pt; }
+  .kicker { font-family:'DejaVu Sans'; font-weight:bold; font-size:5.2pt; letter-spacing:1.8pt; color:#b5893a; text-transform:uppercase; }
+  h2.title { font-size:18.4pt; color:#14293e; font-weight:normal; line-height:1.25; margin:6pt 0 4pt; }
+  .meta { font-family:'DejaVu Sans'; font-size:5.8pt; color:#6b7683; letter-spacing:.3pt; margin-bottom:14pt; }
+  p.lead { font-size:8.6pt; line-height:1.55; margin-bottom:8pt; }
+  p.lead b { color:#14293e; }
+  p.note { font-size:6.9pt; color:#6b7683; line-height:1.5; margin-bottom:14pt; }
+  .grid { display:flex; gap:7pt; }
+  .card { flex:1; border:0.6pt solid #e3ddd0; display:flex; flex-direction:column; }
+  .chead { color:#fff; text-align:center; padding:10pt 6pt 11pt; }
+  .chead.a { background:#14293e; } .chead.b { background:#1d3852; }
+  .chead .lbl { font-family:'DejaVu Sans'; font-weight:bold; font-size:5.2pt; letter-spacing:1.6pt; color:#c9a04c; text-transform:uppercase; }
+  .chead .price { font-size:20pt; margin:5pt 0 4pt; }
+  .chead .tag { font-family:'DejaVu Sans'; font-size:5.4pt; color:#b9c4cf; }
+  .cbody { background:#faf6ec; padding:10pt 11pt 11pt; flex:1; }
+  .cbody h3 { font-size:9.2pt; color:#14293e; font-weight:normal; margin-bottom:7pt; }
+  .feat { list-style:none; }
+  .feat li { font-family:'DejaVu Sans'; font-size:6.3pt; color:#444; padding:2.6pt 0 2.6pt 10pt; position:relative; border-bottom:0.5pt solid #eee8da; }
+  .feat li:before { content:"\2713"; color:#c9a04c; position:absolute; left:0; }
+  .bd { margin-top:8pt; }
+  .bd .row { display:flex; justify-content:space-between; gap:6pt; font-family:'DejaVu Sans'; font-size:6.1pt; color:#444; padding:3pt 0; border-bottom:0.5pt solid #eee8da; }
+  .bd .row .amt { white-space:nowrap; color:#444; }
+  .bd .row.sub { font-weight:bold; color:#14293e; border-bottom:1.2pt solid #c9a04c; }
+  .bd .row.tot { font-weight:bold; color:#14293e; font-size:6.8pt; border-bottom:none; padding-top:4pt; }
+  .fine { font-family:'DejaVu Sans'; font-size:5.8pt; color:#6b7683; line-height:1.5; margin-top:7pt; padding-top:6pt; border-top:0.5pt solid #e3ddd0; }
+  .fine b { color:#14293e; }
+  .callout { border-left:2.2pt solid #c9a04c; background:#faf7ee; padding:8pt 10pt; font-family:'DejaVu Sans'; font-size:6.3pt; color:#444; line-height:1.6; margin:12pt 0 10pt; }
+  .callout b { color:#14293e; } .callout .gold { color:#b5893a; font-weight:bold; }
+  .navyband { background:#14293e; padding:10pt 12pt; }
+  .navyband h4 { font-size:9.2pt; color:#c9a04c; font-weight:normal; margin-bottom:4pt; }
+  .navyband p { font-family:'DejaVu Sans'; font-size:6.3pt; color:#b9c4cf; line-height:1.5; }
+  h2.sect { font-size:13.5pt; color:#14293e; font-weight:normal; margin:0 0 4pt; }
+  .addon { border-top:1.6pt solid #c9a04c; background:#faf6ec; padding:10pt 12pt; margin-bottom:12pt; display:flex; justify-content:space-between; gap:14pt; }
+  .addon h4 { font-size:8.6pt; color:#14293e; margin-bottom:4pt; font-weight:bold; }
+  .addon p { font-family:'DejaVu Sans'; font-size:6.3pt; color:#444; line-height:1.55; max-width:400pt; }
+  .addon .pr { font-size:14pt; color:#b5893a; white-space:nowrap; }
+  .champ { display:flex; flex-wrap:wrap; gap:8pt; }
+  .champ .c { width:31.5%; border-top:1.4pt solid #c9a04c; background:#faf6ec; padding:8pt 9pt; }
+  .champ h4 { font-size:8.6pt; color:#14293e; font-weight:normal; margin-bottom:3pt; }
+  .champ p { font-family:'DejaVu Sans'; font-size:6.1pt; color:#555; line-height:1.5; }
+  .serve { font-size:6.9pt; font-style:italic; color:#6b7683; margin:10pt 0 16pt; }
+  .steps { display:flex; gap:8pt; }
+  .step { flex:1; border:0.6pt solid #e3ddd0; padding:9pt 10pt; }
+  .step .n { width:11pt; height:11pt; border-radius:50%; background:#c9a04c; color:#14293e; font-family:'DejaVu Sans'; font-weight:bold; font-size:6pt; display:flex; align-items:center; justify-content:center; margin-bottom:6pt; }
+  .step h4 { font-size:8.6pt; color:#14293e; font-weight:normal; margin-bottom:3pt; }
+  .step p { font-family:'DejaVu Sans'; font-size:6.1pt; color:#555; line-height:1.5; }
+  .footer { position:absolute; z-index:2; bottom:0; left:0; right:0; background:#fff; border-top:0.6pt solid #e3ddd0; margin:0 0; padding:9pt 33pt 26pt; display:flex; justify-content:space-between; font-family:'DejaVu Sans'; font-size:5.4pt; letter-spacing:1.2pt; }
+  .footer .l { color:#b5893a; } .footer .r { color:#6b7683; }
+  .footer.footer-inline { position:static; margin:13pt 33pt 0; padding:9pt 0 0; background:transparent; }
+  .imgwrap { background:#faf6ec; border:0.6pt solid #e3ddd0; padding:10pt; margin-top:12pt; }
+  .imgwrap img { width:100%; display:block; }
+  .docfacts { display:flex; gap:7pt; margin:0 0 13pt; }
+  .docfact { flex:1; background:#faf6ec; border-top:1.4pt solid #c9a04c; padding:7pt 8pt; }
+  .docfact .label { font-family:'DejaVu Sans'; font-weight:bold; font-size:4.8pt; letter-spacing:1.1pt; color:#b5893a; text-transform:uppercase; }
+  .docfact .value { font-family:'DejaVu Sans'; font-size:6.6pt; color:#14293e; margin-top:3pt; }
+  .terms-intro { font-size:7.5pt; line-height:1.55; color:#444; margin:7pt 0 12pt; }
+  .terms-grid { display:grid; grid-template-columns:1fr 1fr; gap:8pt 12pt; }
+  .term { border-top:1pt solid #e3ddd0; padding-top:7pt; break-inside:avoid; }
+  .term h3 { font-family:'DejaVu Sans'; font-size:7.2pt; color:#14293e; margin-bottom:3pt; }
+  .term p, .term li { font-family:'DejaVu Sans'; font-size:6.15pt; line-height:1.5; color:#444; }
+  .term ul { margin:3pt 0 0 10pt; }
+  .accept { margin-top:12pt; background:#14293e; border-left:3pt solid #c9a04c; padding:11pt 12pt; }
+  .accept h3 { color:#c9a04c; font-size:9pt; font-weight:normal; margin-bottom:4pt; }
+  .accept p { font-family:'DejaVu Sans'; font-size:6.35pt; line-height:1.55; color:#e4e9ed; }
+  .paylink { margin-top:7pt; font-family:'DejaVu Sans'; font-size:6.4pt; color:#14293e; background:#faf6ec; border:0.7pt solid #e3ddd0; padding:7pt 9pt; word-break:break-all; }
+</style></head><body>
+
+<!-- PAGE 1 -->
+<div class="page">
+  <div class="band"><h1>Lake Salt Bartending</h1><div class="sub">{{PROPOSAL_TYPE}} &nbsp;·&nbsp; Quote {{QUOTE_NUMBER}}</div></div>
+  <div class="content" style="padding-top:26pt;">
+    <div class="kicker">Prepared for {{CLIENT_NAME}}</div>
+    <h2 class="title">{{PROPOSAL_HEADLINE_LINE_1}}<br>{{PROPOSAL_HEADLINE_LINE_2}}</h2>
+    <div class="meta">{{VENUE_OR_CITY}} · {{EVENT_DATE}} · {{GUEST_SCOPE}} · {{STAFFING}} · {{SERVICE_WINDOW}}</div>
+    <div class="docfacts">
+      <div class="docfact"><div class="label">Quote number</div><div class="value">{{QUOTE_NUMBER}}</div></div>
+      <div class="docfact"><div class="label">Issued</div><div class="value">{{ISSUED_DATE}}</div></div>
+      <div class="docfact"><div class="label">Valid through</div><div class="value">{{VALID_THROUGH_DATE}}</div></div>
+      <div class="docfact"><div class="label">Exact deposits</div><div class="value">Option 1: {{OPTION_1_DEPOSIT_AMOUNT}} · Option 2: {{OPTION_2_DEPOSIT_AMOUNT}} · Option 3: {{OPTION_3_DEPOSIT_AMOUNT}} · Option 4: {{OPTION_4_DEPOSIT_AMOUNT}}</div></div>
+      <div class="docfact"><div class="label">Price status</div><div class="value">{{PRICE_STATUS}}</div></div>
+    </div>
+    <p class="lead">Per your request, here are two additional packages alongside the originals — every option is built around <b>one bartender with 20% gratuity included</b> — so your guests never see a tip jar. All four plan for an average of <b>three drinks per drinking guest</b>; the only difference is what those drinks are served in, and who provides it.</p>
+    <p class="note">Each card below shows the full line-item math. Standard disposable cups are the normal baseline; client-supplied cups appear only as a requested exception.</p>
+    <div class="grid">
+      <div class="card">
+        <div class="chead a"><div class="lbl">Option One · Client-Cup Exception</div><div class="price">$768</div><div class="tag">20% gratuity included · by request only</div></div>
+        <div class="cbody">
+          <h3>Client-supplied cups exception</h3>
+          <ul class="feat">
+            <li>One professional bartender · four hours of service</li>
+            <li>You supply ~150 cups — we tell you exactly what &amp; how many to buy</li>
+            <li>Old Fashioned, champagne cocktail, beer &amp; wine</li>
+            <li>Setup, breakdown &amp; all bar supplies</li>
+            <li>Mixers, garnishes, ice &amp; alcohol shopping guide</li>
+            <li>Mobile bar: {{OPTION_1_MOBILE_BAR_STATUS}}</li>
+          </ul>
+          <div class="bd">
+            <div class="row"><span>Professional bartender — on site from 4:30 setup through service (5:00–9:00) and breakdown</span><span class="amt">$400</span></div>
+            <div class="row"><span>Mixers, garnishes &amp; ice</span><span class="amt">$90</span></div>
+            <div class="row"><span>Equipment, transport &amp; travel to Stansbury Park</span><span class="amt">$100</span></div>
+            <div class="row"><span>Menu planning, prep &amp; your alcohol + cup shopping guide</span><span class="amt">$50</span></div>
+            <div class="row sub"><span>Service subtotal</span><span class="amt">$640</span></div>
+            <div class="row"><span>20% gratuity — no tip jar at your wedding</span><span class="amt">$128</span></div>
+            <div class="row tot"><span>Total</span><span class="amt">$768</span></div>
+          </div>
+          <div class="fine">Offered only when specifically requested. Standard disposable cups are otherwise included in Lake Salt pricing.</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="chead b"><div class="lbl">Option Two · Standard Plastic</div><div class="price">$792</div><div class="tag">20% gratuity included · standard plastic cups</div></div>
+        <div class="cbody">
+          <h3>Standard disposable service</h3>
+          <ul class="feat">
+            <li>One professional bartender · four hours of service</li>
+            <li>150 standard clear plastic cups — 3 per drinking guest</li>
+            <li>Old Fashioned, champagne cocktail, beer &amp; wine</li>
+            <li>Setup, breakdown &amp; all bar supplies</li>
+            <li>Mixers, garnishes, ice &amp; alcohol shopping guide</li>
+            <li>Mobile bar: {{OPTION_2_MOBILE_BAR_STATUS}}</li>
+          </ul>
+          <div class="bd">
+            <div class="row"><span>Professional bartender — on site from 4:30 setup through service (5:00–9:00) and breakdown</span><span class="amt">$400</span></div>
+            <div class="row"><span>Mixers, garnishes &amp; ice</span><span class="amt">$90</span></div>
+            <div class="row"><span>150 standard clear plastic cups</span><span class="amt">$20</span></div>
+            <div class="row"><span>Equipment, transport &amp; travel to Stansbury Park</span><span class="amt">$100</span></div>
+            <div class="row"><span>Menu planning, prep &amp; your alcohol shopping guide</span><span class="amt">$50</span></div>
+            <div class="row sub"><span>Service subtotal</span><span class="amt">$660</span></div>
+            <div class="row"><span>20% gratuity — no tip jar at your wedding</span><span class="amt">$132</span></div>
+            <div class="row tot"><span>Total</span><span class="amt">$792</span></div>
+          </div>
+          <div class="fine">Nothing on your to-buy list but the alcohol — we handle every cup, and they're cleared as we go.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 2 -->
+<div class="page">
+  <div class="content" style="padding-top:30pt;">
+    <div class="grid">
+      <div class="card">
+        <div class="chead a"><div class="lbl">Option Three · Premium Plastic</div><div class="price">$840</div><div class="tag">20% gratuity included · high-end plastic cups</div></div>
+        <div class="cbody">
+          <h3>High-end disposable service</h3>
+          <ul class="feat">
+            <li>One professional bartender · four hours of service</li>
+            <li>150 high-end plastic cups — 3 per drinking guest</li>
+            <li>Old Fashioned, champagne cocktail, beer &amp; wine</li>
+            <li>Setup, breakdown &amp; all bar supplies</li>
+            <li>Mixers, garnishes, ice &amp; alcohol shopping guide</li>
+            <li>Mobile bar: {{OPTION_3_MOBILE_BAR_STATUS}}</li>
+          </ul>
+          <div class="bd">
+            <div class="row"><span>Professional bartender — on site from 4:30 setup through service (5:00–9:00) and breakdown</span><span class="amt">$400</span></div>
+            <div class="row"><span>Mixers, garnishes, ice &amp; 150 high-end plastic cups</span><span class="amt">$150</span></div>
+            <div class="row"><span>Equipment, transport &amp; travel to Stansbury Park</span><span class="amt">$100</span></div>
+            <div class="row"><span>Menu planning, prep &amp; your alcohol shopping guide</span><span class="amt">$50</span></div>
+            <div class="row sub"><span>Service subtotal</span><span class="amt">$700</span></div>
+            <div class="row"><span>20% gratuity — no tip jar at your wedding</span><span class="amt">$140</span></div>
+            <div class="row tot"><span>Total</span><span class="amt">$840</span></div>
+          </div>
+          <div class="fine">The square-style heavyweight cups — a step up in look and feel, still zero glassware logistics.</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="chead b"><div class="lbl">Option Four · Real Glass</div><div class="price">$1,038</div><div class="tag">20% gratuity included · rented cocktail glasses</div></div>
+        <div class="cbody">
+          <h3>Real glassware service</h3>
+          <ul class="feat">
+            <li>One professional bartender · four hours of service</li>
+            <li>180 cocktail glasses — rented in five sets of 36</li>
+            <li>Old Fashioned, champagne cocktail, beer &amp; wine</li>
+            <li>Setup, breakdown &amp; all bar supplies</li>
+            <li>Glass rental fully coordinated by Lake Salt</li>
+            <li>Mobile bar: {{OPTION_4_MOBILE_BAR_STATUS}}</li>
+          </ul>
+          <div class="bd">
+            <div class="row"><span>Standard service subtotal without disposable cups</span><span class="amt">$640</span></div>
+            <div class="row"><span>180 cocktail glasses rented from Rent Event Utah (glasses come in sets of 36)</span><span class="amt">$160</span></div>
+            <div class="row"><span>Rental delivery, pickup &amp; return coordination</span><span class="amt">$45</span></div>
+            <div class="row sub"><span>Subtotal</span><span class="amt">$865</span></div>
+            <div class="row"><span>20% gratuity — no tip jar at your wedding</span><span class="amt">$173</span></div>
+            <div class="row tot"><span>Total</span><span class="amt">$1,038</span></div>
+          </div>
+          <div class="fine">Glasses rented through <b>Rent Event Utah</b> (renteventutah.com) — we handle ordering, delivery, and return. Nothing plastic, nothing wasted.</div>
+        </div>
+      </div>
+    </div>
+    <div class="callout"><b>Expecting a livelier crowd?</b> Each package is sized for an average of three drinks per drinking guest. To raise that average by one drink per guest: <span class="gold">+$15</span> on You Provide Cups · <span class="gold">+$20</span> on Standard Plastic · <span class="gold">+$25</span> on Premium Plastic · <span class="gold">+$75</span> on Real Glass (covers the additional rental sets).</div>
+    <div class="navyband"><h4>Alcohol is not included</h4><p>As a dry-hire service, you purchase the alcohol at store prices — no markup. Once the menu is finalized, we send a simple shopping guide with exactly what to buy and how much.</p></div>
+  </div>
+</div>
+
+<!-- PAGE 3 -->
+<div class="page">
+  <div class="content" style="padding-top:30pt;">
+    <h2 class="sect">Optional add-ons</h2>
+    <div style="height:8pt"></div>
+    <div class="addon"><div><h4>We bring the Lake Salt bar</h4><p>Mill Pond Farms has a whiskey barrel and tabletop we can serve from at no charge. If you'd prefer our full mobile bar setup instead, we'll bring it — see the bar footprint page attached so you know exactly what to expect.</p></div><div class="pr">+$100</div></div>
+    <div class="addon"><div><h4>In-person taste test</h4><p>Honestly, most couples skip this — we taste-test and refine every recipe ourselves before your event, so your champagne cocktail arrives perfected either way. But if you'd like to sample it in person before the big day, we'll come to you once your deposit is confirmed.</p></div><div class="pr">+$75</div></div>
+    <div style="height:6pt"></div>
+    <h2 class="sect">Your two signature drinks</h2>
+    <div style="height:8pt"></div>
+    <div class="champ">
+      <div class="c" style="width:48.5%;"><h4>Classic Old Fashioned</h4><p>Michael's signature — bourbon, bitters, orange &amp; a touch of sweetness. Timeless and locked in.</p></div>
+      <div class="c" style="width:48.5%;"><h4>Blueberry Lemon Fizz</h4><p>Alisa's signature — blueberry, lemon &amp; champagne. Bright and seasonal. Your pick on the sweetener: a light touch of honey (a soft background note, never forward), or simple syrup for the cleanest, lightest finish — many people prefer it that way. Just as delicious either direction.</p></div>
+    </div>
+    <p class="serve">Served alongside beer and wine. Just tell us honey or simple syrup — everything else is set.</p>
+    <h2 class="sect">Next steps</h2>
+    <div style="height:8pt"></div>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><h4>Choose your package</h4><p>Reply with Option One through Four, plus the mobile bar add-on if you'd like it.</p></div>
+      <div class="step"><div class="n">2</div><h4>Review timing</h4><p>For a Final quote, the listed 10% deposit reserves the date. The remaining balance is due seven calendar days before the event.</p></div>
+      <div class="step"><div class="n">3</div><h4>Honey or simple syrup</h4><p>Tell us your pick for the Blueberry Lemon Fizz, and we'll finalize the menu and shopping guide.</p></div>
+    </div>
+  </div>
+  <div class="footer"><div class="l">KENDELL · LAKE SALT BARTENDING</div><div class="r">LAKESALT.COM · CONTACT@LAKESALT.US · (801) 692-3585</div></div>
+</div>
+
+<!-- BOOKING TERMS PAGE 1 -->
+<div class="page">
+  <div class="band"><h1>Lake Salt Bartending</h1><div class="sub">Booking Terms &nbsp;·&nbsp; Quote {{QUOTE_NUMBER}}</div></div>
+  <div class="content" style="padding-top:24pt;">
+    <div class="kicker">Clear expectations, from booking through last call</div>
+    <h2 class="title">Booking terms.</h2>
+    <p class="terms-intro">These terms are part of this proposal. They keep the responsibilities, timing, and included service clear for both {{CLIENT_NAME}} ("Client") and Lake Salt Bartending ("Lake Salt").</p>
+    <div class="terms-grid">
+      <div class="term"><h3>1. Proposal, scope, and estimates</h3><p>Price status: {{PRICE_STATUS}}. This proposal is based on the event details currently provided, including date, city or venue, service hours, guest counts, beverage types, and selected package. A Preliminary estimate is not a guaranteed final price and cannot be accepted for booking. Lake Salt confirms scope and price in a Final quote before accepting a deposit. Material changes may require a written price adjustment.</p></div>
+      <div class="term"><h3>2. What Lake Salt includes</h3><p>Unless this proposal says otherwise, service includes the listed bartending staff, setup and breakdown, standard bar tools and equipment, menu planning, listed cocktail mixers, garnishes, ice, and appropriate standard disposable cups. Client purchases alcohol and any bottled or canned soda, juice, or water unless this proposal expressly lists those beverages as Lake Salt-supplied. Premium cups, glassware, a mobile bar, rentals, and extra stations are included only when each package says so.</p></div>
+      <div class="term"><h3>3. Alcohol and dry-hire responsibilities</h3><p>Lake Salt is a dry-hire bartending service and does not sell or furnish alcohol. Client purchases and owns all alcohol and is responsible for lawful delivery to the venue. Lake Salt provides a shopping guide based on the confirmed menu and attendance. Unopened alcohol remains Client's property.</p></div>
+      <div class="term"><h3>4. Guest counts and non-alcoholic service</h3><p>Client must provide both total guest count and estimated drinking-guest count. Mocktails, sodas, juices, and a self-serve or staffed water station affect supplies, labor, and pricing even when no alcohol is used. Only the beverages and stations listed in the accepted proposal are included.</p></div>
+      <div class="term"><h3>5. Status-specific next step</h3>{{STATUS_SPECIFIC_BOOKING_TERMS}}</div>
+      <div class="term"><h3>6. Final payment</h3><p>The remaining balance is due seven calendar days before the event. Lake Salt may pause planning or decline event-day service if payment is overdue. Taxes, approved add-ons, overtime, and change orders are due according to the updated invoice.</p></div>
+    </div>
+  </div>
+  <div class="footer"><div class="l">KENDELL · LAKE SALT BARTENDING</div><div class="r">BOOKING TERMS · {{QUOTE_NUMBER}}</div></div>
+</div>
+
+<!-- BOOKING TERMS PAGE 2 -->
+<div class="page">
+  <div class="content" style="padding-top:30pt;">
+    <h2 class="sect">Booking terms, continued</h2>
+    <div style="height:8pt"></div>
+    <div class="terms-grid">
+      <div class="term"><h3>7. Cancellation and rescheduling</h3><p>The 10% deposit is non-refundable. For Client cancellation 30 or more days before the event, Lake Salt refunds additional payments except documented nonrecoverable commitments. At 15-29 days, 50% of the service price is due. At 14 days or less, the full service price is due. A reschedule requested 30 or more days out may transfer the deposit once, subject to availability and changed costs; later requests follow the cancellation schedule.</p></div>
+      <div class="term"><h3>8. Overtime and changes</h3><p>Changes to attendance, menu, service hours, staffing, venue, stations, rentals, or equipment must be approved in writing. Lake Salt will provide a change order when a change affects price. Event-day overtime requires staff availability and Client or an authorized contact's approval and is billed at {{OVERTIME_RATE}}.</p></div>
+      <div class="term"><h3>9. Client and venue responsibilities</h3><p>Client is responsible for accurate event details, venue approval, permits, licenses, power and water access when required, a safe and level service area, and timely access for setup and breakdown. Client must identify an event-day decision maker and disclose venue rules before booking. Delays or restrictions outside Lake Salt's control do not reduce the agreed price.</p></div>
+      <div class="term"><h3>10. Damage and missing property</h3><p>Client is responsible only for documented damage or loss caused by Client, guests, vendors, or venue personnel. Client is not responsible for ordinary wear, preexisting damage, or damage caused by Lake Salt's acts or omissions. Lake Salt will provide reasonable documentation of causation and repair or replacement cost before invoicing.</p></div>
+      <div class="term"><h3>11. Safety and refusal of service</h3><p>Lake Salt may check identification, refuse alcohol service, and pause or end service when required by law or reasonably necessary for safety. If Client, a guest, vendor, or venue condition causes termination, amounts already due remain due and no refund is owed for unperformed time. If Lake Salt cannot perform for reasons within its control, Client receives a refund of the price allocated to unperformed service, less only completed work accepted by Client.</p></div>
+      <div class="term"><h3>12. Events beyond either party's control</h3><p>Neither party is responsible for failure caused by circumstances beyond reasonable control, including severe weather, government orders, utility failure, venue closure, or serious illness. The parties will first try to reschedule or reasonably adjust performance. If that is not possible, Lake Salt refunds payments for unperformed service after subtracting documented work completed and documented nonrecoverable commitments.</p></div>
+    </div>
+    {{STATUS_CTA}}
+  </div>
+  <div class="footer footer-inline"><div class="l">KENDELL · LAKE SALT BARTENDING</div><div class="r">LAKESALT.COM · CONTACT@LAKESALT.US · (801) 692-3585</div></div>
+</div>
+
+<!-- MOBILE BAR PAGE -->
+<div class="page">
+  <div class="band"><h1>Lake Salt Bartending</h1><div class="sub">Mobile Bar Footprint</div></div>
+  <div class="content" style="padding-top:26pt;">
+    <div class="kicker">Optional add-on · +$100</div>
+    <h2 class="title">The Lake Salt mobile bar.</h2>
+    <p class="note" style="max-width:380pt;">If you'd like us to bring our full bar setup instead of serving from the venue's whiskey barrel and tabletop, here's the footprint so you know exactly what to expect on site.</p>
+    <div class="imgwrap"><img src="barsetup_0.png"></div>
+  </div>
+  <div class="footer"><div class="l">KENDELL · LAKE SALT BARTENDING</div><div class="r">LAKESALT.COM · CONTACT@LAKESALT.US · (801) 692-3585</div></div>
+</div>
+
+</body></html>

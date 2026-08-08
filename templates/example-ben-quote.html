@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<!-- INTERNAL: BUSINESS DRAFT. Terms require Utah attorney review before production use. Do not expose this note in client-facing output. -->
+<meta name="lake-salt-legal-status" content="NOT-APPROVED-FOR-PRODUCTION">
+<meta name="lake-salt-template-version" content="proposal-terms-v1">
+<style>
+  @font-face { font-family:'DejaVu Serif'; src:url('fonts/DejaVuSerif.ttf') format('truetype'); font-weight:400; font-style:normal; }
+  @font-face { font-family:'DejaVu Serif'; src:url('fonts/DejaVuSerif-Bold.ttf') format('truetype'); font-weight:700; font-style:normal; }
+  @font-face { font-family:'DejaVu Sans'; src:url('fonts/DejaVuSans.ttf') format('truetype'); font-weight:400; font-style:normal; }
+  @font-face { font-family:'DejaVu Sans'; src:url('fonts/DejaVuSans-Bold.ttf') format('truetype'); font-weight:700; font-style:normal; }
+  @page { size: 612pt 792pt; margin: 0; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'DejaVu Serif', serif; color:#333; }
+  .page { width:612pt; height:792pt; position:relative; overflow:hidden; page-break-after:always; }
+  .page:last-child { page-break-after:auto; }
+  .band { background:#14293e; padding:22pt 33pt 16pt; border-bottom:3pt solid #c9a04c; }
+  .band h1 { font-size:17.3pt; color:#c9a04c; font-weight:normal; }
+  .band .sub { font-family:'DejaVu Sans'; font-size:5.8pt; letter-spacing:2.2pt; color:#cfd8e0; margin-top:5pt; text-transform:uppercase; }
+  .content { padding:0 33pt; }
+  .kicker { font-family:'DejaVu Sans'; font-weight:bold; font-size:5.2pt; letter-spacing:1.8pt; color:#b5893a; text-transform:uppercase; }
+  h2.title { font-size:18.4pt; color:#14293e; font-weight:normal; line-height:1.25; margin:6pt 0 4pt; }
+  .meta { font-family:'DejaVu Sans'; font-size:5.8pt; color:#6b7683; letter-spacing:.3pt; margin-bottom:14pt; }
+  p.lead { font-size:8.6pt; line-height:1.55; margin-bottom:8pt; }
+  p.lead b { color:#14293e; }
+  p.note { font-size:6.9pt; color:#6b7683; line-height:1.5; margin-bottom:14pt; }
+  .grid { display:flex; gap:7pt; }
+  .card { flex:1; border:0.6pt solid #e3ddd0; display:flex; flex-direction:column; }
+  .chead { color:#fff; text-align:center; padding:10pt 6pt 11pt; }
+  .chead.a { background:#14293e; } .chead.b { background:#1d3852; }
+  .chead .lbl { font-family:'DejaVu Sans'; font-weight:bold; font-size:5.2pt; letter-spacing:1.6pt; color:#c9a04c; text-transform:uppercase; }
+  .chead .price { font-size:20pt; margin:5pt 0 4pt; }
+  .chead .tag { font-family:'DejaVu Sans'; font-size:5.4pt; color:#b9c4cf; }
+  .cbody { background:#faf6ec; padding:10pt 11pt 11pt; flex:1; }
+  .cbody h3 { font-size:9.2pt; color:#14293e; font-weight:normal; margin-bottom:7pt; }
+  .feat { list-style:none; }
+  .feat li { font-family:'DejaVu Sans'; font-size:6.3pt; color:#444; padding:2.6pt 0 2.6pt 10pt; position:relative; border-bottom:0.5pt solid #eee8da; }
+  .feat li:before { content:"\2713"; color:#c9a04c; position:absolute; left:0; }
+  .bd { margin-top:8pt; }
+  .bd .row { display:flex; justify-content:space-between; gap:6pt; font-family:'DejaVu Sans'; font-size:6.1pt; color:#444; padding:3pt 0; border-bottom:0.5pt solid #eee8da; }
+  .bd .row .amt { white-space:nowrap; color:#444; }
+  .bd .row.sub { font-weight:bold; color:#14293e; border-bottom:1.2pt solid #c9a04c; }
+  .bd .row.tot { font-weight:bold; color:#14293e; font-size:6.8pt; border-bottom:none; padding-top:4pt; }
+  .fine { font-family:'DejaVu Sans'; font-size:5.8pt; color:#6b7683; line-height:1.5; margin-top:7pt; padding-top:6pt; border-top:0.5pt solid #e3ddd0; }
+  .fine b { color:#14293e; }
+  .callout { border-left:2.2pt solid #c9a04c; background:#faf7ee; padding:8pt 10pt; font-family:'DejaVu Sans'; font-size:6.3pt; color:#444; line-height:1.6; margin:12pt 0 10pt; }
+  .callout b { color:#14293e; } .callout .gold { color:#b5893a; font-weight:bold; }
+  .navyband { background:#14293e; padding:10pt 12pt; }
+  .navyband h4 { font-size:9.2pt; color:#c9a04c; font-weight:normal; margin-bottom:4pt; }
+  .navyband p { font-family:'DejaVu Sans'; font-size:6.3pt; color:#b9c4cf; line-height:1.5; }
+  h2.sect { font-size:13.5pt; color:#14293e; font-weight:normal; margin:0 0 4pt; }
+  .addon { border-top:1.6pt solid #c9a04c; background:#faf6ec; padding:10pt 12pt; margin-bottom:10pt; display:flex; justify-content:space-between; gap:14pt; }
+  .addon h4 { font-size:8.6pt; color:#14293e; margin-bottom:4pt; font-weight:bold; }
+  .addon p { font-family:'DejaVu Sans'; font-size:6.3pt; color:#444; line-height:1.55; max-width:400pt; }
+  .addon .pr { font-size:14pt; color:#b5893a; white-space:nowrap; }
+  .champ { display:flex; flex-wrap:wrap; gap:8pt; }
+  .champ .c { width:31.5%; border-top:1.4pt solid #c9a04c; background:#faf6ec; padding:8pt 9pt; }
+  .champ h4 { font-size:8.6pt; color:#14293e; font-weight:normal; margin-bottom:3pt; }
+  .champ p { font-family:'DejaVu Sans'; font-size:6.1pt; color:#555; line-height:1.5; }
+  .serve { font-size:6.9pt; font-style:italic; color:#6b7683; margin:10pt 0 16pt; }
+  .steps { display:flex; gap:8pt; }
+  .step { flex:1; border:0.6pt solid #e3ddd0; padding:9pt 10pt; }
+  .step .n { width:11pt; height:11pt; border-radius:50%; background:#c9a04c; color:#14293e; font-family:'DejaVu Sans'; font-weight:bold; font-size:6pt; display:flex; align-items:center; justify-content:center; margin-bottom:6pt; }
+  .step h4 { font-size:8.6pt; color:#14293e; font-weight:normal; margin-bottom:3pt; }
+  .step p { font-family:'DejaVu Sans'; font-size:6.1pt; color:#555; line-height:1.5; }
+  .footer { position:absolute; z-index:2; bottom:0; left:0; right:0; background:#fff; border-top:0.6pt solid #e3ddd0; margin:0 0; padding:9pt 33pt 26pt; display:flex; justify-content:space-between; font-family:'DejaVu Sans'; font-size:5.4pt; letter-spacing:1.2pt; }
+  .footer .l { color:#b5893a; } .footer .r { color:#6b7683; }
+  .footer.footer-inline { position:static; margin:13pt 33pt 0; padding:9pt 0 0; background:transparent; }
+  .imgwrap { background:#faf6ec; border:0.6pt solid #e3ddd0; padding:10pt; margin-top:12pt; }
+  .imgwrap img { width:100%; display:block; }
+  .docfacts { display:flex; gap:7pt; margin:0 0 13pt; }
+  .docfact { flex:1; background:#faf6ec; border-top:1.4pt solid #c9a04c; padding:7pt 8pt; }
+  .docfact .label { font-family:'DejaVu Sans'; font-weight:bold; font-size:4.8pt; letter-spacing:1.1pt; color:#b5893a; text-transform:uppercase; }
+  .docfact .value { font-family:'DejaVu Sans'; font-size:6.6pt; color:#14293e; margin-top:3pt; }
+  .terms-intro { font-size:7.5pt; line-height:1.55; color:#444; margin:7pt 0 12pt; }
+  .terms-grid { display:grid; grid-template-columns:1fr 1fr; gap:8pt 12pt; }
+  .term { border-top:1pt solid #e3ddd0; padding-top:7pt; break-inside:avoid; }
+  .term h3 { font-family:'DejaVu Sans'; font-size:7.2pt; color:#14293e; margin-bottom:3pt; }
+  .term p { font-family:'DejaVu Sans'; font-size:6.15pt; line-height:1.5; color:#444; }
+  .accept { margin-top:12pt; background:#14293e; border-left:3pt solid #c9a04c; padding:11pt 12pt; }
+  .accept h3 { color:#c9a04c; font-size:9pt; font-weight:normal; margin-bottom:4pt; }
+  .accept p { font-family:'DejaVu Sans'; font-size:6.35pt; line-height:1.55; color:#e4e9ed; }
+  .paylink { margin-top:7pt; font-family:'DejaVu Sans'; font-size:6.4pt; color:#14293e; background:#faf6ec; border:0.7pt solid #e3ddd0; padding:7pt 9pt; word-break:break-all; }
+</style></head><body>
+
+<!-- PAGE 1 -->
+<div class="page">
+  <div class="band"><h1>Lake Salt Bartending</h1><div class="sub">Wedding Bar Proposal</div></div>
+  <div class="content" style="padding-top:26pt;">
+    <div class="kicker">Prepared for the Gilchrist Wedding</div>
+    <h2 class="title">Two ways to raise a glass<br>to the newlyweds.</h2>
+    <div class="meta">Siempre · June 10, 2027 · ~350 guests (~50 drinking alcohol) · Two professional bartenders · Five hours of service</div>
+    <div class="docfacts">
+      <div class="docfact"><div class="label">Quote number</div><div class="value">LS-2027-0610-GIL</div></div>
+      <div class="docfact"><div class="label">Issued</div><div class="value">August 8, 2026</div></div>
+      <div class="docfact"><div class="label">Valid through</div><div class="value">August 22, 2026</div></div>
+      <div class="docfact"><div class="label">Exact deposits</div><div class="value">Option 1: $135 · Option 2: $162</div></div>
+      <div class="docfact"><div class="label">Price status</div><div class="value">Final quote</div></div>
+    </div>
+    <p class="lead">Here is your full proposal, built around <b>two professional bartenders</b> — one keeping cocktails fast, one floating to keep the self-serve station stocked and spotless. Both packages plan for beer, wine, hard seltzers, and <b>two signature cocktails</b>, plus soda, juice, and water for every guest. The only difference is how gratuity is handled.</p>
+    <p class="note">A note on pricing: your total is driven by the number of drinking guests and the scope of service — not the full 350-person headcount. That's why a 350-guest wedding with 50 drinkers prices the way it does below, with every line itemized.</p>
+    <div class="grid">
+      <div class="card">
+        <div class="chead a"><div class="lbl">Option One · Tip Jar</div><div class="price">$1,350</div><div class="tag">gratuity via tip jar at the bar</div></div>
+        <div class="cbody">
+          <h3>Full service, tips optional</h3>
+          <ul class="feat">
+            <li>Two professional bartenders · five hours of service</li>
+            <li>Beer, wine, hard seltzers &amp; two signature cocktails</li>
+            <li>Soda, juice &amp; water station for all 350 guests</li>
+            <li>Setup, breakdown &amp; all bar supplies included</li>
+            <li>Mixers, garnishes, ice, cups &amp; full shopping guide</li>
+            <li>Lake Salt mobile bar included if required by Siempre</li>
+          </ul>
+          <div class="bd">
+            <div class="row"><span>Two professional bartenders — on site from setup through service and breakdown</span><span class="amt">$800</span></div>
+            <div class="row"><span>Mixers, garnishes, ice &amp; cups (cocktail bar + 350-guest station)</span><span class="amt">$300</span></div>
+            <div class="row"><span>Self-serve station setup, stocking &amp; upkeep throughout</span><span class="amt">$100</span></div>
+            <div class="row"><span>Equipment &amp; transport — no travel fee</span><span class="amt">$100</span></div>
+            <div class="row"><span>Menu planning, prep &amp; your shopping guide</span><span class="amt">$50</span></div>
+            <div class="row sub"><span>Service subtotal</span><span class="amt">$1,350</span></div>
+            <div class="row"><span>Gratuity — a tip jar sits at the bar, guests tip as they like</span><span class="amt">$0</span></div>
+            <div class="row tot"><span>Total</span><span class="amt">$1,350</span></div>
+          </div>
+          <div class="fine">The lower up-front number — gratuity is left to your guests at the bar.</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="chead b"><div class="lbl">Option Two · Gratuity Included</div><div class="price">$1,620</div><div class="tag">20% gratuity built in · no tip jar</div></div>
+        <div class="cbody">
+          <h3>Full service, no tip jar</h3>
+          <ul class="feat">
+            <li>Two professional bartenders · five hours of service</li>
+            <li>Beer, wine, hard seltzers &amp; two signature cocktails</li>
+            <li>Soda, juice &amp; water station for all 350 guests</li>
+            <li>Setup, breakdown &amp; all bar supplies included</li>
+            <li>Mixers, garnishes, ice, cups &amp; full shopping guide</li>
+            <li>Lake Salt mobile bar included if required by Siempre</li>
+          </ul>
+          <div class="bd">
+            <div class="row"><span>Everything in the Option One service subtotal</span><span class="amt">$1,350</span></div>
+            <div class="row"><span>20% gratuity — no tip jar at the wedding</span><span class="amt">$270</span></div>
+            <div class="row sub"><span>Subtotal</span><span class="amt">$1,620</span></div>
+            <div class="row tot"><span>Total</span><span class="amt">$1,620</span></div>
+          </div>
+          <div class="fine">No tip jar sits on the bar. The displayed total covers the listed scope; approved changes, overtime, taxes, or add-ons may change it.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 2 -->
+<div class="page">
+  <div class="content" style="padding-top:30pt;">
+    <h2 class="sect">Your questions, answered</h2>
+    <div style="height:8pt"></div>
+    <div class="addon"><div><h4>How many bartenders?</h4><p>Two. With ~50 drinking guests, one bartender keeps the cocktail line fast while the second floats — helping pour and keeping the soda, juice, and water station stocked, iced, and clean for all 350 guests throughout the night.</p></div></div>
+    <div class="addon"><div><h4>What's included?</h4><p>Lake Salt supplies the listed cocktail mixers, garnishes, ice, standard disposable cups, bar equipment, setup, breakdown, and menu planning. You purchase the alcohol plus bottled or canned soda, juice, and water at store prices; our shopping guide tells you what to buy and how much. The listed self-serve station labor and supplies cover setup, ice, cups, stocking, and upkeep.</p></div></div>
+    <div class="addon"><div><h4>How is pricing calculated?</h4><p>By drinking guests and scope of service, not total headcount. The full guest count only affects the non-alcoholic station supplies — which is why it's a modest line item, not a multiplier.</p></div></div>
+    <div class="addon"><div><h4>Fees &amp; insurance</h4><p>No travel or service fee is added for the listed scope at Siempre. Approved scope changes, overtime, taxes, or add-ons may change the total. Insurance coverage and any certificate requirements will be verified before booking; this draft does not represent a specific policy or limit.</p></div></div>
+    <div class="navyband"><h4>Alcohol is not included</h4><p>As a dry-hire service, you purchase the alcohol at store prices — no markup. Once the menu is finalized, we send a simple shopping guide with exactly what to buy and how much.</p></div>
+    <div style="height:14pt"></div>
+    <h2 class="sect">Next steps</h2>
+    <div style="height:8pt"></div>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><h4>Choose your option</h4><p>Reply with Option One or Option Two — whichever gratuity style fits the evening.</p></div>
+      <div class="step"><div class="n">2</div><h4>Reserve the date</h4><p>Pay the exact deposit for your selection: $135 for Option One or $162 for Option Two. The remaining balance is due seven calendar days before the event.</p></div>
+      <div class="step"><div class="n">3</div><h4>Design the signature cocktails</h4><p>We'll work with the couple on their two signature drinks and finalize the menu and shopping guide.</p></div>
+    </div>
+  </div>
+  <div class="footer"><div class="l">KENDELL · LAKE SALT BARTENDING</div><div class="r">LAKESALT.COM · CONTACT@LAKESALT.US · (801) 692-3585</div></div>
+</div>
+
+<!-- PAGE 3: BOOKING TERMS -->
+<div class="page">
+  <div class="band"><h1>Lake Salt Bartending</h1><div class="sub">Booking Terms &nbsp;·&nbsp; Quote LS-2027-0610-GIL</div></div>
+  <div class="content" style="padding-top:24pt;">
+    <div class="kicker">Clear expectations, from booking through last call</div>
+    <h2 class="title">Booking terms.</h2>
+    <p class="terms-intro">These terms are part of this proposal. They keep the responsibilities, timing, and included service clear for the Gilchrist Wedding ("Client") and Lake Salt Bartending ("Lake Salt").</p>
+    <div class="terms-grid">
+      <div class="term"><h3>1. Proposal, scope, and estimates</h3><p>This proposal is based on the event details currently provided, including date, venue, service hours, guest counts, beverage types, and selected package. Any price labeled preliminary is an estimate, not a guaranteed final price. Lake Salt will confirm the final scope and price before booking. Material changes may require a written price adjustment.</p></div>
+      <div class="term"><h3>2. What Lake Salt includes</h3><p>Lake Salt supplies the listed staff, setup and breakdown, standard bar tools and equipment, menu planning, listed cocktail mixers, garnishes, ice, and standard disposable cups. Client purchases alcohol and bottled or canned soda, juice, and water. The mobile bar is included if required by Siempre; glassware, rentals, and unlisted stations are not included.</p></div>
+      <div class="term"><h3>3. Alcohol and dry-hire responsibilities</h3><p>Lake Salt is a dry-hire bartending service and does not sell or furnish alcohol. Client purchases and owns all alcohol and is responsible for lawful delivery to the venue. Lake Salt provides a shopping guide based on the confirmed menu and attendance. Unopened alcohol remains Client's property.</p></div>
+      <div class="term"><h3>4. Guest counts and non-alcoholic service</h3><p>Client must provide both total guest count and estimated drinking-guest count. Mocktails, sodas, juices, and a self-serve or staffed water station affect supplies, labor, and pricing even when no alcohol is used. Only the beverages and stations listed in the accepted proposal are included.</p></div>
+      <div class="term"><h3>5. Booking and acceptance</h3><p>The date is not reserved until Lake Salt receives the 10% non-refundable deposit and confirms acceptance. Paying through the proposal's actual payment link means Client accepts the selected package, proposal details, and these booking terms. If the date becomes unavailable before Lake Salt confirms acceptance, Lake Salt will return the payment.</p></div>
+      <div class="term"><h3>6. Final payment</h3><p>The remaining balance is due seven calendar days before the event. Lake Salt may pause planning or decline event-day service if payment is overdue. Taxes, approved add-ons, overtime, and change orders are due according to the updated invoice.</p></div>
+    </div>
+  </div>
+  <div class="footer"><div class="l">KENDELL · LAKE SALT BARTENDING</div><div class="r">BOOKING TERMS · LS-2027-0610-GIL</div></div>
+</div>
+
+<!-- PAGE 4: BOOKING TERMS CONTINUED -->
+<div class="page">
+  <div class="content" style="padding-top:30pt;">
+    <h2 class="sect">Booking terms, continued</h2><div style="height:8pt"></div>
+    <div class="terms-grid">
+      <div class="term"><h3>7. Cancellation and rescheduling</h3><p>The 10% deposit is non-refundable. For Client cancellation 30 or more days before the event, additional payments are refunded except documented nonrecoverable commitments. At 15-29 days, 50% of the service price is due. At 14 days or less, the full service price is due. A reschedule requested 30 or more days out may transfer the deposit once, subject to availability and changed costs; later requests follow the cancellation schedule.</p></div>
+      <div class="term"><h3>8. Overtime and changes</h3><p>Changes to attendance, menu, hours, staffing, venue, stations, rentals, or equipment require written approval and may change the price. Event-day overtime requires availability and Client or an authorized contact's approval and is billed at $100 per bartender per started hour.</p></div>
+      <div class="term"><h3>9. Client and venue responsibilities</h3><p>Client is responsible for accurate event details, venue approval, permits, licenses, power and water access when required, a safe and level service area, and timely access for setup and breakdown. Client must identify an event-day decision maker and disclose venue rules before booking. Delays or restrictions outside Lake Salt's control do not reduce the agreed price.</p></div>
+      <div class="term"><h3>10. Damage and missing property</h3><p>Client is responsible only for documented damage or loss caused by Client, guests, vendors, or venue personnel. Client is not responsible for ordinary wear, preexisting damage, or damage caused by Lake Salt. Lake Salt will document causation and reasonable repair or replacement cost before invoicing.</p></div>
+      <div class="term"><h3>11. Safety and refusal of service</h3><p>Lake Salt may check identification, refuse alcohol service, and pause or end service when required by law or reasonably necessary for safety. If Client, a guest, vendor, or venue condition causes termination, amounts due remain due. If Lake Salt cannot perform for reasons within its control, Client receives a refund allocated to unperformed service, less completed work accepted by Client.</p></div>
+      <div class="term"><h3>12. Events beyond either party's control</h3><p>Neither party is responsible for failure caused by circumstances beyond reasonable control. The parties will first try to reschedule or reasonably adjust performance. If that is not possible, Lake Salt refunds payments for unperformed service after subtracting documented completed work and documented nonrecoverable commitments.</p></div>
+    </div>
+    <div class="accept"><h3>Ready to reserve the date?</h3><p>Review the selected package, event details, and these terms. Paying the exact 10% deposit for your selected option - $135 for Option One or $162 for Option Two - confirms acceptance and authorizes Lake Salt to begin planning. Keep the payment confirmation with this proposal for your records.</p></div>
+    <div class="paylink"><b>Deposit payment:</b> https://pay.example.invalid/replace-before-send</div>
+  </div>
+  <div class="footer footer-inline"><div class="l">KENDELL · LAKE SALT BARTENDING</div><div class="r">LAKESALT.COM · CONTACT@LAKESALT.US · (801) 692-3585</div></div>
+</div>
+
+<!-- PAGE 5: MOBILE BAR -->
+<div class="page">
+  <div class="band"><h1>Lake Salt Bartending</h1><div class="sub">Mobile Bar Footprint</div></div>
+  <div class="content" style="padding-top:26pt;">
+    <div class="kicker">Included in your package</div>
+    <h2 class="title">The Lake Salt mobile bar.</h2>
+    <p class="note" style="max-width:380pt;">If Siempre's setup calls for it, here's our full mobile bar footprint so you know exactly what to expect on site.</p>
+    <div class="imgwrap"><img src="barsetup_0.png"></div>
+  </div>
+  <div class="footer"><div class="l">KENDELL · LAKE SALT BARTENDING</div><div class="r">LAKESALT.COM · CONTACT@LAKESALT.US · (801) 692-3585</div></div>
+</div>
+
+</body></html>

@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test test/receipt-utils.test.js test/booking-calendar.test.js test/booking-calendar.lifecycle.test.js",
+    "test:emulator": "node -e \"if (!process.env.FIRESTORE_EMULATOR_HOST) { console.error('FIRESTORE_EMULATOR_HOST is required'); process.exit(1) }\" && node --test test/booking-calendar.integration.test.js",
+    "test:emulator:ci": "firebase emulators:exec --only firestore --project lake-salt-booking-test --config ../firebase.json 'npm run test:emulator'"
   },
   "keywords": [],
   "author": "",

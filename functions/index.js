@@ -15,6 +15,8 @@ const google = new Proxy({}, {
 
 admin.initializeApp();
 const db = admin.firestore();
+const { createBookingCalendar } = require('./booking-calendar');
+const bookingCalendar = createBookingCalendar({ db, admin });
 
 /* ─── Communications Hub secrets (set by Kendell at deploy — NEVER hardcode) ──
  * TODO(deploy): set each of these via the Firebase CLI before the first run:
@@ -572,7 +574,7 @@ exports.markBooked = onCall(async (request) => {
    that quote.update, advances the linked lead's stage, and writes an
    activity entry so the dashboard surfaces it.
    ───────────────────────────────────────────────────────────────────────── */
-const { onDocumentUpdated } = require('firebase-functions/v2/firestore');
+const { onDocumentUpdated, onDocumentWritten } = require('firebase-functions/v2/firestore');
 
 exports.onQuoteAccepted = onDocumentUpdated('quotes/{quoteId}', async (event) => {
   const before = event.data?.before?.data() || {};
@@ -588,6 +590,35 @@ exports.onQuoteAccepted = onDocumentUpdated('quotes/{quoteId}', async (event) =>
   const leadName = after.leadName || 'a client';
   const sig      = after.clientAcceptedSignature || 'client';
   const total    = after.total || 0;
+
+  /* The accepted quote creates an idempotent tentative booking hold. The
+   * booking calendar, rather than lead stage, is authoritative for future
+   * availability decisions. Missing event times intentionally produce a
+   * conditional hold instead of pretending the date is clear. */
+  try {
+    let lead = {};
+    if (leadId) {
+      const leadDoc = await db.collection('leads').doc(leadId).get();
+      if (leadDoc.exists) lead = { id: leadDoc.id, ...leadDoc.data() };
+    }
+    await bookingCalendar.createTentativeFromAcceptedQuote({ quoteId, quote: after, lead });
+  } catch (e) {
+    console.error('Failed to create tentative booking from accepted quote:', e);
+    await Promise.allSettled([
+      bookingCalendar.recordSystemIssue(
+        `quote-booking-${quoteId}`,
+        'Accepted quote did not create a booking hold',
+        'The booking-calendar integration failed after quote acceptance; downstream deposit actions were stopped.',
+        { source: 'onQuoteAccepted', safeReference: `quotes/${quoteId}` },
+        { severity: 'high', affectedComponents: ['booking-calendar', 'quotes'] }
+      ),
+      bookingCalendar.createHighPriorityAttention({
+        fingerprint: `quote-booking-${quoteId}`, quoteId, leadId,
+        message: e.message
+      })
+    ]);
+    return null;
+  }
 
   /* Advance the linked lead's stage. Booked-Tentative is the right stop:
    * the client has signed off on the quote, but the deposit isn't paid yet
@@ -608,7 +639,7 @@ exports.onQuoteAccepted = onDocumentUpdated('quotes/{quoteId}', async (event) =>
 
   /* Activity log — visible on the admin dashboard's recent-activity feed. */
   try {
-    await db.collection('activity').add({
+    await db.collection('activity').doc(`quote_accepted_${quoteId}`).set({
       action: 'quote_accepted',
       collection: 'quotes',
       docId: quoteId,
@@ -617,7 +648,7 @@ exports.onQuoteAccepted = onDocumentUpdated('quotes/{quoteId}', async (event) =>
       userName: sig,
       metadata: { leadId, total, signature: sig },
       createdAt: admin.firestore.FieldValue.serverTimestamp()
-    });
+    }, { merge: true });
   } catch (e) {
     console.error('Failed to write activity entry on quote accept:', e);
   }
@@ -626,15 +657,15 @@ exports.onQuoteAccepted = onDocumentUpdated('quotes/{quoteId}', async (event) =>
    * in the kendell_followups collection (already surfaced in the admin UI). */
   if (leadId) {
     try {
-      await db.collection('kendell_followups').add({
+      await db.collection('kendell_followups').doc(`quote_accepted_${quoteId}`).set({
         type: 'quote_accepted',
         leadId,
         leadName,
         title: `🎉 ${leadName} accepted their quote — send deposit invoice`,
-        notes: `Quote accepted by ${sig} for $${Math.round(total).toLocaleString('en-US')}. Send the 30% deposit invoice to lock the date.`,
+        notes: `Quote accepted by ${sig} for $${Math.round(total).toLocaleString('en-US')}. Send the 10% deposit invoice to lock the date.`,
         status: 'open',
         createdAt: admin.firestore.FieldValue.serverTimestamp()
-      });
+      }, { merge: true });
     } catch (e) {
       console.error('Failed to create owner followup on quote accept:', e);
     }
@@ -642,18 +673,96 @@ exports.onQuoteAccepted = onDocumentUpdated('quotes/{quoteId}', async (event) =>
 
   /* Push to everyone — a signed quote is a money moment both should see. */
   try {
-    await db.collection('notifications').add({
+    await db.collection('notifications').doc(`quote_accepted_${quoteId}`).set({
       title: `🎉 ${leadName} accepted their quote — $${Math.round(total).toLocaleString('en-US')}`,
-      body: `Signed by ${sig}. Next step: send the 30% deposit invoice to lock the date.`,
-      url: 'https://lakesalt.us/admin/#crm',
-      tag: 'quote-accepted',
+      body: `Signed by ${sig}. Next step: send the 10% deposit invoice to lock the date.`,
+      url: leadId ? `https://lakesalt.us/admin/#crm/lead/${leadId}` : 'https://lakesalt.us/admin/#crm',
+      tag: `quote-accepted-${quoteId}`,
       audience: 'all',
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    }, { merge: true });
   } catch (e) { console.warn('quote-accepted push failed:', e.message); }
 
   return null;
 });
+
+/* ═══ Canonical booking calendar ══════════════════════════════════════════ */
+exports.checkBookingAvailability = onCall(async (request) => {
+  await requireAdmin(request);
+  const candidate = (request && request.data) || {};
+  if (!candidate.eventDate || !/^\d{4}-\d{2}-\d{2}$/.test(candidate.eventDate)) {
+    throw new HttpsError('invalid-argument', 'eventDate must be YYYY-MM-DD.');
+  }
+  return bookingCalendar.checkAvailability(candidate, {
+    excludeBookingId: candidate.excludeBookingId
+  });
+});
+
+exports.confirmBooking = onCall(async (request) => {
+  const adminUser = await requireAdmin(request);
+  const data = (request && request.data) || {};
+  if (!data.bookingId) throw new HttpsError('invalid-argument', 'bookingId is required.');
+  try {
+    const result = await bookingCalendar.confirmBooking({
+      bookingId: data.bookingId,
+      confirmedBy: adminUser.email || adminUser.uid,
+      manualPaymentAttestation: {
+        confirmed: data.manualPaymentAttestation === true,
+        paidAmount: data.paidAmount,
+        paymentReference: data.paymentReference,
+        reason: data.attestationReason
+      }
+    });
+    const confirmed = await db.collection('bookings').doc(data.bookingId).get();
+    if (confirmed.exists) await bookingCalendar.syncDerivedRecords(data.bookingId, confirmed.data());
+    return { success: true, ...result };
+  } catch (error) {
+    throw new HttpsError('failed-precondition', error.message);
+  }
+});
+
+exports.releaseBooking = onCall(async (request) => {
+  await requireAdmin(request);
+  const data = (request && request.data) || {};
+  if (!data.bookingId) throw new HttpsError('invalid-argument', 'bookingId is required.');
+  try {
+    await bookingCalendar.releaseBooking(data.bookingId, data.reason || 'manual');
+    return { success: true, bookingId: data.bookingId };
+  } catch (error) {
+    throw new HttpsError('failed-precondition', error.message);
+  }
+});
+
+exports.cancelConfirmedBooking = onCall(async (request) => {
+  const adminUser = await requireAdmin(request);
+  const data = (request && request.data) || {};
+  if (!data.bookingId || !String(data.reason || '').trim()) {
+    throw new HttpsError('invalid-argument', 'bookingId and cancellation reason are required.');
+  }
+  try {
+    const result = await bookingCalendar.cancelConfirmedBooking({
+      bookingId: data.bookingId, reason: data.reason,
+      cancelledBy: adminUser.email || adminUser.uid
+    });
+    return { success: true, ...result };
+  } catch (error) {
+    throw new HttpsError('failed-precondition', error.message);
+  }
+});
+
+exports.onBookingChangedSyncDerived = onDocumentWritten('bookings/{bookingId}', async (event) => {
+  const booking = event.data?.after?.data();
+  if (!booking || booking.status !== 'confirmed') return null;
+  const before = event.data?.before?.data() || {};
+  if (before.status === 'confirmed' && booking.projectId && booking.eventId) return null;
+  await bookingCalendar.syncDerivedRecords(event.params.bookingId, booking);
+  return null;
+});
+
+exports.dailyBookingIntegrityRepair = onSchedule(
+  { schedule: '17 4 * * *', timeZone: 'America/Denver', timeoutSeconds: 300 },
+  async () => bookingCalendar.repairIntegrity()
+);
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -1812,13 +1921,12 @@ async function pushFollowupsDigest(slot) {
   } catch (e) { console.warn('followups digest push failed:', e.message); }
 }
 
-/* First push of the day at 10am MT — late enough to land, early enough to
- * matter. Re-detects first so overnight replies already cleared the list. */
+/* Quiet reliability sweeps may detect missed/aging work, but they do not push
+ * merely because a clock fired. Event-driven attention items own notifying. */
 exports.morningFollowupPush = onSchedule(
-  { schedule: '0 10 * * *', timeZone: 'America/Denver', timeoutSeconds: 120 },
+  { schedule: '0 10 * * 1-6', timeZone: 'America/Denver', timeoutSeconds: 120 },
   async () => {
     await detectRepliesNeeded();
-    await pushFollowupsDigest('morning');
     return null;
   }
 );
@@ -1826,10 +1934,9 @@ exports.morningFollowupPush = onSchedule(
 /* Afternoon pass: re-detect anyone newly waiting on us, then re-push
  * whatever is still open. Second push of the workday. */
 exports.afternoonFollowupSweep = onSchedule(
-  { schedule: '0 14 * * *', timeZone: 'America/Denver', timeoutSeconds: 120 },
+  { schedule: '0 14 * * 1-6', timeZone: 'America/Denver', timeoutSeconds: 120 },
   async () => {
     await detectRepliesNeeded();
-    await pushFollowupsDigest('afternoon');
     return null;
   }
 );
@@ -3215,7 +3322,9 @@ exports.onLeadCreated = onDocCreatedLead(
   try {
     await db.collection('notifications').add({
       title: '🔥 New lead: ' + (lead.name || 'unknown'),
-      body: `${lead.eventType || 'Event'}${lead.eventDate ? ' · ' + lead.eventDate : ''} — first-touch queued, agent replies in ~15-40 min (human-feel delay).`,
+      body: `${lead.name || 'This person'} asked about ${lead.eventType || 'an event'}${lead.eventDate ? ' on ' + lead.eventDate : ''}${lead.guestCount ? ' for about ' + lead.guestCount + ' guests' : ''}. Their first reply is queued; tap to review the lead and anything still missing.`,
+      url: `https://lakesalt.us/admin/#crm/lead/${event.params.leadId}`,
+      tag: `new-lead-${event.params.leadId}`,
       audience: 'ops',
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
