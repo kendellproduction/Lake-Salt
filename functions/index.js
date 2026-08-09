@@ -16,6 +16,7 @@ const google = new Proxy({}, {
 admin.initializeApp();
 const db = admin.firestore();
 const { createBookingCalendar } = require('./booking-calendar');
+const { classifyTaskCompletion, hasBlockingFirstTouchForLead } = require('./agent-task-utils');
 const bookingCalendar = createBookingCalendar({ db, admin });
 
 /* ─── Communications Hub secrets (set by Kendell at deploy — NEVER hardcode) ──
@@ -3136,6 +3137,7 @@ const RUNNER_TOOLS = [
       properties: {
         outcome: { type: 'string', enum: ['done', 'blocked'] },
         summary: { type: 'string', description: '1-3 sentences: what you did / why blocked. Shown to Kendell.' },
+        blockType: { type: 'string', enum: ['human_decision', 'operational'], description: 'Required when blocked: human_decision only when the owner must choose; operational for temporary integration/tool/runner failures.' },
         question: { type: 'string', description: 'When blocked on a human decision: the ONE question, phrased so it can be answered with a tap. E.g. "The client wants us in Las Vegas Oct 12 — take the event?"' },
         options: {
           type: 'array', items: { type: 'string' }, maxItems: 4,
@@ -3242,8 +3244,8 @@ Rules:
 - Routine follow-up/check-in emails — INCLUDING follow-ups on an already-sent quote/proposal: send them (send_email). Warm, casual-professional, short, signed "Kendell — Lake Salt". Never pushy. Don't restate dollar figures in follow-ups.
 - Emails that state or change money (figures, discounts, contracts, payment terms): create_draft only.
 - MOVING ON RULE: if a lead's event is within ~2 weeks and they never responded, don't email them — mark them Lost with a note instead.
-- If the task can't be done with these tools, complete_task with outcome=blocked and say what's needed.
-- When blocked on a HUMAN DECISION, also fill complete_task's question (one tappable question) and options (2-4 short answer choices). They become one-tap buttons on Kendell's phone — the better your options, the faster you get unblocked. Example: question "Vegas wedding Oct 12 — outside our area. Take it?", options ["Take it", "Decline", "Only if travel paid"].`;
+- If the task can't be done because of a temporary integration, tool, or runner failure, complete_task with outcome=blocked, blockType=operational, and no question.
+- When blocked on a HUMAN DECISION, use outcome=blocked, blockType=human_decision, and also fill question (one tappable question) and options (2-4 short answer choices). They become one-tap buttons on Kendell's phone — the better your options, the faster you get unblocked. Example: question "Vegas wedding Oct 12 — outside our area. Take it?", options ["Take it", "Decline", "Only if travel paid"].`;
 
   let messages = [{ role: 'user', content: `TASK: ${t.title}\n\nINSTRUCTIONS: ${t.instruction || t.detail || '(none)'}\n\nQueued by: ${t.source || 'unknown'} · agent hint: ${t.agent || 'general'}` }];
   const sentGuard = new Set();   /* addresses emailed within THIS task */
@@ -3270,18 +3272,19 @@ Rules:
     messages.push({ role: 'user', content: outs });
   }
   const now = admin.firestore.FieldValue.serverTimestamp();
-  const blocked = !(result && result.outcome === 'done');
+  const completion = classifyTaskCompletion(result);
   await taskDoc.ref.update({
-    status: blocked ? 'blocked' : 'done',
+    status: completion.status,
+    requiresHumanDecision: completion.requiresHumanDecision,
     result: String((result && result.summary) || 'runner gave no summary').slice(0, 1000),
     completedAt: now,
   });
 
-  /* A blocked task is a QUESTION for a human. Surface it as a decision
+  /* A human-decision block is a QUESTION for a human. Surface it as a decision
    * followup + an actionable push: tapping the push opens #decide/<id> —
    * a screen with the question and Yes/No buttons. Answering queues a
    * follow-on task so the agent acts on the decision (no Claude app needed). */
-  if (blocked) {
+  if (completion.requiresHumanDecision) {
     try {
       const t = taskDoc.data();
       const question = String((result && result.question) || (result && result.summary) || t.title || 'Agent needs a decision').slice(0, 500);
@@ -3365,9 +3368,7 @@ exports.agentTaskRunner = onSchedule(
  *    "handled" means completed work, not intentions. */
 
 async function hasPendingFirstTouch(leadId) {
-  const q = await db.collection('agent_tasks')
-    .where('leadId', '==', leadId).limit(5).get();
-  return q.docs.some(d => ['queued', 'running', 'done'].includes(d.data().status) && d.data().kind === 'first_touch');
+  return hasBlockingFirstTouchForLead(db.collection('agent_tasks'), leadId);
 }
 
 async function queueFirstTouch(leadId, lead, source) {
