@@ -16,7 +16,11 @@ const google = new Proxy({}, {
 admin.initializeApp();
 const db = admin.firestore();
 const { createBookingCalendar } = require('./booking-calendar');
-const { classifyTaskCompletion, hasBlockingFirstTouchForLead } = require('./agent-task-utils');
+const {
+  classifyTaskCompletion,
+  hasBlockingFirstTouchForLead,
+  validateTaskCompletion,
+} = require('./agent-task-utils');
 const bookingCalendar = createBookingCalendar({ db, admin });
 
 /* ─── Communications Hub secrets (set by Kendell at deploy — NEVER hardcode) ──
@@ -3259,7 +3263,25 @@ Rules:
     });
     const toolUses = res.content.filter(b => b.type === 'tool_use');
     const done = toolUses.find(b => b.name === 'complete_task');
-    if (done) { result = done.input; break; }
+    if (done) {
+      const completionError = validateTaskCompletion(done.input);
+      if (!completionError) { result = done.input; break; }
+      messages.push(
+        { role: 'assistant', content: res.content },
+        {
+          role: 'user',
+          content: toolUses.map(tu => ({
+            type: 'tool_result',
+            tool_use_id: tu.id,
+            is_error: true,
+            content: tu.id === done.id
+              ? `Invalid complete_task input: ${completionError}. Call complete_task again with valid input.`
+              : 'Tool call skipped because complete_task input was invalid; retry only if still needed.',
+          })),
+        },
+      );
+      continue;
+    }
     if (!toolUses.length) { messages.push({ role: 'assistant', content: res.content }, { role: 'user', content: 'Use your tools or call complete_task.' }); continue; }
     messages.push({ role: 'assistant', content: res.content });
     const outs = [];

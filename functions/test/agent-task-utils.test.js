@@ -5,6 +5,7 @@ const {
   classifyTaskCompletion,
   hasBlockingFirstTouchForLead,
   isHumanDecisionBlock,
+  validateTaskCompletion,
 } = require('../agent-task-utils');
 
 test('human-decision blocked first-touch tasks prevent automatic requeue', () => {
@@ -71,6 +72,26 @@ test('task completion separates human decisions from retryable operational failu
     classifyTaskCompletion({ outcome: 'done' }),
     { status: 'done', requiresHumanDecision: false },
   );
+});
+
+test('task completion validation rejects malformed blocked results', () => {
+  assert.match(
+    validateTaskCompletion({ outcome: 'blocked', summary: 'Need a decision.' }),
+    /require blockType/,
+  );
+  assert.match(
+    validateTaskCompletion({ outcome: 'blocked', blockType: 'human_decision', question: '   ' }),
+    /non-empty question/,
+  );
+  assert.strictEqual(
+    validateTaskCompletion({ outcome: 'blocked', blockType: 'operational', summary: 'Tool unavailable.' }),
+    null,
+  );
+  assert.strictEqual(
+    validateTaskCompletion({ outcome: 'blocked', blockType: 'human_decision', question: 'Approve travel?' }),
+    null,
+  );
+  assert.strictEqual(validateTaskCompletion({ outcome: 'done', summary: 'Finished.' }), null);
 });
 
 test('lead query finds a blocked first-touch beyond five unrelated tasks', async () => {

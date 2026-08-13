@@ -12,6 +12,21 @@ function isHumanDecisionBlock(result) {
     && result.question.trim().length > 0;
 }
 
+function validateTaskCompletion(result) {
+  if (!result || !['done', 'blocked'].includes(result.outcome)) {
+    return 'outcome must be done or blocked';
+  }
+  if (result.outcome === 'done') return null;
+  if (!['human_decision', 'operational'].includes(result.blockType)) {
+    return 'blocked tasks require blockType human_decision or operational';
+  }
+  if (result.blockType === 'human_decision'
+      && (typeof result.question !== 'string' || !result.question.trim())) {
+    return 'human-decision blocks require a non-empty question';
+  }
+  return null;
+}
+
 function classifyTaskCompletion(result) {
   if (result && result.outcome === 'done') {
     return { status: 'done', requiresHumanDecision: false };
@@ -42,4 +57,5 @@ module.exports = {
   classifyTaskCompletion,
   hasBlockingFirstTouchForLead,
   isHumanDecisionBlock,
+  validateTaskCompletion,
 };
