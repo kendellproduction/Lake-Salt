@@ -1242,6 +1242,32 @@ async function routeMessage(msg) {
   /* Knot/WeddingPro relays send from noreply-style proxies but ARE real
    * leads — never auto-resolve those channels. */
   const isProxyChannel = msg.sourceChannel === 'theknot' || msg.sourceChannel === 'weddingpro';
+  const parsed = resolved.parsed || {};
+  const looksLikeProxyInquiry = isProxyChannel && msg.direction === 'in' &&
+    parsed.name && parsed.eventDate &&
+    /(?:wants to learn more|waiting to hear back|sent you a new message)/i.test(`${msg.subject || ''} ${msg.bodyText || ''}`) &&
+    !/\b(?:support|weddingpro|the knot)\b/i.test(parsed.name);
+  if (looksLikeProxyInquiry) {
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const leadRef = db.collection('leads').doc();
+    const replyAddress = validMailboxAddress(msg.replyToAddress || msg.from);
+    await leadRef.set({
+      name: String(parsed.name).trim(),
+      email: replyAddress,
+      replyToAddress: replyAddress,
+      emailAliases: replyAddress ? [replyAddress] : [],
+      eventDate: String(parsed.eventDate).trim(),
+      phone: String(parsed.phone || '').trim(),
+      eventType: 'Wedding',
+      stage: 'New Lead',
+      source: msg.sourceChannel === 'theknot' ? 'The Knot' : 'WeddingPro',
+      createdAt: now,
+      updatedAt: now,
+    });
+    await writeMessageToLead(leadRef, msg);
+    console.log(`routeMessage: created ${msg.sourceChannel} lead ${leadRef.id} for ${parsed.name}`);
+    return;
+  }
   if (msg.direction === 'in' && !isProxyChannel && isAutomatedNonLead(msg.from)) {
     await recordUnmatched(msg, resolved.parsed || null, { autoResolve: true, reason: 'automated_sender' });
     return;
@@ -3042,10 +3068,10 @@ exports.refreshAgentBrief = onCall(
 /* ═══ Agent Task Runner (Phase 2) — queued work actually gets DONE ════════
  * Every 30 min during business hours, pull queued agent_tasks and execute
  * them with a Claude tool loop. Capabilities: read anything (query_crm),
- * update leads, resolve unmatched messages, and email — routine follow-ups
- * send directly (Kendell's standing autonomy policy); anything touching
- * pricing/quotes/contracts becomes a Gmail DRAFT for his review, never an
- * autonomous send. Every task ends with a logged outcome. */
+ * update leads, resolve unmatched messages, and prepare email drafts. During
+ * the v1.1 safety migration this legacy runner has no client-send authority;
+ * all of its email output is held as a Gmail draft. Every task ends with a
+ * logged outcome. */
 
 function rfc822(to, subject, body) {
   const msg =
@@ -3111,7 +3137,7 @@ const RUNNER_TOOLS = [
   },
   {
     name: 'send_email',
-    description: 'Send a routine email (follow-up, check-in, quote/proposal follow-up nudge, answer a simple question) from contact@lakesalt.us to a lead. The recipient MUST be that lead\'s email on file. FORBIDDEN when the email states or changes money — specific figures, discounts, contracts, payment terms — use create_draft for those.',
+    description: 'Legacy compatibility name: prepare a routine email as a Gmail draft in v1.1 safety mode. It does not send. The recipient MUST be that lead\'s verified email on file. Money or sensitive content also remains draft-only.',
     input_schema: {
       type: 'object',
       properties: {
@@ -3226,9 +3252,12 @@ async function runRunnerTool(name, input, gmail, sentGuard) {
     }
     const raw = rfc822(input.to, String(input.subject).slice(0, 200), String(input.body).slice(0, 5000));
     if (name === 'send_email') {
-      await gmail.users.messages.send({ userId: 'me', requestBody: { raw } });
-      await db.collection('activity').add({ type: 'agent_email_sent', leadId: input.leadId, to: String(input.to).toLowerCase().trim(), note: `Agent emailed ${input.to}: "${String(input.subject).slice(0, 100)}"`, createdAt: now });
-      return `Email sent to ${input.to}.`;
+      // v1.1 safety cutover: the legacy task runner is not the canonical
+      // transactional send service. Preserve its useful work as a draft until
+      // the new outbox/channel adapter is deployed and owner-activated.
+      await gmail.users.drafts.create({ userId: 'me', requestBody: { message: { raw } } });
+      await db.collection('activity').add({ type: 'agent_send_held_as_draft', leadId: input.leadId, note: `Legacy agent send held as draft for ${input.to}: "${String(input.subject).slice(0, 100)}"`, createdAt: now });
+      return `Send held in v1.1 safety mode; draft created for ${input.to}.`;
     }
     await gmail.users.drafts.create({ userId: 'me', requestBody: { message: { raw } } });
     await db.collection('activity').add({ type: 'agent_draft_created', leadId: input.leadId, note: `Agent drafted email to ${input.to}: "${String(input.subject).slice(0, 100)}" — review in Gmail Drafts`, createdAt: now });
@@ -3245,7 +3274,7 @@ async function executeAgentTask(taskDoc, client, gmail) {
 
 Rules:
 - Dig with query_crm before acting; verify lead ids and emails from real data.
-- Routine follow-up/check-in emails — INCLUDING follow-ups on an already-sent quote/proposal: send them (send_email). Warm, casual-professional, short, signed "Kendell — Lake Salt". Never pushy. Don't restate dollar figures in follow-ups.
+- Routine follow-up/check-in emails — INCLUDING follow-ups on an already-sent quote/proposal: prepare them with send_email. In v1.1 safety mode that tool creates a draft and does not send. Warm, casual-professional, short, signed "Kendell — Lake Salt". Never pushy. Don't restate dollar figures in follow-ups.
 - Emails that state or change money (figures, discounts, contracts, payment terms): create_draft only.
 - MOVING ON RULE: if a lead's event is within ~2 weeks and they never responded, don't email them — mark them Lost with a note instead.
 - If the task can't be done because of a temporary integration, tool, or runner failure, complete_task with outcome=blocked, blockType=operational, and no question.
@@ -3357,10 +3386,15 @@ exports.agentTaskRunner = onSchedule(
   },
   async () => {
     const snap = await db.collection('agent_tasks')
-      .where('status', '==', 'queued').limit(8).get();
+      .where('status', '==', 'queued').limit(100).get();
     const ready = snap.docs.filter(d => {
       const nb = d.data().notBefore;
       return !nb || nb.toMillis() <= Date.now();
+    }).sort((a, b) => {
+      const priority = d => d.data().kind === 'first_touch' ? 0 : 1;
+      return priority(a) - priority(b) ||
+        (((a.data().createdAt && a.data().createdAt.seconds) || 0) -
+         ((b.data().createdAt && b.data().createdAt.seconds) || 0));
     }).slice(0, 4);
     if (!ready.length) { console.log('agentTaskRunner: nothing ready.'); return; }
     const Anthropic = require('@anthropic-ai/sdk');
@@ -3421,7 +3455,7 @@ exports.onLeadCreated = onDocCreatedLead(
   if (!lead || !lead.email) return;
   const src = String(lead.source || '').toLowerCase();
   /* Imports/backfills don't get insta-touched — only organic arrivals. */
-  if (lead.importBatch || src.includes('knot') || src.includes('import') || src.includes('expo')) return;
+  if (lead.importBatch || src.includes('import') || src.includes('expo')) return;
   if (await hasPendingFirstTouch(event.params.leadId)) return;
   await queueFirstTouch(event.params.leadId, lead, 'lead_created_trigger');
   console.log(`onLeadCreated: first-touch queued for ${lead.name || event.params.leadId} (sends after ~12min human-feel delay)`);
@@ -3450,7 +3484,7 @@ exports.middayLeadSweep = onSchedule(
       const lead = d.data();
       if (!lead.email) continue;
       const src = String(lead.source || '').toLowerCase();
-      if (lead.importBatch || src.includes('knot') || src.includes('import') || src.includes('expo')) continue;
+      if (lead.importBatch || src.includes('import') || src.includes('expo')) continue;
       /* Skip anyone we've already emailed. */
       const threads = await d.ref.collection('threads').limit(5).get();
       const contacted = threads.docs.some(t => (t.data().lastDirection === 'out') || t.data().hasOutbound);

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "release": "1.0.0",
+  "actions": {
+    "routine_reply": "green",
+    "information_request": "green",
+    "follow_up": "green",
+    "crm_update": "green",
+    "payment_reminder": "green",
+    "new_message_type": "yellow",
+    "low_confidence_quote": "yellow",
+    "contract_change": "red",
+    "policy_activation": "red",
+    "money_movement": "red",
+    "refund_or_dispute": "red",
+    "account_or_permission_change": "red"
+  },
+  "yellowDisposition": "draft_or_hold",
+  "redDefault": "no_action"
+}

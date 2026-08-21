@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "release": "1.0.0",
+  "milestones": [
+    {"id": "eight_week_checkin", "daysFromEvent": -56},
+    {"id": "supply_list", "daysFromEvent": -24},
+    {"id": "two_week_confirmation", "daysFromEvent": -14},
+    {"id": "post_event_closeout", "daysFromEvent": 1}
+  ],
+  "missingTerms": "attention"
+}
