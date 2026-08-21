@@ -15,6 +15,16 @@ service firebase.storage {
                    && request.resource.contentType.matches('image/.*');
     }
 
+    // Business records such as insurance certificates. Admin-only, PDF only.
+    match /business-documents/{allPaths=**} {
+      allow read: if request.auth != null
+                  && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
+      allow write: if request.auth != null
+                   && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid))
+                   && request.resource.size < 20 * 1024 * 1024
+                   && request.resource.contentType == 'application/pdf';
+    }
+
     // ── Bar build waitlist: visitors upload AI mockup images.
     //    Public CREATE only (image type, ≤ 10 MB). Read is admin-only via
     //    download URLs, which include a token; only admins should distribute them.
