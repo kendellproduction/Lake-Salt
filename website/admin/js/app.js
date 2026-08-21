@@ -18,6 +18,7 @@ const MODULES = {
   analytics:  () => renderAnalytics(),
   expenses:   () => renderExpenses(),
   inventory:  () => renderInventory(),
+  documents:  () => renderDocuments(),
   funnel:     () => renderFunnel(),
   expo:       () => renderExpo(),
   'event-day': () => renderEventDay(),
