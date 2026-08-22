@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "test": "node --test test/receipt-utils.test.js test/booking-calendar.test.js test/booking-calendar.lifecycle.test.js test/agent-task-utils.test.js",
-    "test:emulator": "node -e \"if (!process.env.FIRESTORE_EMULATOR_HOST) { console.error('FIRESTORE_EMULATOR_HOST is required'); process.exit(1) }\" && node --test test/booking-calendar.integration.test.js",
+    "test:emulator": "node -e \"if (!process.env.FIRESTORE_EMULATOR_HOST) { console.error('FIRESTORE_EMULATOR_HOST is required'); process.exit(1) }\" && node --test --test-concurrency=1 test/booking-calendar.integration.test.js test/agent-task-utils.integration.test.js",
     "test:emulator:ci": "firebase emulators:exec --only firestore --project lake-salt-booking-test --config ../firebase.json 'npm run test:emulator'"
   },
   "keywords": [],
