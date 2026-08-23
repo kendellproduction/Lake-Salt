@@ -2346,7 +2346,11 @@ exports.parseReceipt = onObjectFinalized(
       await applyParsedReceipt(expenseRef, parsed, nearbyEvents);
     } catch (err) {
       console.error(`parseReceipt: ${expenseId} failed`, err);
-      await expenseRef.update({ status: 'needs-review' });
+      await expenseRef.update({
+        status: 'failed', receiptState: 'parse-failed', retryable: true,
+        receiptError: 'Could not read this receipt automatically. Re-upload it or retry later.',
+        failedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
     }
   }
 );
@@ -2478,7 +2482,12 @@ exports.receiptStuckSweep = onSchedule(
       try {
         const [exists] = await bucket.file(path).exists();
         if (!exists) {
-          await d.ref.update({ status: 'needs-review', description: 'Receipt image missing — re-upload or delete' });
+          await d.ref.update({
+            status: 'failed', receiptState: 'image-missing', retryable: false,
+            receiptError: 'The original image was never uploaded. Re-upload the receipt to continue.',
+            description: 'Receipt image missing — re-upload required',
+            failedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
           flagged++;
           continue;
         }
@@ -2497,7 +2506,14 @@ exports.receiptStuckSweep = onSchedule(
         fixed++;
       } catch (e) {
         console.error(`receiptStuckSweep: ${d.id} failed`, e.message);
-        try { await d.ref.update({ status: 'needs-review', description: 'Auto-parse failed — please review' }); } catch (_) {}
+        try {
+          await d.ref.update({
+            status: 'failed', receiptState: 'parse-failed', retryable: true,
+            receiptError: 'Automatic reading failed. Try re-uploading a clearer image.',
+            description: 'Receipt could not be read — retry available',
+            failedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        } catch (_) {}
         flagged++;
       }
     }
@@ -2781,7 +2797,9 @@ exports.agentChat = onCall(
 
 DIG FIRST. Before answering anything about the business, use query_crm to pull the real data — leads, quotes, events, email threads, whatever the question needs. Never say you'd "need to check" or ask permission to look something up: just look, then answer with specifics. Only come back with a question when it's a genuine judgment call you can't resolve from data.
 
-You can act, not just talk: kick_off_task queues real work for the comms agent (email/CRM/quotes), lead-gen agent (prospecting), or general agent. resolve_followup closes an open item when Kendell gives a decision. Confirm what you did in one line.
+You can act, not just talk: kick_off_task QUEUES work for the comms agent (email/CRM/quotes), lead-gen agent (prospecting), or general agent. resolve_followup closes an open item when Kendell gives a decision. Never say work is done when you only queued it. Say “Queued” and name the task. You only see CRM data exposed by query_crm; you do not have direct Gmail, calendar, connector, filesystem, or code/deployment access.
+
+EVIDENCE: for a factual answer, finish with one short “Evidence:” line naming the collection and exact record(s) you checked. If the needed evidence is absent from the CRM, say that plainly instead of inferring.
 
 ${AUTONOMY_POLICY}
 
@@ -2862,7 +2880,7 @@ const PUBLISH_BRIEF_TOOL = [{
             title: { type: 'string', description: 'Short imperative line shown collapsed' },
             detail: { type: 'string', description: '1-3 sentences shown when expanded: the why and the specifics' },
             tag: { type: 'string', description: 'Short source chip, e.g. LEAD, EMAIL, QUOTE, CRM, EVENT' },
-            status: { type: 'string', enum: ['handled', 'proposed', 'fyi'], description: 'handled = you queued it yourself; proposed = needs Kendell tap; fyi = no action' },
+      status: { type: 'string', enum: ['queued', 'proposed', 'fyi'], description: 'queued = work was placed in the agent queue, not completed; proposed = needs Kendell tap; fyi = no action' },
             needsApproval: { type: 'boolean' },
             action: {
               type: 'object', description: 'The agent task to queue (required for handled/proposed)',
@@ -2953,6 +2971,8 @@ MOVING ON RULE: if a lead's event date is close (within ~2 weeks) and they've ne
 
 ${AUTONOMY_POLICY}
 
+TRUTH IN STATUS: a queued task is not completed work. Use status="queued" only after you supply a concrete action; never call it handled or done in the brief. Do not bury the operational queue in a narrative: the dashboard owns that.
+
 When you've seen enough, call publish_brief exactly once.
 
 SNAPSHOT (verify anything important with query_crm)
@@ -3002,7 +3022,7 @@ Agent work completed in the last 24h (report these as DONE, with outcomes): ${JS
     const task = { title: String(t.title || ''), detail: String(t.detail || ''),
                    tag: String(t.tag || '').slice(0, 12).toUpperCase(),
                    status: t.status, needsApproval: !!t.needsApproval, action: t.action || null };
-    if (t.status === 'handled' && t.action && !t.needsApproval) {
+    if ((t.status === 'queued' || t.status === 'handled') && t.action && !t.needsApproval) {
       try {
         const ref = await db.collection('agent_tasks').add({
           agent: t.action.agent || 'general',
@@ -3013,6 +3033,7 @@ Agent work completed in the last 24h (report these as DONE, with outcomes): ${JS
         task.queuedTaskId = ref.id;
       } catch (e) { console.warn('brief auto-queue failed:', e.message); }
     }
+    if (task.status === 'handled') task.status = 'queued'; /* legacy model output */
     tasks.push(task);
   }
 
