@@ -1,0 +1,26 @@
+{
+  "version": "1.0.0",
+  "status": "proposed",
+  "createdAt": "2026-08-17",
+  "rationale": "Safe interim normalization for the Lake Salt v1.1 migration; not activated.",
+  "activation": {
+    "active": false,
+    "requiresOwnerAction": true
+  },
+  "files": {
+    "booking.yaml": "3724f660552d7d775d1cc8bee2506ab92f2b772bb07e4e4ab1a33a29d7fbe77c",
+    "communication.yaml": "b53b3e5cda0456a475df775ee84d5f28bf7c8aa10bc6ac9641a83c768b7cb418",
+    "constitution.md": "ff5a7c1f63af872e5d41a32e0e5778a75d8cb389dbfa017617297fd4e1df743a",
+    "escalation.yaml": "fa34d24cd11c662cca0a9190aa83ce8b61f253a68440bc882a54687aef2e337c",
+    "event-prep.yaml": "012537f40608c852b3cd98a426279987e9240176bf00598425c3155147170fe5",
+    "payment.yaml": "fceae84dc7761cb1412bd6f63d418c46c2f758ea1315017969c1486a62863413",
+    "pricing.yaml": "920b8ef06d61b4b9b7660d79adbef48cb6607b9f88440c1c86c4a432b129bf2f",
+    "security.yaml": "fcd83cf91509b06c389626e2b15edc207c7d7ab1b84af7dd4297814c2baa02b0"
+  },
+  "testEvidence": {
+    "command": "cd functions && npm test",
+    "result": "87 passed, 0 failed",
+    "scope": ["policy integrity", "send gate", "outbox", "domain workflows", "legacy regression"]
+  },
+  "rollback": "No active pointer is created by this proposal. If later activated, rollback is an owner-authorized atomic pointer change to the prior verified release."
+}

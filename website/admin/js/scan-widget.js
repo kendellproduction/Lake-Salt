@@ -42,16 +42,9 @@ function scanQueueRemove(id) {
 }
 
 async function uploadScanBlob(blob) {
-  const ref = db.collection('expenses').doc();
-  await ref.set({
-    status: 'processing', aiParsed: true, taxYear: null,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-    date: null, amount: null, category: null, eventId: null,
-    description: 'Scanning…', receiptPath: 'receipts/' + ref.id + '.jpg',
-    scannedBy: (typeof currentUser !== 'undefined' && currentUser) ? (currentUser.displayName || currentUser.email || null) : null,
-  });
-  await storage.ref('receipts/' + ref.id + '.jpg').put(blob, { contentType: 'image/jpeg' });
-  return ref.id;
+  // Keep dashboard and Expenses scans on one reliable upload path.
+  if (typeof createReceiptScan === 'function') return createReceiptScan(blob, 'quick-scan.jpg');
+  throw new Error('Receipt scanner is still loading. Please try again.');
 }
 
 function scanQuestionsFor(d) {
@@ -356,12 +349,16 @@ async function initQuickScanWidget() {
           const amount = d.amount != null ? `$${d.amount.toFixed(2)}` : '—';
 
           let statusText = '';
-          if (d.status === 'processing') {
+          if (d.status === 'uploading' || d.status === 'processing') {
             statusText = `<span class="scan-shimmer">⏳ Parsing…</span>`;
           } else if (d.status === 'ok') {
             statusText = `✓ ${amount}`;
           } else if (d.status === 'needs-review') {
-            statusText = `⚠ needs answer`;
+            statusText = /receipt image missing|upload failed/i.test(String(d.description || ''))
+              ? `⚠ re-upload needed`
+              : `⚠ needs answer`;
+          } else if (d.status === 'failed') {
+            statusText = `⚠ re-upload needed`;
           } else {
             statusText = amount;
           }

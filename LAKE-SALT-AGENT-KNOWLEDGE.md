@@ -79,6 +79,13 @@ Hard rules learned from Kendell:
 - Never bury a price correction; state it plainly
 - Quotes/attachments do the detail work; emails do the relationship work
 
+### Mandatory client-send checklist
+- Send only the requested final file type; convert to PDF when requested.
+- Never send internal labels or notes such as "draft," "not for production," "waiting on legal," "client-facing," or internal-control language.
+- Corrections belong in the existing client email thread.
+- Keep correction copy brief: apologize, identify the corrected attachment, and state the next step. Do not explain internal workflow.
+- If Kendell requests review first, create a draft only and wait for approval; re-check wording, thread, recipient, and attachment immediately before sending.
+
 **Phone calls:** Kendell works a day job (Adobe). Weekday calls generally only **after 4:45 PM**. Never commit him to a daytime call without asking.
 
 ---

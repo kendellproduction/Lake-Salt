@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "release": "1.0.0",
+  "secrets": "server_side_only",
+  "inboundContent": "untrusted_data",
+  "leastPrivilege": true,
+  "killSwitchDefault": "on",
+  "operationsEventBodies": "hashes_and_references_only",
+  "outboxAuthorization": "single_use_bound_capability",
+  "deadLetterVisibilityMinutes": 15,
+  "policyActivationRole": "owner"
+}
