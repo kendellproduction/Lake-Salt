@@ -20,7 +20,7 @@ const DASH_PREFS_KEY = 'dashboardPrefs';
    one and points at the card body element it already targets.
    ═══════════════════════════════════════════════════════════════════════ */
 const WIDGETS = [
-  { id: 'agentBrief', title: '🤖 Agent Brief', elId: 'w-agent-brief',
+  { id: 'agentBrief', title: '✦ Lake Salt Assistant', elId: 'w-agent-brief',
     defaultOn: true, defaultOrder: 0, sizes: ['sm', 'md', 'lg'],
     render(now, range) { if (typeof renderAgentBriefWidget === 'function') renderAgentBriefWidget(_dashData, now); } },
   { id: 'upcoming', title: '📅 Upcoming Events', elId: 'w-upcoming',
@@ -269,6 +269,7 @@ async function renderDashboard() {
       <button type="button" id="dash-customize-btn" class="dash-customize-toggle" onclick="toggleCustomizeMode()">⚙️ Customize</button>
     </div>
     <div id="dash-customize" class="dash-customize-panel" style="display:none"></div>
+    <div id="ops-work-queue" style="margin-bottom:16px"></div>
     <div id="dash-agent-hero" style="margin-bottom:16px"></div>
     <div id="upcoming-calls"></div>
     <div id="quick-actions"></div>
@@ -319,9 +320,7 @@ async function renderDashboard() {
   renderWidgetGrid();
 
   renderFilter();
-  /* Alert banners retired — the Agent Brief hero summarizes and hosts the
-     same followups/unmatched items with inline actions (renderAlerts kept
-     for reference but no longer called). */
+  renderOperationsQueue(new Date());
   renderAll();
   if (typeof initQuickScanWidget === 'function') initQuickScanWidget();
 }
@@ -348,6 +347,7 @@ function renderAll() {
   const now = new Date();
   const range = DashCore.getDateRange(getActiveFilter(), now);
   renderStats(range, now);
+  renderOperationsQueue(now);
   // Registered widgets: only enabled ones render (their cards are the only
   // ones in the DOM — see renderWidgetGrid), in the user's order.
   const prefs = getDashPrefs();
@@ -360,11 +360,38 @@ function renderAll() {
   });
 }
 
-/* The Action Queue that used to live at the top of the home screen was
-   retired (Jul 2026). Untouched open leads are now drained into agent_tasks
-   by the staleLeadSweep function and worked by the runner — so the home
-   screen shows the executive brief (with a live "agents working" count),
-   not a static nag list. The raw per-lead actions still live in the CRM. */
+/* ── Operations queue ──────────────────────────────────────────────────
+   Deterministic human work belongs above AI summaries. */
+function isReceiptFailure(e) {
+  return e && e.aiParsed && (
+    e.status === 'failed' || e.receiptState === 'image-missing' ||
+    /receipt image missing|upload failed/i.test(String(e.description || ''))
+  );
+}
+function renderOperationsQueue(now) {
+  const el = document.getElementById('ops-work-queue');
+  if (!el || !_dashData) return;
+  const leadItems = DashCore.computeActionQueue(_dashData.leads || [], now).slice(0, 5);
+  const receiptFailures = (_dashData.expenses || []).filter(isReceiptFailure);
+  const unmatched = (_dashData.unmatched || []).length;
+  const followups = (_dashData.followups || []).length;
+  const rows = leadItems.map(item => `<button type="button" class="dash-list-row" data-lead-id="${escapeHtmlSafe(item.lead.id)}">
+    <div class="dash-row-main"><span class="dash-row-title">${escapeHtmlSafe(item.lead.name || 'Unknown lead')}</span>
+    <span class="dash-row-sub">${escapeHtmlSafe(item.state)}${item.lead.eventDate ? ' · ' + escapeHtmlSafe(item.lead.eventDate) : ''}</span></div>
+    <span class="badge" style="background:${stageColor(item.lead.stage)}22;color:${stageColor(item.lead.stage)}">${escapeHtmlSafe(item.lead.stage || 'Open')}</span>
+  </button>`).join('');
+  el.innerHTML = `<div class="card dash-operations-card">
+    <div class="card-header"><span class="card-title">Today’s work</span><span class="text-muted" style="font-size:12px">Only items with a next action</span></div>
+    <div class="dash-operations-summary">
+      <button type="button" class="dash-operations-count${receiptFailures.length ? ' danger' : ''}" onclick="loadModule('expenses')"><strong>${receiptFailures.length}</strong><span>receipt${receiptFailures.length === 1 ? '' : 's'} to recover</span></button>
+      <button type="button" class="dash-operations-count" onclick="loadModule('crm')"><strong>${leadItems.length}</strong><span>leads needing action</span></button>
+      <button type="button" class="dash-operations-count" onclick="loadModule('crm')"><strong>${unmatched}</strong><span>unmatched messages</span></button>
+      <button type="button" class="dash-operations-count" onclick="loadModule('crm')"><strong>${followups}</strong><span>owner follow-ups</span></button>
+    </div>
+    <div class="dash-list">${rows || '<div class="empty-state"><div class="empty-title">No lead action is due right now</div><div class="empty-sub">New exceptions will appear here automatically.</div></div>'}</div>
+  </div>`;
+  bindLeadOpenClicks(el);
+}
 
 /* Lead ids can be client-chosen (public create on /leads), so never interpolate
    them into inline onclick handlers — bind via data attribute instead. */
@@ -418,6 +445,7 @@ function renderStats(range, now) {
   const d = _dashData;
   const money = DashCore.computeMoneyStats(d.events, range);
   const costs = DashCore.computeCosts(d.expenses, d.payments, range);
+  const incompleteReceipts = d.expenses.filter(e => e.aiParsed && (e.amount == null || ['uploading','processing','failed'].includes(e.status))).length;
   const netProfit = money.total - costs.total;
   const openLeads = DashCore.openLeadsCount(d.leads);
 
@@ -430,10 +458,10 @@ function renderStats(range, now) {
       <div class="stat-label">Costs <span class="stat-view">↗</span></div>
       <div class="stat-value">${fmtMoney(costs.total)}</div>
       <div class="stat-sub">${costs.expenses.length} expenses · ${costs.payments.length} labor</div></button>
-    <button type="button" class="stat-card clickable" style="border-left:3px solid ${netProfit>=0?'var(--green)':'var(--red)'}" onclick="openStatDrill('profit')">
-      <div class="stat-label">Net Profit <span class="stat-view">↗</span></div>
-      <div class="stat-value" style="color:${netProfit>=0?'var(--green)':'var(--red)'}">${fmtMoney(netProfit)}</div>
-      <div class="stat-sub">revenue − costs</div></button>
+    <button type="button" class="stat-card clickable" style="border-left:3px solid ${incompleteReceipts ? 'var(--gold)' : (netProfit>=0?'var(--green)':'var(--red)')}" onclick="openStatDrill('profit')">
+      <div class="stat-label">${incompleteReceipts ? 'Profit estimate' : 'Net Profit'} <span class="stat-view">↗</span></div>
+      <div class="stat-value" style="color:${incompleteReceipts ? 'var(--gold)' : (netProfit>=0?'var(--green)':'var(--red)')}">${fmtMoney(netProfit)}</div>
+      <div class="stat-sub">${incompleteReceipts ? incompleteReceipts + ' receipt records still incomplete' : 'revenue − recorded costs'}</div></button>
     <button type="button" class="stat-card teal clickable" onclick="openStatDrill('leads')">
       <div class="stat-label">Open Leads <span class="stat-view">↗</span></div>
       <div class="stat-value">${openLeads}</div>
@@ -584,8 +612,13 @@ function renderMoneyWidget(range) {
 /* ── Insight widget: Event Size & Profitability ───────────────────────── */
 function renderProfitWidget(range) {
   const d = _dashData;
-  const p = DashCore.computeProfitability(d.events, d.expenses, d.payments, range);
   const el = document.getElementById('w-profit');
+  const incomplete = d.expenses.filter(e => e.aiParsed && (e.amount == null || ['uploading', 'processing', 'failed'].includes(e.status))).length;
+  if (incomplete) {
+    el.innerHTML = `<div class="dash-suggestion"><strong>Profitability is paused.</strong> ${incomplete} receipt record${incomplete === 1 ? '' : 's'} still lack a usable cost, so a margin would be misleading. <button class="dash-link" style="display:inline;margin-left:6px" onclick="loadModule('expenses')">Recover receipts →</button></div>`;
+    return;
+  }
+  const p = DashCore.computeProfitability(d.events, d.expenses, d.payments, range);
   if (!p.count) { el.innerHTML = emptyState('⚖️', 'No completed events in this range'); return; }
   const typeRows = Object.entries(p.byType).sort((a,b)=>b[1].avgMargin-a[1].avgMargin).map(([t,s]) =>
     `<div class="dash-bar-row"><span class="dash-bar-label">${escapeHtmlSafe(t)} (${s.count})</span>

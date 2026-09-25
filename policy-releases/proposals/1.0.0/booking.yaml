@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "release": "1.0.0",
+  "states": ["tentative", "confirmed", "released", "cancelled"],
+  "capacityReservation": "transactional",
+  "missingOrStaleCalendar": "hold",
+  "initialAddressRequirement": "venue_and_city",
+  "depositRequirement": "client_specific_or_hold",
+  "cancellationTerms": "unresolved_hold"
+}

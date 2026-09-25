@@ -122,8 +122,8 @@
       { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase();
 
     const tasksHtml = (b.tasks || []).map((t, i) => {
-      const chip = t.status === 'handled'
-        ? '<span class="brief-task-chip brief-chip-done">✓ handled</span>'
+      const chip = (t.status === 'handled' || t.status === 'queued')
+        ? '<span class="brief-task-chip brief-chip-done">↗ queued</span>'
         : t.needsApproval
           ? '<button type="button" class="brief-task-approve" data-task-i="' + i + '">Approve</button>'
           : (t.status === 'fyi' ? '<span class="brief-task-chip brief-chip-fyi">fyi</span>' : '');
@@ -218,9 +218,10 @@
   function chatShellHtml() {
     return (
       '<div class="brief-chat-head">' +
-        '<span class="dash-sub-label brief-section" style="margin:0">TALK TO YOUR AGENTS</span>' +
+        '<span class="dash-sub-label brief-section" style="margin:0">ASK LAKE SALT</span>' +
         '<button type="button" class="brief-new-session" id="brief-new-session" title="Start a fresh conversation — old context won\'t carry over">＋ New session</button>' +
       '</div>' +
+      '<div class="brief-chat-capability">I can inspect CRM records and queue work. I’ll show the records I used; I can’t see Gmail or change code unless those systems are connected.</div>' +
       '<div class="brief-chat-log" id="brief-chat-log" aria-live="polite"></div>' +
       '<form class="brief-chat-form" id="brief-chat-form">' +
         '<textarea id="brief-chat-input" class="brief-chat-input" maxlength="4000" rows="1" ' +

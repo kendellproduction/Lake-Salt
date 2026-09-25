@@ -12,6 +12,10 @@ let recentScansUnsub = null;
 /* Compress a receipt image: max 1600px longest edge, JPEG quality 0.8 */
 function compressReceiptImage(file) {
   return new Promise((resolve, reject) => {
+    if (!file || !String(file.type || '').startsWith('image/')) {
+      reject(new Error('Choose an image file for the receipt.'));
+      return;
+    }
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
@@ -45,6 +49,7 @@ async function renderExpenses() {
       </div>
     </div>
     <input type="file" id="receipt-scan-input" accept="image/*" capture="environment" multiple style="display:none" onchange="handleReceiptScan(this.files)"/>
+    <div id="receipt-health"></div>
     <div id="recent-scans"></div>
     <div class="stat-grid" id="expense-stats">
       ${[1,2,3,4].map(()=>`<div class="stat-card"><div class="skeleton skeleton-line w-1/4" style="height:11px;margin-bottom:10px;"></div><div class="skeleton skeleton-line w-1/2" style="height:28px;"></div></div>`).join('')}
@@ -99,6 +104,8 @@ async function renderExpenses() {
     eventsById[e.id] = e.name || e.id;
   });
 
+  renderReceiptHealth(window._allExpenses);
+
   // Initialize recent scans strip
   initRecentScansStrip(eventsById);
 
@@ -120,6 +127,33 @@ async function renderExpenses() {
     <div class="stat-card green"><div class="stat-label">Tax Deductible</div><div class="stat-value">${fmtMoney(taxDeductTotal)}</div><div class="stat-sub">${window._allExpenses.filter(e=>e.taxDeductible).length} items</div></div>`;
 
   filterExpenses();
+}
+
+function receiptNeedsReplacement(expense) {
+  return expense && expense.aiParsed && (
+    expense.receiptState === 'image-missing' ||
+    expense.status === 'failed' ||
+    (/receipt image missing|upload failed/i.test(String(expense.description || '')))
+  );
+}
+
+function renderReceiptHealth(expenses) {
+  const el = document.getElementById('receipt-health');
+  if (!el) return;
+  const failed = expenses.filter(receiptNeedsReplacement);
+  const processing = expenses.filter(e => e.aiParsed && ['uploading', 'processing'].includes(e.status));
+  const review = expenses.filter(e => e.aiParsed && e.status === 'needs-review' && !receiptNeedsReplacement(e));
+  if (!failed.length && !processing.length && !review.length) { el.innerHTML = ''; return; }
+  const failedRows = failed.slice(0, 5).map(e => `
+    <label class="btn btn-ghost btn-sm" style="cursor:pointer">Re-upload receipt<input type="file" accept="image/*" style="display:none" onchange="retryReceiptUpload(${jsStr(e.id)}, this)"></label>`).join(' ');
+  el.innerHTML = `<div class="card" style="margin-bottom:16px;border-left:3px solid ${failed.length ? 'var(--red)' : 'var(--gold)'}">
+    <div class="card-header"><span class="card-title">Receipt status</span></div>
+    <div style="padding:0 16px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      ${failed.length ? `<strong style="color:var(--red)">${failed.length} receipt${failed.length === 1 ? '' : 's'} need an image</strong><span class="text-muted">They were not uploaded successfully, so there is nothing for AI to read.</span>${failedRows}` : ''}
+      ${processing.length ? `<span class="badge">${processing.length} reading now</span>` : ''}
+      ${review.length ? `<span class="badge">${review.length} need your answer</span>` : ''}
+    </div>
+  </div>`;
 }
 
 function handleExpenseDateRange() {
@@ -573,57 +607,93 @@ async function deleteExpense(id) {
 }
 
 // ── Receipt Scan Handler ──
+function receiptFailureMessage(err) {
+  const message = String(err && err.message || err || 'Unknown error');
+  if (/read image|compression|decode|heic/i.test(message)) {
+    return 'This photo could not be read. On iPhone, share or export it as JPEG, then try again.';
+  }
+  if (/storage|network|offline|unavailable/i.test(message)) {
+    return 'The image could not upload. Check your connection, then retry.';
+  }
+  return message;
+}
+
+async function createReceiptScan(blob, originalName) {
+  const ref = db.collection('expenses').doc();
+  const receiptPath = 'receipts/' + ref.id + '.jpg';
+  await ref.set({
+    status: 'uploading',
+    receiptState: 'uploading',
+    aiParsed: true,
+    taxYear: null,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    date: null, amount: null, category: null, eventId: null,
+    description: 'Uploading receipt…', receiptPath,
+    receiptOriginalName: originalName || null,
+    scannedBy: (typeof currentUser !== 'undefined' && currentUser) ? (currentUser.displayName || currentUser.email || null) : null
+  });
+  try {
+    await storage.ref(receiptPath).put(blob, { contentType: 'image/jpeg' });
+    await ref.update({
+      status: 'processing', receiptState: 'parsing', uploadedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      description: 'Reading receipt…', receiptError: firebase.firestore.FieldValue.delete(), retryable: false
+    });
+    return ref.id;
+  } catch (err) {
+    await ref.update({
+      status: 'failed', receiptState: 'upload-failed', retryable: true,
+      receiptError: receiptFailureMessage(err), description: 'Receipt upload failed'
+    });
+    throw err;
+  }
+}
+
 async function handleReceiptScan(fileList) {
   const files = Array.from(fileList);
   if (!files.length) return;
 
-  for (const file of files) {
+  const results = await Promise.all(files.map(async file => {
     try {
-      // 1. Create stub doc
-      const ref = db.collection('expenses').doc();
-      await ref.set({
-        status: 'processing',
-        aiParsed: true,
-        taxYear: null,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        date: null,
-        amount: null,
-        category: null,
-        eventId: null,
-        description: 'Scanning…',
-        receiptPath: 'receipts/' + ref.id + '.jpg',
-        scannedBy: (typeof currentUser !== 'undefined' && currentUser) ? (currentUser.displayName || currentUser.email || null) : null
-      });
-
-      // 2. Compress receipt image
+      // Compression happens before a Firestore record exists. A bad/HEIC image
+      // can therefore never leave a fake forever-processing receipt behind.
       const blob = await compressReceiptImage(file);
-
-      // 3. Upload to storage with retry logic
-      let uploadSuccess = false;
-      let retryCount = 0;
-      while (retryCount < 2 && !uploadSuccess) {
-        try {
-          await storage.ref('receipts/' + ref.id + '.jpg').put(blob, { contentType: 'image/jpeg' });
-          uploadSuccess = true;
-        } catch (uploadErr) {
-          retryCount++;
-          if (retryCount >= 2) {
-            // Final failure: update stub doc to needs-review
-            await ref.update({
-              status: 'needs-review',
-              description: 'Upload failed'
-            });
-          }
-        }
-      }
+      await createReceiptScan(blob, file.name);
+      return { ok: true };
     } catch (err) {
       console.warn('Receipt scan error:', err);
+      return { ok: false, error: receiptFailureMessage(err) };
     }
-  }
+  }));
 
-  // Show completion toast
-  showToast(`${files.length} receipt${files.length !== 1 ? 's' : ''} uploaded — parsing…`, 'success');
+  const succeeded = results.filter(r => r.ok).length;
+  const failed = results.length - succeeded;
+  if (succeeded) showToast(`${succeeded} receipt${succeeded === 1 ? '' : 's'} uploaded — reading now.`, 'success');
+  if (failed) showToast(`${failed} image${failed === 1 ? '' : 's'} could not be added. Try a JPEG or PNG.`, 'error');
 }
+
+async function retryReceiptUpload(id, input) {
+  const file = input && input.files && input.files[0];
+  if (!file) return;
+  const ref = db.collection('expenses').doc(id);
+  try {
+    const blob = await compressReceiptImage(file);
+    const receiptPath = 'receipts/' + id + '.jpg';
+    await ref.update({
+      status: 'uploading', receiptState: 'uploading', retryable: false,
+      receiptError: firebase.firestore.FieldValue.delete(), description: 'Uploading replacement image…', receiptPath
+    });
+    await storage.ref(receiptPath).put(blob, { contentType: 'image/jpeg' });
+    await ref.update({
+      status: 'processing', receiptState: 'parsing', uploadedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      description: 'Reading receipt…', receiptOriginalName: file.name
+    });
+    showToast('Receipt re-uploaded — reading now.', 'success');
+  } catch (err) {
+    await ref.update({ status: 'failed', receiptState: 'upload-failed', retryable: true, receiptError: receiptFailureMessage(err), description: 'Receipt upload failed' }).catch(() => {});
+    showToast(receiptFailureMessage(err), 'error');
+  } finally { input.value = ''; }
+}
+window.retryReceiptUpload = retryReceiptUpload;
 
 // ── Recent Scans Strip ──
 function initRecentScansStrip(eventsById) {
@@ -655,7 +725,7 @@ function renderRecentScans(snap, eventsById) {
     const amount = d.amount != null ? `$${d.amount.toFixed(2)}` : '—';
 
     let statusChip = '';
-    if (d.status === 'processing') {
+    if (d.status === 'uploading' || d.status === 'processing') {
       statusChip = '⏳ Scanning…';
     } else if (d.status === 'ok') {
       if (d.eventId) {
@@ -666,7 +736,11 @@ function renderRecentScans(snap, eventsById) {
         statusChip = 'General deduction';
       }
     } else if (d.status === 'needs-review') {
-      statusChip = '<span style="color:#d97706">⚠ Needs review</span>';
+      statusChip = receiptNeedsReplacement(d)
+        ? `<span style="color:var(--red)">Image missing</span> <label class="btn btn-ghost btn-sm" style="cursor:pointer">Re-upload<input type="file" accept="image/*" style="display:none" onchange="retryReceiptUpload(${jsStr(doc.id)}, this)"></label>`
+        : '<span style="color:#d97706">⚠ Needs review</span>';
+    } else if (d.status === 'failed') {
+      statusChip = `<span style="color:var(--red)">Upload failed</span> <label class="btn btn-ghost btn-sm" style="cursor:pointer">Re-upload<input type="file" accept="image/*" style="display:none" onchange="retryReceiptUpload(${jsStr(doc.id)}, this)"></label>`;
     } else if (d.status === 'duplicate') {
       statusChip = `<span style="color:var(--text-muted)">Duplicate</span> <button class="btn btn-ghost btn-sm" onclick="restoreDuplicate(${jsStr(doc.id)})">Restore</button>`;
     }

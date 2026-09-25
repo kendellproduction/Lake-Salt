@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "release": "1.0.0",
+  "mode": "read_only",
+  "approvedRails": [],
+  "unknownRail": "hold",
+  "unknownDueDate": "hold",
+  "refunds": "red",
+  "disputes": "red",
+  "accountChanges": "red"
+}

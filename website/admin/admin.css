@@ -1227,6 +1227,15 @@ td { padding: 11px 12px; font-size: 12.5px; }
   transition: background 0.12s ease, border-color 0.12s ease; width: 100%;
 }
 .dash-list-row:hover { background: rgba(201,168,76,0.07); border-color: rgba(201,168,76,0.3); }
+.dash-operations-card { border-top: 2px solid var(--gold); }
+.dash-operations-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.dash-operations-count { min-height: 64px; padding: 9px; border: 1px solid var(--border); border-radius: 8px; background: rgba(255,255,255,0.02); color: var(--text); font-family: inherit; text-align: left; cursor: pointer; }
+.dash-operations-count:hover { border-color: var(--gold); background: rgba(201,168,76,0.07); }
+.dash-operations-count strong { display: block; font-size: 20px; color: var(--gold); line-height: 1; }
+.dash-operations-count span { display: block; color: var(--text-muted); font-size: 11px; margin-top: 5px; line-height: 1.2; }
+.dash-operations-count.danger { border-color: rgba(239,68,68,.45); }
+.dash-operations-count.danger strong { color: var(--red); }
+@media (max-width: 640px) { .dash-operations-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .dash-row-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .dash-row-title { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dash-row-sub { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1405,6 +1414,7 @@ td { padding: 11px 12px; font-size: 12.5px; }
 .brief-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
 .brief-time { flex-shrink: 0; font-size: 11px; color: var(--text-muted); }
 .brief-empty { padding: 10px 4px; font-size: 13px; color: var(--text-muted); }
+.brief-chat-capability { margin: 8px 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; color: var(--text-muted); font-size: 11px; line-height: 1.4; }
 .brief-pipeline { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0 2px; }
 .brief-stage {
   display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; min-height: 36px;

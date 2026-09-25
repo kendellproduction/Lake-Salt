@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "release": "1.0.0",
+  "mode": "shadow",
+  "autonomousActivation": false,
+  "currency": "USD",
+  "staffingRatios": {"beerWine": 75, "standardCocktails": 60, "complexCocktails": 50},
+  "targetMargins": {"private": 0.40, "wedding": 0.40, "corporate": 0.55},
+  "minimums": {"private": 45000, "wedding": 80000, "corporate": 120000},
+  "roundingIncrementMinor": 500,
+  "acceptedQuoteMutation": "forbidden",
+  "historicalFixtures": {"alisa": {"totalMinor": 79200, "depositMinor": 7920}}
+}

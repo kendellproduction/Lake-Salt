@@ -11,6 +11,16 @@ const CRM_COHORTS = [
 ];
 let crmActiveCohort = '';
 
+/* Older imports stored notes as a single string. Normalize at the edge so a
+   character count never masquerades as "614 notes" and the detail modal
+   remains safe to open. The source is rewritten only when the lead is next
+   edited or a note is added. */
+function normalizedNotes(notes) {
+  if (Array.isArray(notes)) return notes.filter(n => n && typeof n === 'object');
+  if (typeof notes === 'string' && notes.trim()) return [{ text: notes.trim(), author: 'Imported', time: '' }];
+  return [];
+}
+
 async function renderCRM() {
   const c = document.getElementById('module-container');
   c.innerHTML = `
@@ -58,7 +68,10 @@ async function renderCRM() {
   // Real-time listener — push unsub to cleanup array
   const unsub = db.collection('leads').orderBy('createdAt','desc').onSnapshot(snap => {
     crmLeads = {};
-    snap.forEach(doc => { crmLeads[doc.id] = { id: doc.id, ...doc.data() }; });
+    snap.forEach(doc => {
+      const data = doc.data();
+      crmLeads[doc.id] = { id: doc.id, ...data, notes: normalizedNotes(data.notes) };
+    });
     renderKanban();
   });
   _activeListeners.push(unsub);
@@ -153,7 +166,7 @@ function leadCardHTML(l) {
       ${l.commsUnread > 0 ? `<span class="badge" style="background:rgba(34,197,94,0.18);color:#22c55e;font-weight:700" title="Unread messages">✉ ${escapeHtml(l.commsUnread)} new</span>` : ''}
       ${l.source ? `<span class="badge" style="background:rgba(201,168,76,0.1);color:var(--gold)">${escapeHtml(l.source)}</span>` : ''}
       ${l.budget ? `<span class="badge" style="background:rgba(26,158,143,0.1);color:var(--teal)">${escapeHtml(fmtMoney(l.budget))}</span>` : ''}
-      ${l.notes && l.notes.length ? `<span class="badge" style="background:rgba(100,116,139,0.15);color:#8A9DB5">${l.notes.length} note${l.notes.length>1?'s':''}</span>` : ''}
+      ${normalizedNotes(l.notes).length ? `<span class="badge" style="background:rgba(100,116,139,0.15);color:#8A9DB5">${normalizedNotes(l.notes).length} note${normalizedNotes(l.notes).length>1?'s':''}</span>` : ''}
     </div>
   </div>`;
 }
@@ -236,7 +249,7 @@ async function openLeadModal(id) {
         <div class="divider"></div>
         <div class="form-section-title">Notes</div>
         <div class="notes-thread" id="notes-thread-${id}">
-          ${(l.notes||[]).length ? (l.notes||[]).map(n => `
+          ${normalizedNotes(l.notes).length ? normalizedNotes(l.notes).map(n => `
             <div class="note-entry">
               <div class="note-meta">${escapeHtml(n.author||'Admin')} · ${escapeHtml(n.time||'')}</div>
               <div class="note-text">${escapeHtml(n.text)}</div>
@@ -679,7 +692,7 @@ async function addNote(leadId) {
     time: new Date().toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' })
   };
   const l = crmLeads[leadId];
-  const notes = [...(l.notes||[]), note];
+  const notes = [...normalizedNotes(l.notes), note];
   await db.collection('leads').doc(leadId).update({ notes, updatedAt: TS() });
   input.value = '';
   const thread = document.getElementById(`notes-thread-${leadId}`);

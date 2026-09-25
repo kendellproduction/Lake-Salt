@@ -119,6 +119,49 @@ service cloud.firestore {
     // ── Activity log — admin write + read ──
     match /activity/{id}   { allow read, write: if isAdmin(); }
 
+    // ── Lake Salt AI Operations v1.1 safety boundary ──
+    // Canonical operational/audit records are server-authored through the
+    // Admin SDK. Clients, including admins, may inspect but cannot mutate or
+    // delete them. Narrow redaction and retention remain server-only jobs.
+    match /operations_events/{id} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+    match /operations_outbox/{id} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+    match /operations_idempotency/{id} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+    match /send_authorizations/{id} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    // Policy publication and active-release pointer changes are never generic
+    // admin client writes. They require a separately authenticated owner-only
+    // server workflow; the Admin SDK bypass is audited by operations_events.
+    match /policy_releases/{document=**} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+    match /policy_control/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Server-authoritative booking/capacity/recovery read models used by the
+    // owner cockpit. Mutations must go through lifecycle functions so their
+    // idempotency, availability, and audit checks cannot be bypassed.
+    match /bookings/{id}              { allow read: if isAdmin(); allow write: if false; }
+    match /blocked_dates/{id}         { allow read: if isAdmin(); allow write: if false; }
+    match /calendar_connections/{id}  { allow read: if isAdmin(); allow write: if false; }
+    match /calendar_busy_blocks/{id}  { allow read: if isAdmin(); allow write: if false; }
+    match /system_issues/{id}         { allow read: if isAdmin(); allow write: if false; }
+    match /attention_items/{id}       { allow read: if isAdmin(); allow write: if false; }
+
     // ── Closer-mode supporting collections ──
     // call_bookings: created by Cloud Function (admin SDK bypasses rules); admins read/write.
     match /call_bookings/{id}    { allow read, write: if isAdmin(); }

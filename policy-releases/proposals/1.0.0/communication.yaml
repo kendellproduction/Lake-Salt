@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "release": "1.0.0",
+  "defaultMode": "shadow",
+  "voice": ["warm", "brief", "specific", "confident", "conversational"],
+  "defaultSignature": "Best,\nKendell\nLake Salt",
+  "threadResolution": ["storedConversationId", "replyToMessageId", "businessEventMapping", "platformRelayMapping", "emailSearchFallback"],
+  "fallbackAmbiguity": "hold",
+  "clientArtifactMarkers": ["INTERNAL ONLY", "DO NOT SEND", "LEGAL REVIEW REQUIRED", "BUSINESS DRAFT", "TODO", "FIXME"],
+  "routineNotifications": "daily_digest"
+}
