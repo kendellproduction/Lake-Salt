@@ -1,0 +1,29 @@
+name: Deploy Firebase Hosting
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Kept out of Git because it is environment configuration. The workflow
+      # restores the same public web config used by the live site before deploy.
+      - name: Restore Firebase web configuration
+        env:
+          FIREBASE_WEB_CONFIG: ${{ secrets.FIREBASE_WEB_CONFIG }}
+        run: printf '%s\n' "$FIREBASE_WEB_CONFIG" > website/firebase-config.js
+
+      - name: Deploy Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LAKE_SALT }}
+          projectId: lake-salt
+          channelId: live
