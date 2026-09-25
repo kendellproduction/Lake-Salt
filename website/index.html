@@ -792,7 +792,9 @@
       inset: 0;
       z-index: 9999;
       display: flex;
-      align-items: center;
+      /* Keep tall steps scrollable from their top instead of centering them
+         beyond the viewport, which clips the first line of the title. */
+      align-items: safe center;
       justify-content: center;
       background:
         radial-gradient(ellipse at 50% 0%, #4D7CFF 0%, #2B5CFF 35%, #1E40D6 75%, #0F2BA3 100%);
@@ -893,6 +895,14 @@
       color: rgba(255,255,255,0.4);
       margin-bottom: 2.5rem;
     }
+    /* Menu guidance needs to stay legible against the light-blue intake screen. */
+    #ob-p2 .onboarding-sub {
+      font-size: 1rem;
+      line-height: 1.55;
+      color: rgba(255,255,255,0.92);
+      font-weight: 500;
+    }
+    #ob-p2 { padding-top: 1.25rem; }
     .onboarding-cards {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -1218,6 +1228,19 @@
       border-color: rgba(201,169,110,0.8);
       color: var(--champagne);
     }
+    .ob-required-question {
+      margin-top: 1.6rem;
+      padding: 1.25rem;
+      border: 1px solid rgba(255,255,255,0.42);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.10);
+    }
+    .ob-required-question .ob-required-label {
+      display: block; margin-bottom: 0.85rem; color: #fff; font-size: 1.05rem;
+      font-weight: 700; line-height: 1.35;
+    }
+    .ob-required-mark { color: var(--champagne); }
+    .ob-required-error { min-height: 1.2rem; margin: .3rem 0 0; color: #fff; font-size: .82rem; font-weight: 600; }
     .ob-textarea, .ob-input {
       width: 100%; box-sizing: border-box;
       background: rgba(255,255,255,0.05);
@@ -1235,6 +1258,14 @@
     .ob-textarea:focus, .ob-input:focus {
       outline: none; border-color: rgba(201,169,110,0.45);
     }
+    #ob-p7 .onboarding-sub { color: rgba(255,255,255,0.92); font-size: 1rem; font-weight: 500; }
+    #ob-p7 .ob-input {
+      background: rgba(255,255,255,0.13);
+      border-color: rgba(255,255,255,0.52);
+      font-size: 1rem;
+    }
+    #ob-p7 .ob-input::placeholder { color: rgba(255,255,255,0.78); }
+    #ob-p7 .ob-finish { padding: .9rem 2.35rem; font-size: .9rem; }
     .ob-nav {
       display: flex; align-items: center;
       justify-content: space-between; margin-top: 0.25rem;
@@ -3642,7 +3673,7 @@
   <a href="/recipes">Recipes</a>
   <a href="/about">About</a>
   <a href="tel:+18016923585">Call/Text (801) 692-3585</a>
-  <a href="#contact" class="mn-cta" onclick="closeMobileNav()">Book Now</a>
+  <a href="#contact" class="mn-cta" onclick="closeMobileNav(); openBartendingFlow(); return false;">Book Now</a>
 </nav>
 
 <!-- ═══════════════════════════════════════════
@@ -3735,11 +3766,22 @@
     <!-- Step 2: Drinks -->
     <div class="ob-panel" id="ob-p2">
       <h2 class="onboarding-q">What's on the<br/><em>menu?</em></h2>
-      <p class="onboarding-sub">Pick everything you'd like — the more we know about your taste, the closer our package options will be to what you actually want.</p>
+      <p class="onboarding-sub">Most events feature 2–4 drinks. Choose up to 5 menu favorites so we can shape a focused bar experience. This is just a starting point — we'll gather your detailed menu preferences as we plan your event.</p>
+      <p id="ob-drink-limit" class="onboarding-sub" aria-live="polite" style="margin-top:-.5rem;font-size:.8rem;opacity:.78;">0 of 5 selected</p>
       <div class="ob-chip-groups" id="ob-drinks">
 
         <div class="ob-chip-group">
-          <div class="ob-chip-group-label">Bar Package</div>
+          <div class="ob-chip-group-label">Start Here</div>
+          <div class="ob-chip-row">
+            <button class="ob-chip" data-val="cocktails" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🍸 Cocktails</button>
+            <button class="ob-chip" data-val="mocktails" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🍹 Mocktails</button>
+            <button class="ob-chip" data-val="lemonade" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🍋 Fresh Lemonade</button>
+            <button class="ob-chip" data-val="dirty_sodas" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🥤 Dirty Sodas</button>
+          </div>
+        </div>
+
+        <div class="ob-chip-group">
+          <div class="ob-chip-group-label">Service Style</div>
           <div class="ob-chip-row">
             <button class="ob-chip" data-val="beer_wine_only" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🍷 Beer &amp; Wine Only</button>
             <button class="ob-chip" data-val="dry_bar" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">✨ Dry Bar (No Alcohol)</button>
@@ -3790,11 +3832,7 @@
         <div class="ob-chip-group">
           <div class="ob-chip-group-label">Non-Alcoholic</div>
           <div class="ob-chip-row">
-            <button class="ob-chip" data-val="mocktails" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🍹 Mocktails</button>
-            <button class="ob-chip" data-val="lemonade" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🍋 Fresh Lemonade</button>
-            <button class="ob-chip" data-val="iced_tea" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🧊 Iced Tea</button>
             <button class="ob-chip" data-val="sparkling_water" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">💦 Sparkling Water</button>
-            <button class="ob-chip" data-val="juice_bar" onclick="obToggleChip(this,'drinks',false,'ob-drinks')">🥤 Juice Bar</button>
           </div>
         </div>
 
@@ -3820,19 +3858,19 @@
         <button class="ob-chip" data-val="outdoors" onclick="obToggleChip(this,'venue',true)">🌿 Outdoors</button>
       </div>
       <input class="ob-input" id="ob-venue-text" type="text" placeholder="Venue name or city (optional)" />
-      <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid rgba(201,169,110,0.2);">
-        <label class="onboarding-sub" style="display:block;margin-bottom:0.8rem;">Does the venue have a built-in bar?</label>
-        <div class="ob-chips" style="display:flex;gap:0.6rem;">
+      <div class="ob-required-question" id="ob-built-in-bar-question">
+        <label class="ob-required-label">Does the venue have a built-in bar? <span class="ob-required-mark">Required</span></label>
+        <div class="ob-chips" id="ob-built-in-bar" style="display:flex;gap:0.6rem;" role="group" aria-label="Does the venue have a built-in bar?">
           <button class="ob-chip" data-val="yes" onclick="obToggleChip(this,'hasBuiltInBar',true)">Yes</button>
           <button class="ob-chip" data-val="no" onclick="obToggleChip(this,'hasBuiltInBar',true)">No</button>
           <button class="ob-chip" data-val="unsure" onclick="obToggleChip(this,'hasBuiltInBar',true)">Unsure</button>
         </div>
+        <p class="ob-required-error" id="ob-built-in-bar-error" aria-live="polite"></p>
       </div>
       <div class="ob-nav">
         <button class="ob-back" onclick="obGoTo(2)">← Back</button>
         <div style="display:flex;align-items:center;gap:0.6rem;">
-          <button class="ob-skip-step" onclick="obNext()">Skip</button>
-          <button class="ob-next-btn" onclick="obNext()">Next →</button>
+          <button class="ob-next-btn" onclick="obNextVenue()">Next →</button>
         </div>
       </div>
       <button class="ob-goto-site-sm" onclick="obSkipAll()">Go to Site &rarr;</button>
@@ -3931,7 +3969,7 @@
     <!-- Step 5: Guest count -->
     <div class="ob-panel" id="ob-p5">
       <h2 class="onboarding-q">How many<br/><em>guests?</em></h2>
-      <p class="ob-sub" style="text-align:center;color:var(--ink-muted,#7a7a7a);margin:-0.5rem 0 1rem;font-size:0.95rem;">Exact number — even a best estimate. This drives the quote.</p>
+      <p class="ob-sub" style="text-align:center;color:#fff;margin:-0.5rem 0 1rem;font-size:1rem;font-weight:500;line-height:1.5;">Exact number — even a best estimate. This drives the quote.</p>
       <input class="ob-input" id="ob-guest-num" type="number" inputmode="numeric" placeholder="e.g. 120" min="1" max="2000" required />
       <div class="ob-nav">
         <button class="ob-back" onclick="obGoTo(4)">← Back</button>
@@ -3945,15 +3983,15 @@
     <!-- Step 6: Budget -->
     <div class="ob-panel" id="ob-p6">
       <h2 class="onboarding-q">What's your<br/><em>budget?</em></h2>
-      <p class="onboarding-sub">Budget + drink interests = we send you a couple package options that actually fit. No back-and-forth.</p>
-      <select class="ob-input" id="ob-budget">
-        <option value="">Still figuring it out</option>
-        <option value="Under $1,000">Under $1,000</option>
-        <option value="$1,000–$1,500">$1,000 – $1,500 (most weddings)</option>
-        <option value="$1,500–$2,500">$1,500 – $2,500</option>
-        <option value="$2,500–$4,000">$2,500 – $4,000</option>
-        <option value="$4,000+">$4,000+</option>
-      </select>
+      <p class="onboarding-sub" style="color:#fff;font-size:1rem;font-weight:500;line-height:1.55;">Choose the range that feels closest today. We'll use it as a starting point and talk through the details with you.</p>
+      <input type="hidden" id="ob-budget" value="$1,000–$1,500" />
+      <div class="ob-chips ob-budget-options" role="group" aria-label="Bar catering budget">
+        <button class="ob-chip" data-value="Under $1,000" onclick="obBudgetSelect(this)">Under $1,000</button>
+        <button class="ob-chip selected" data-value="$1,000–$1,500" onclick="obBudgetSelect(this)">$1,000 – $1,500</button>
+        <button class="ob-chip" data-value="$1,500–$2,500" onclick="obBudgetSelect(this)">$1,500 – $2,500</button>
+        <button class="ob-chip" data-value="$2,500–$4,000" onclick="obBudgetSelect(this)">$2,500 – $4,000</button>
+        <button class="ob-chip" data-value="$4,000+" onclick="obBudgetSelect(this)">$4,000+</button>
+      </div>
       <div class="ob-nav">
         <button class="ob-back" onclick="obGoTo(5)">← Back</button>
         <div style="display:flex;align-items:center;gap:0.6rem;">
@@ -3969,17 +4007,17 @@
       <p class="onboarding-sub">We'll reach out with your custom quote</p>
       <input class="ob-input" id="ob-name" type="text" placeholder="Your full name" required />
       <input class="ob-input" id="ob-email" type="email" placeholder="Your email address" required />
-      <input class="ob-input" id="ob-phone" type="tel" placeholder="Phone number (optional)" />
+      <input class="ob-input" id="ob-phone" type="tel" placeholder="Phone number" required />
       <textarea class="ob-input" id="ob-message" placeholder="Vision, theme, special requests, questions..." style="height:5rem;resize:none;"></textarea>
       <div class="ob-nav">
         <button class="ob-back" onclick="obGoTo(6)">← Back</button>
         <div style="display:flex;align-items:center;gap:0.6rem;">
           <button class="ob-skip-step" onclick="obSkipAll()">Skip & Use Form</button>
-          <button class="ob-next-btn ob-finish" id="ob-cta-btn" onclick="obCheckAndSubmit()">Send My Inquiry →</button>
+          <button class="ob-next-btn ob-finish" id="ob-cta-btn" onclick="obCheckAndSubmit()">Submit Inquiry →</button>
         </div>
       </div>
       <p style="margin:0.7rem 0 0;text-align:center;font-size:0.82rem;opacity:0.7;">Most weddings get a quote back within 24 hours. Corporate events within 4 hours.</p>
-      <button class="ob-goto-site-sm" onclick="obSkipAll()">Go to Site &rarr;</button>
+      <button class="ob-goto-site-sm" onclick="obSkipAll()">Continue Browsing &rarr;</button>
     </div><!-- /ob-p7 -->
 
   </div><!-- /onboarding-inner -->
@@ -3988,7 +4026,7 @@
 <!-- Quote nudge bar -->
 <div class="quote-bar" id="quote-bar">
   <span class="quote-bar-text">✨ Your details are saved — <strong>ready to request a quote?</strong></span>
-  <a href="#contact" class="quote-bar-btn" onclick="document.getElementById('quote-bar').classList.remove('show')">Complete Quote →</a>
+  <a href="#contact" class="quote-bar-btn" onclick="document.getElementById('quote-bar').classList.remove('show'); openBartendingFlow(); return false;">Complete Quote →</a>
   <button class="quote-bar-dismiss" onclick="document.getElementById('quote-bar').classList.remove('show')" aria-label="Dismiss">✕</button>
 </div>
 
@@ -4011,7 +4049,7 @@
       <button class="nav-mode-btn" id="nmb-all" onclick="switchMode('all')">All</button>
     </div>
     <button id="nav-new-quote" class="nav-new-quote" onclick="restartQuiz()">New Quote ✦</button>
-    <a href="#contact" class="nav-cta">Book Now</a>
+    <a href="#contact" class="nav-cta" onclick="openBartendingFlow(); return false;">Book Now</a>
     <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Menu">
       <span></span><span></span><span></span>
     </button>
@@ -4225,7 +4263,7 @@
           </div>
         </div>
       </div>
-      <a href="#contact" class="btn-primary">Plan Your Wedding Bar</a>
+      <a href="#contact" class="btn-primary" onclick="openBartendingFlow(); return false;">Plan Your Wedding Bar</a>
     </div>
   </div>
 </section>
@@ -4397,7 +4435,7 @@
         <div style="font-size:0.78rem;color:var(--navy-light);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.4rem;">Starts around</div>
         <div style="font-family:'Cormorant Garamond',serif;font-size:2.6rem;font-weight:600;color:var(--navy);line-height:1;margin-bottom:0.4rem;">$650</div>
         <div style="font-size:0.78rem;color:var(--navy-light);margin-bottom:1.5rem;">~100 guests · 4 hrs · 1 bartender</div>
-        <a href="#contact" class="pctb-btn" style="margin-top:auto;display:inline-block;text-align:center;">Get a Custom Quote →</a>
+        <a href="#contact" class="pctb-btn" style="margin-top:auto;display:inline-block;text-align:center;" onclick="openBartendingFlow(); return false;">Get a Custom Quote →</a>
       </div>
 
       <!-- Bartender Only -->
@@ -4407,7 +4445,7 @@
         <div style="font-size:0.78rem;color:var(--navy-light);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.4rem;">Starts around</div>
         <div style="font-family:'Cormorant Garamond',serif;font-size:2.6rem;font-weight:600;color:var(--navy);line-height:1;margin-bottom:0.4rem;">$500</div>
         <div style="font-size:0.78rem;color:var(--navy-light);margin-bottom:1.5rem;">~100 guests · 4 hrs · 1 bartender</div>
-        <a href="#contact" class="pctb-btn pctb-btn-alt" style="margin-top:auto;display:inline-block;text-align:center;">Get a Custom Quote →</a>
+        <a href="#contact" class="pctb-btn pctb-btn-alt" style="margin-top:auto;display:inline-block;text-align:center;" onclick="openBartendingFlow(); return false;">Get a Custom Quote →</a>
       </div>
 
     </div>
@@ -4532,7 +4570,7 @@
           <div class="pctb-label">Get your quote</div>
           <div class="pctb-heading">Ready to plan your bar?</div>
           <div class="pctb-sub">Most weddings get a quote back within 24 hours. Corporate events typically within 4 hours.</div>
-          <a href="#contact" class="pctb-btn">Request a Free Quote →</a>
+          <a href="#contact" class="pctb-btn" onclick="openBartendingFlow(); return false;">Request a Free Quote →</a>
         </div>
       </div>
     </div>
@@ -4750,7 +4788,7 @@
       <div style="background:var(--cream);border-radius:12px;padding:1.25rem 1.4rem;display:flex;flex-direction:column;justify-content:center;">
         <div style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:600;color:var(--navy);margin-bottom:0.5rem;">Outside the area?</div>
         <div style="font-size:0.86rem;color:var(--navy-light);line-height:1.6;margin-bottom:0.85rem;">We travel for the right event — Logan, St. George, Moab, even out-of-state weddings. Reach out and we'll quote travel.</div>
-        <a href="#contact" style="font-size:0.84rem;color:var(--champagne);font-weight:600;text-decoration:none;">Ask about travel →</a>
+        <a href="#contact" style="font-size:0.84rem;color:var(--champagne);font-weight:600;text-decoration:none;" onclick="openBartendingFlow(); return false;">Ask about travel →</a>
       </div>
 
     </div>
@@ -4965,12 +5003,12 @@
           <select name="budget" class="form-input">
             <option value="">Still figuring it out</option>
             <option value="Under $1,000">Under $1,000</option>
-            <option value="$1,000–$1,500">$1,000 – $1,500 (most weddings)</option>
+            <option value="$1,000–$1,500" selected>$1,000 – $1,500 (most weddings)</option>
             <option value="$1,500–$2,500">$1,500 – $2,500</option>
             <option value="$2,500–$4,000">$2,500 – $4,000</option>
             <option value="$4,000+">$4,000+</option>
           </select>
-          <p style="margin:6px 2px 0;font-size:12.5px;line-height:1.5;color:rgba(250,248,244,0.6);">Tell us your budget and what you'd like on the bar — we'll send a couple package options instead of bouncing emails back and forth.</p>
+          <p style="margin:6px 2px 0;font-size:12.5px;line-height:1.5;color:rgba(250,248,244,0.75);">Choose the range that feels closest today. We'll use it as a starting point and talk through the details with you.</p>
         </div>
         <div class="form-group">
           <label class="form-label">Tell Us About Your Event</label>
@@ -5463,9 +5501,24 @@ function obToggleChip(el, key, singleSelect, containerId) {
     container.querySelectorAll('.ob-chip').forEach(c => c.classList.remove('selected'));
     el.classList.add('selected');
     obData[key] = el.dataset.val;
+    if (key === 'hasBuiltInBar') {
+      const error = document.getElementById('ob-built-in-bar-error');
+      if (error) error.textContent = '';
+    }
   } else {
     el.classList.toggle('selected');
-    obData[key] = Array.from(container.querySelectorAll('.ob-chip.selected')).map(c => c.dataset.val);
+    const selected = Array.from(container.querySelectorAll('.ob-chip.selected'));
+    if (key === 'drinks' && selected.length > 5) {
+      el.classList.remove('selected');
+      const limit = document.getElementById('ob-drink-limit');
+      if (limit) limit.textContent = '5 of 5 selected — remove one to choose another.';
+      return;
+    }
+    obData[key] = selected.map(c => c.dataset.val);
+    if (key === 'drinks') {
+      const limit = document.getElementById('ob-drink-limit');
+      if (limit) limit.textContent = `${selected.length} of 5 selected`;
+    }
   }
 }
 
@@ -5489,6 +5542,7 @@ const OB_BAR_LABELS = {
 };
 
 const OB_DRINK_LABELS = {
+  cocktails: 'Cocktails',
   beer_wine_only: 'Beer & Wine Only',
   dry_bar: 'Dry Bar (No Alcohol)',
   margaritas: 'Margaritas',
@@ -5516,13 +5570,14 @@ const OB_DRINK_LABELS = {
   prosecco: 'Prosecco Bar',
   mocktails: 'Mocktails',
   lemonade: 'Fresh Lemonade',
+  dirty_sodas: 'Dirty Sodas',
   iced_tea: 'Iced Tea',
   sparkling_water: 'Sparkling Water',
   juice_bar: 'Juice Bar'
 };
 
 const OB_COCKTAIL_KEYS = new Set([
-  'margaritas', 'mojitos', 'moscow_mules', 'old_fashioned', 'gin_tonic',
+  'cocktails', 'margaritas', 'mojitos', 'moscow_mules', 'old_fashioned', 'gin_tonic',
   'espresso_martini', 'aperol_spritz', 'cosmopolitan', 'whiskey_sour',
   'paloma', 'daiquiri', 'mule_bar'
 ]);
@@ -5739,6 +5794,14 @@ function obEndTimeSelect(val) {
   obData.endTime = val;
 }
 
+function obBudgetSelect(el) {
+  document.querySelectorAll('.ob-budget-options .ob-chip').forEach(chip => chip.classList.remove('selected'));
+  el.classList.add('selected');
+  const input = document.getElementById('ob-budget');
+  if (input) input.value = el.dataset.value;
+  obData.budget = el.dataset.value;
+}
+
 function obGoTo(step) {
   const cur = document.getElementById(`ob-p${obStep}`);
   const nxt = document.getElementById(`ob-p${step}`);
@@ -5761,6 +5824,18 @@ function obGoTo(step) {
 
 function obNext() {
   if (obStep < obTotalSteps) obGoTo(obStep + 1);
+}
+
+function obNextVenue() {
+  if (obData.hasBuiltInBar === 'yes' || obData.hasBuiltInBar === 'no' || obData.hasBuiltInBar === 'unsure') {
+    const error = document.getElementById('ob-built-in-bar-error');
+    if (error) error.textContent = '';
+    obNext();
+    return;
+  }
+  const error = document.getElementById('ob-built-in-bar-error');
+  if (error) error.textContent = 'Please choose Yes, No, or Unsure to continue.';
+  document.getElementById('ob-built-in-bar-question')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 function obNextGuests() {
@@ -5823,6 +5898,7 @@ function obFinish() {
 function obCheckRequiredFields() {
   const nameEl = document.getElementById('ob-name');
   const emailEl = document.getElementById('ob-email');
+  const phoneEl = document.getElementById('ob-phone');
   const dateEl = document.getElementById('ob-date');
   const startTimeEl = document.getElementById('ob-time');
   const endTimeEl = document.getElementById('ob-end-time');
@@ -5831,13 +5907,14 @@ function obCheckRequiredFields() {
 
   const nameValid = nameEl?.value?.trim().length > 0;
   const emailValid = emailEl?.value?.trim().length > 0 && emailEl.value.includes('@');
+  const phoneValid = phoneEl?.value?.trim().length > 0;
   const dateValid = dateEl?.value?.trim() || obData.date;
   const startTimeValid = startTimeEl?.value?.trim() || obData.time;
   const endTimeValid = endTimeEl?.value?.trim() || obData.endTime;
   const venueValid = obData.venue || obData.venueText?.trim().length > 0;
   const barValid = hasBuiltInBar && (hasBuiltInBar === 'yes' || hasBuiltInBar === 'no' || hasBuiltInBar === 'unsure');
 
-  return nameValid && emailValid && dateValid && startTimeValid && endTimeValid && venueValid && barValid;
+  return nameValid && emailValid && phoneValid && dateValid && startTimeValid && endTimeValid && venueValid && barValid;
 }
 
 function obCheckAndSubmit() {
@@ -5865,8 +5942,8 @@ function obSubmitQuiz() {
   const endTimeEl     = document.getElementById('ob-end-time');
 
   // Validate required fields
-  if (!nameEl?.value.trim() || !emailEl?.value.trim()) {
-    alert('Please fill in your name and email');
+  if (!nameEl?.value.trim() || !emailEl?.value.trim() || !phoneEl?.value.trim()) {
+    alert('Please fill in your name, email, and phone number');
     return;
   }
 
@@ -5912,7 +5989,7 @@ function obSubmitQuiz() {
   let msgParts = [];
   if (obData.drinks && obData.drinks.length) {
     const dl = { cocktails: 'Cocktails', mocktails: 'Mocktails', beer: 'Beer', wine: 'Wine', open_bar: 'Open Bar',
-                 lemonade: 'Fresh Lemonade', iced_tea: 'Iced Tea', sparkling_water: 'Sparkling Water', juice_bar: 'Juice Bar' };
+                 lemonade: 'Fresh Lemonade', dirty_sodas: 'Dirty Sodas', sparkling_water: 'Sparkling Water' };
     msgParts.push('Drinks: ' + obData.drinks.map(k => dl[k] || k).join(', '));
   }
   if (obData.drinkDetail) msgParts.push('Specific drinks: ' + obData.drinkDetail);
@@ -5929,17 +6006,22 @@ function obSubmitQuiz() {
   document.getElementById('form-drink-detail').value = quote.drinkDetail || '';
   obSyncQuoteFields(form, quote);
 
-  // Close onboarding and scroll to form
-  document.getElementById('onboarding').classList.add('hidden');
-  localStorage.setItem('ls-submitted', 'true');
+  submitIntake(form, { onSuccess: showIntakeComplete });
+}
 
-  // Scroll to contact section and submit
-  setTimeout(() => {
-    document.getElementById('contact').scrollIntoView({ behavior: 'smooth' });
-    setTimeout(() => {
-      form.dispatchEvent(new Event('submit'));
-    }, 500);
-  }, 300);
+function showIntakeComplete() {
+  const inner = document.querySelector('#onboarding .onboarding-inner');
+  const steps = document.querySelector('#onboarding .ob-steps');
+  if (steps) steps.style.display = 'none';
+  if (inner) {
+    inner.innerHTML = `
+      <div class="ob-panel active" style="text-align:center;max-width:34rem">
+        <div class="onboarding-badge">✓ Inquiry received</div>
+        <h2 class="onboarding-q">Thank you —<br/><em>we have your details.</em></h2>
+        <p class="onboarding-sub">Your inquiry has been sent. You can close this window or continue exploring Lake Salt.</p>
+        <button class="ob-next-btn ob-finish" onclick="document.getElementById('onboarding').classList.add('hidden');document.body.classList.remove('modal-open');">Continue to Site →</button>
+      </div>`;
+  }
 }
 
 function prefillForm() {
@@ -6540,7 +6622,24 @@ document.getElementById('lightbox').addEventListener('touchend', e => {
 /* ─── FORM ─── */
 function handleSubmit(e) {
   e.preventDefault();
-  const form = e.target;
+  submitIntake(e.target);
+}
+
+let intakeSubmitting = false;
+
+function intakeSubmissionKey(data) {
+  const fingerprint = [data.email, data.eventDate, data.eventType, data.venue, data.guestCount]
+    .map(value => String(value || '').trim().toLowerCase()).join('|');
+  let hash = 2166136261;
+  for (let i = 0; i < fingerprint.length; i++) {
+    hash ^= fingerprint.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `website-intake-${(hash >>> 0).toString(36)}`;
+}
+
+function submitIntake(form, { onSuccess } = {}) {
+  if (intakeSubmitting) return;
   const btn  = form.querySelector('.form-submit');
   const orig = btn.textContent;
 
@@ -6605,29 +6704,45 @@ function handleSubmit(e) {
     })(),
     createdAt:      firebase.firestore.FieldValue.serverTimestamp()
   };
+  const submissionKey = intakeSubmissionKey(leadData);
+  const submissionStorageKey = `ls-intake-submission:${submissionKey}`;
+  if (localStorage.getItem(submissionStorageKey)) {
+    btn.textContent = '✓ Your inquiry is already received.';
+    btn.disabled = true;
+    return;
+  }
+  intakeSubmitting = true;
+  localStorage.setItem(submissionStorageKey, 'sending');
 
-  // Save lead to Firestore (fire-and-forget — don't block EmailJS)
-  _db.collection('leads').add(leadData).catch(err => {
-    console.warn('Firestore lead save failed:', err);
-  });
-
-  emailjs.sendForm('service_rbzoxto', 'template_fch6b4c', form)
+  // A deterministic document ID makes a repeat click or retry update the same
+  // lead instead of creating another intake record. Email only follows a saved lead.
+  window._db.collection('leads').doc(submissionKey).set({
+    ...leadData,
+    submissionKey,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true })
+    .then(() => emailjs.sendForm('service_rbzoxto', 'template_fch6b4c', form))
     .then(() => {
       // Conversion event! Lead successfully captured.
       trackEvent('lead_submitted', { intent: 'bartending', eventType: leadData.eventType || 'unknown' });
       // Mark this visitor as having submitted — quiz will be skipped on return
       localStorage.setItem('ls-submitted', 'true');
+      localStorage.setItem(submissionStorageKey, 'sent');
       btn.textContent = '✓ Sent! We\'ll be in touch soon.';
       btn.style.background = '#22c55e';
       form.reset();
+      if (typeof onSuccess === 'function') onSuccess();
       setTimeout(() => {
         btn.textContent = orig;
         btn.style.background = '';
         btn.disabled = false;
+        intakeSubmitting = false;
       }, 5000);
     })
     .catch(err => {
-      console.error('EmailJS error:', err);
+      console.error('Intake submission error:', err);
+      localStorage.removeItem(submissionStorageKey);
+      intakeSubmitting = false;
       btn.textContent = '✕ Something went wrong — please call or text us.';
       btn.style.background = '#dc2626';
       setTimeout(() => {
