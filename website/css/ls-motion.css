@@ -1,0 +1,252 @@
+/* ─────────────────────────────────────────────────────────────
+   Lake Salt — motion & depth layer
+   Loaded after each page's own styles. Everything here is scoped
+   under html.ls-motion (added by js/ls-motion.js), so the page is
+   unchanged if the script never runs.
+───────────────────────────────────────────────────────────── */
+
+/* ── Film grain: one static, fixed texture over the page (desktop only) ── */
+.ls-grain {
+  position: fixed;
+  inset: 0;
+  z-index: 999; /* above sections, below the navbar (1000) and modals */
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+@media (max-width: 899px) { .ls-grain { display: none; } }
+
+/* ── Reveal-on-scroll (one IntersectionObserver drives every element) ── */
+.ls-motion .ls-rv {
+  opacity: 0;
+  transform: translate3d(0, 24px, 0);
+  transition: opacity 0.75s cubic-bezier(.2, .7, .2, 1), transform 0.75s cubic-bezier(.2, .7, .2, 1);
+}
+.ls-motion .ls-rv.ls-in { opacity: 1; transform: none; }
+.ls-motion .ls-rv.ls-rv-clip { opacity: 1; transform: none; }
+/* Clip the photo, not the observed tile: a fully clipped target never
+   registers as intersecting in Chromium. */
+.ls-motion .ls-rv.ls-rv-clip > img {
+  clip-path: inset(100% 0 0 0);
+  transition: clip-path 0.9s cubic-bezier(.7, 0, .2, 1);
+  transition-delay: inherit;
+}
+.ls-motion .ls-rv.ls-rv-clip.ls-in > img { clip-path: inset(0 0 0 0); }
+
+/* ── Hero: warm bloom + a veil that deepens as the page scrolls away ── */
+.ls-hero-glow {
+  position: absolute;
+  left: 50%;
+  bottom: -38vh;
+  width: 130vw;
+  height: 80vh;
+  transform: translateX(-50%);
+  background: radial-gradient(closest-side, rgba(223, 192, 138, 0.26), rgba(201, 169, 110, 0.08) 48%, transparent 72%);
+  pointer-events: none;
+  z-index: 1;
+}
+.ls-hero-veil {
+  position: absolute;
+  inset: 0;
+  background: #070c18;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── Layered "sheets": key sections slide over the one before them ── */
+.ls-motion .corporate-editorial { z-index: 3; }
+.ls-motion .venue-trust-strip,
+.ls-motion .marquee-strip,
+.ls-motion .knot-strip-inline,
+.ls-motion .inline-intent { position: relative; z-index: 3; }
+.ls-motion .knot-strip-inline { background: var(--ivory, #FAF8F4); }
+
+.ls-motion .dry-hire,
+.ls-motion .menus-section,
+.ls-motion .contact-section {
+  position: relative;
+  z-index: 2;
+  margin-top: -44px;
+  border-radius: 44px 44px 0 0;
+  box-shadow: 0 -28px 60px -24px rgba(12, 21, 38, 0.45);
+  overflow: hidden;
+}
+.ls-motion .testimonials {
+  z-index: 2;
+  margin-top: -44px;
+  border-radius: 44px 44px 0 0;
+  box-shadow: 0 -28px 60px -24px rgba(12, 21, 38, 0.35);
+  overflow: hidden;
+}
+@media (max-width: 899px) {
+  .ls-motion .dry-hire,
+  .ls-motion .menus-section,
+  .ls-motion .contact-section,
+  .ls-motion .testimonials { margin-top: -28px; border-radius: 28px 28px 0 0; }
+}
+
+/* ── The video section: taller, and it opens up as it arrives ── */
+@media (min-width: 900px) {
+  .ls-motion .corporate-editorial { min-height: 92vh; }
+}
+@media (max-width: 899px) {
+  .ls-motion .corporate-editorial { min-height: 72vh; }
+}
+.ls-motion .corporate-editorial-media { will-change: transform; }
+
+/* ── Ambient light orbs inside the dark sections ── */
+.ls-orb {
+  position: absolute;
+  width: 46vw;
+  height: 46vw;
+  max-width: 720px;
+  max-height: 720px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(closest-side, rgba(201, 169, 110, 0.16), rgba(201, 169, 110, 0.05) 55%, transparent 72%);
+}
+.ls-orb.ls-orb-b { background: radial-gradient(closest-side, rgba(232, 196, 187, 0.12), rgba(232, 196, 187, 0.04) 55%, transparent 72%); }
+.ls-orb-a { top: -18%; right: -14%; }
+.ls-orb-b { bottom: -22%; left: -16%; }
+.ls-motion .dry-hire > :not(.ls-orb),
+.ls-motion .menus-section > :not(.ls-orb),
+.ls-motion .contact-section > :not(.ls-orb):not(.ls-aurora) { position: relative; z-index: 1; }
+
+/* ── Contact: a slow aurora behind the form ── */
+.ls-aurora { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.ls-aurora i {
+  position: absolute;
+  width: 60vw;
+  height: 60vw;
+  max-width: 900px;
+  max-height: 900px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(201, 169, 110, 0.18), transparent 70%);
+  animation: ls-drift 26s ease-in-out infinite alternate;
+}
+.ls-aurora i:nth-child(1) { top: -20%; left: -10%; }
+.ls-aurora i:nth-child(2) { bottom: -30%; right: -15%; background: radial-gradient(closest-side, rgba(232, 196, 187, 0.14), transparent 70%); animation-duration: 32s; animation-delay: -8s; }
+.ls-aurora i:nth-child(3) { top: 30%; left: 40%; width: 36vw; height: 36vw; background: radial-gradient(closest-side, rgba(143, 172, 207, 0.10), transparent 70%); animation-duration: 22s; animation-delay: -14s; }
+.ls-aurora.ls-paused i { animation-play-state: paused; }
+@keyframes ls-drift {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(6vw, 4vh, 0) scale(1.12); }
+  100% { transform: translate3d(-4vw, 8vh, 0) scale(0.94); }
+}
+
+/* ── Dry hire: a champagne line that draws down the three steps ── */
+.ls-motion .dh-steps { position: relative; }
+.ls-steps-line {
+  position: absolute;
+  left: 17px; /* centre of the 36px step number */
+  top: 18px;
+  bottom: 18px;
+  width: 2px;
+  background: rgba(201, 169, 110, 0.14);
+  border-radius: 2px;
+  pointer-events: none;
+}
+.ls-steps-line span {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, var(--champagne-lt, #DFC08A), var(--champagne, #C9A96E));
+  transform-origin: top;
+  transform: scaleY(0);
+  box-shadow: 0 0 12px rgba(223, 192, 138, 0.55);
+}
+.ls-motion .dh-step .step-num {
+  position: relative;
+  z-index: 1;
+  background-color: var(--navy, #0C1526);
+  transition: background-color 0.5s ease, color 0.5s ease, box-shadow 0.5s ease, border-color 0.5s ease;
+}
+.ls-motion .dh-step.ls-lit .step-num {
+  background-color: var(--champagne, #C9A96E);
+  border-color: var(--champagne-lt, #DFC08A);
+  color: var(--navy, #0C1526);
+  box-shadow: 0 0 0 6px rgba(201, 169, 110, 0.14), 0 0 24px rgba(223, 192, 138, 0.45);
+}
+
+/* ── Pricing: the flagship card gets a slow champagne light around its edge ── */
+.ls-motion .pp-flagship { position: relative; isolation: isolate; }
+.ls-shine {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  pointer-events: none;
+  overflow: hidden;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+.ls-shine::before {
+  content: '';
+  position: absolute;
+  inset: -60%;
+  background: conic-gradient(from 0deg, transparent 0 62%, rgba(201, 169, 110, 0.9) 74%, #FFF3D6 80%, rgba(201, 169, 110, 0.9) 86%, transparent 96%);
+  animation: ls-spin 7s linear infinite;
+}
+.ls-shine.ls-paused::before { animation-play-state: paused; }
+@keyframes ls-spin { to { transform: rotate(1turn); } }
+
+/* ── Hover states that compose with scroll transforms ──
+   GSAP writes inline `transform`; hovers use the individual
+   translate/scale properties so the two never fight. */
+.ls-motion .menu-card { transition: translate 0.4s cubic-bezier(.2, .7, .2, 1), box-shadow 0.4s ease; }
+.ls-motion .menu-card:hover { translate: 0 -10px; }
+.ls-motion .service-card:hover { transform: none; translate: 0 -6px; }
+.ls-motion .service-card { transition: translate 0.35s cubic-bezier(.2, .7, .2, 1), box-shadow 0.35s ease, border-color 0.35s ease; }
+.ls-motion .sc-image { position: relative; }
+.ls-motion .sc-image img { height: 118%; transition: scale 0.8s cubic-bezier(.2, .7, .2, 1); }
+.ls-motion .service-card:hover .sc-image img { transform: none; }
+.ls-motion .service-card:hover .ls-par img,
+.ls-motion .service-card:hover .sc-image img { scale: 1.06; }
+.ls-motion .g-item img { height: 116%; transition: scale 0.7s cubic-bezier(.2, .7, .2, 1); }
+.ls-motion .g-item:hover img { transform: none; scale: 1.07; }
+
+/* ── Line icons that replace the emoji ── */
+.ls-ico {
+  width: 1.15em;
+  height: 1.15em;
+  display: inline-block;
+  vertical-align: -0.18em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ls-motion .wf-pillar .icon {
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--champagne, #C9A96E);
+  background: rgba(201, 169, 110, 0.12);
+  font-size: 1.05rem;
+}
+.ls-motion .cert-icon { color: var(--champagne, #C9A96E); display: inline-flex; }
+.ls-motion .ci-icon {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--champagne, #C9A96E);
+  border: 1px solid rgba(201, 169, 110, 0.3);
+  font-size: 1.05rem;
+}
+.ls-motion .f-social a { font-size: 1rem; }
+.ls-motion .mobile-contact-bar a { display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem; }
+
+/* ── Reduced motion: keep the depth styling, drop every moving part ── */
+@media (prefers-reduced-motion: reduce) {
+  .ls-motion .ls-rv, .ls-motion .ls-rv > img { opacity: 1 !important; transform: none !important; clip-path: none !important; transition: none !important; }
+  .ls-aurora i, .ls-shine::before { animation: none !important; }
+}
