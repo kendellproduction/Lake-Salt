@@ -48,6 +48,17 @@ firestore-debug.log
 # ── Firebase hosting cache ─────────────────────
 .firebase/
 
+# ── Private/generated business artifacts ───────
+business-documents/
+agreements/
+quotes/
+tmp/
+/* - Lake Salt Quote.pdf
+
+# ── Local skill imports and archives ───────────
+claude-skills/
+claude-skills-repo.zip
+
 # Gmail API OAuth (post-expo cohort drafts script)
 scripts/.gmail-token.json
 scripts/.gmail-credentials.json
