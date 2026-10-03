@@ -74,7 +74,7 @@ class FakeCollectionReference extends FakeQuery {
 }
 
 class FakeFirestore {
-  constructor() { this.store = new Map(); this.nextId = 1; }
+  constructor() { this.store = new Map(); this.nextId = 1; this.transactionTail = Promise.resolve(); }
   collection(name) { return new FakeCollectionReference(this, name); }
   write(path, data, options = {}) {
     const prior = this.store.get(path);
@@ -82,13 +82,20 @@ class FakeFirestore {
     this.store.set(path, options.merge && prior ? { ...prior, ...resolved } : resolved);
   }
   async runTransaction(callback) {
-    const transaction = {
-      get: ref => ref.get(),
-      set: (ref, data, options) => { this.write(ref.path, data, options); return transaction; },
-      create: (ref, data) => { if (this.store.has(ref.path)) throw new Error('already-exists'); this.write(ref.path, data); return transaction; },
-      update: (ref, data) => { if (!this.store.has(ref.path)) throw new Error('not-found'); this.write(ref.path, data, { merge: true }); return transaction; }
-    };
-    return callback(transaction);
+    const run = this.transactionTail.then(async () => {
+      const writes = [];
+      const transaction = {
+        get: ref => ref.get(),
+        set: (ref, data, options) => { writes.push(() => this.write(ref.path, data, options)); return transaction; },
+        create: (ref, data) => { writes.push(() => { if (this.store.has(ref.path)) throw new Error('already-exists'); this.write(ref.path, data); }); return transaction; },
+        update: (ref, data) => { writes.push(() => { if (!this.store.has(ref.path)) throw new Error('not-found'); this.write(ref.path, data, { merge: true }); }); return transaction; }
+      };
+      const result = await callback(transaction);
+      writes.forEach(write => write());
+      return result;
+    });
+    this.transactionTail = run.catch(() => undefined);
+    return run;
   }
 }
 

@@ -18,7 +18,7 @@ const db = admin.firestore();
 const { createBookingCalendar } = require('./booking-calendar');
 const {
   classifyTaskCompletion,
-  hasBlockingFirstTouchForLead,
+  queueFirstTouchAtomically,
   validateTaskCompletion,
 } = require('./agent-task-utils');
 const bookingCalendar = createBookingCalendar({ db, admin });
@@ -3389,12 +3389,8 @@ exports.agentTaskRunner = onSchedule(
  *  - The morning brief reports what the runner DID (last 24h), so
  *    "handled" means completed work, not intentions. */
 
-async function hasPendingFirstTouch(leadId) {
-  return hasBlockingFirstTouchForLead(db.collection('agent_tasks'), leadId);
-}
-
 async function queueFirstTouch(leadId, lead, source) {
-  return await db.collection('agent_tasks').add({
+  return queueFirstTouchAtomically(db, leadId, {
     agent: 'comms', kind: 'first_touch', leadId,
     /* Human-feel delay: never reply to a brand-new lead in under ~12 min —
      * an instant response reads as automated. Runner skips until notBefore. */
@@ -3422,8 +3418,8 @@ exports.onLeadCreated = onDocCreatedLead(
   const src = String(lead.source || '').toLowerCase();
   /* Imports/backfills don't get insta-touched — only organic arrivals. */
   if (lead.importBatch || src.includes('knot') || src.includes('import') || src.includes('expo')) return;
-  if (await hasPendingFirstTouch(event.params.leadId)) return;
-  await queueFirstTouch(event.params.leadId, lead, 'lead_created_trigger');
+  const queueResult = await queueFirstTouch(event.params.leadId, lead, 'lead_created_trigger');
+  if (!queueResult.queued) return;
   console.log(`onLeadCreated: first-touch queued for ${lead.name || event.params.leadId} (sends after ~12min human-feel delay)`);
   try {
     await db.collection('notifications').add({
@@ -3454,8 +3450,9 @@ exports.middayLeadSweep = onSchedule(
       /* Skip anyone we've already emailed. */
       const threads = await d.ref.collection('threads').limit(5).get();
       const contacted = threads.docs.some(t => (t.data().lastDirection === 'out') || t.data().hasOutbound);
-      if (contacted || await hasPendingFirstTouch(d.id)) continue;
-      await queueFirstTouch(d.id, lead, 'midday_sweep');
+      if (contacted) continue;
+      const queueResult = await queueFirstTouch(d.id, lead, 'midday_sweep');
+      if (!queueResult.queued) continue;
       queued++;
     }
     console.log(`middayLeadSweep: ${snap.size} recent leads, ${queued} first-touch queued.`);
